@@ -8,6 +8,7 @@
     "dev:web": "turbo --filter web dev",
     "dev:desktop": "pnpm --filter desktop tauri dev",
     "dev:android": "pnpm --filter desktop tauri android dev",
+    "dev:api": "turbo --filter api dev",
     "lint": "turbo lint",
     "format": "turbo format",
     "typecheck": "turbo typecheck"
