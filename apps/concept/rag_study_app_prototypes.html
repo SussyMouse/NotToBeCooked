@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Study App - Multi-Prototype Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f5ff',
+                            100: '#e0ebff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a',
+                        },
+                        accent: {
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        ::-webkit-scrollbar-thumb { background: rgba(51, 65, 85, 0.8); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(71, 85, 105, 1); }
+
+        .citation-highlight {
+            background-color: rgba(234, 179, 8, 0.25);
+            border-left: 3px solid #eab308;
+            transition: all 0.3s ease;
+        }
+        .citation-highlight-active {
+            background-color: rgba(59, 130, 246, 0.3) !important;
+            border-left: 3px solid #3b82f6 !important;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+        }
+        
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .animate-pulse-subtle { animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-full flex flex-col overflow-hidden antialiased">
+
+    <!-- Top Global Header -->
+    <header class="h-16 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md px-4 flex items-center justify-between z-30 shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-accent-500 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-brand-500/20">
+                <i class="fa-solid fa-brain"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-base text-slate-100 flex items-center gap-2">
+                    OmniStudy AI <span class="bg-brand-500/20 text-brand-400 text-xs px-2 py-0.5 rounded-full font-semibold border border-brand-500/30">RAG Engine v2.4</span>
+                </h1>
+                <p class="text-xs text-slate-400 hidden sm:block">Intelligent Study Assistant with Direct Grounded Source Citations</p>
+            </div>
+        </div>
+
+        <!-- Prototype View Selector Switcher -->
+        <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
+            <button onclick="switchPrototype(1)" id="proto-btn-1" class="proto-tab text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all bg-brand-600 text-white shadow-sm">
+                <i class="fa-solid fa-columns"></i>
+                <span class="hidden md:inline">Proto 1:</span> Split Dual Workspace
+            </button>
+            <button onclick="switchPrototype(2)" id="proto-btn-2" class="proto-tab text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all text-slate-400 hover:text-slate-200">
+                <i class="fa-solid fa-message"></i>
+                <span class="hidden md:inline">Proto 2:</span> Focus Chat & Inspector
+            </button>
+            <button onclick="switchPrototype(3)" id="proto-btn-3" class="proto-tab text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all text-slate-400 hover:text-slate-200">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span class="hidden md:inline">Proto 3:</span> PYQ Matrix & Flashcards
+            </button>
+        </div>
+
+        <!-- Header Actions -->
+        <div class="flex items-center space-x-2">
+            <button onclick="openUploadModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3 py-2 rounded-lg border border-slate-700 flex items-center gap-2 transition">
+                <i class="fa-solid fa-cloud-arrow-up text-brand-400"></i>
+                <span class="hidden lg:inline">Upload Document</span>
+            </button>
+            <button onclick="toggleGlobalHelp()" class="text-slate-400 hover:text-slate-200 p-2 rounded-lg hover:bg-slate-800 transition">
+                <i class="fa-regular fa-circle-question text-lg"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Application Container -->
+    <main class="flex-1 flex overflow-hidden relative">
+
+        <!-- ========================================== -->
+        <!-- PROTOTYPE 1: SPLIT-SCREEN DUAL WORKSPACE   -->
+        <!-- ========================================== -->
+        <div id="prototype-1" class="prototype-view w-full h-full flex flex-col md:flex-row">
+            
+            <!-- Left Sidebar: File Hierarchy Navigation & Selected Document Preview -->
+            <div class="w-full md:w-1/2 lg:w-7/12 border-r border-slate-800 flex flex-col bg-slate-900/50 h-full overflow-hidden">
+                
+                <!-- File Navigation Bar -->
+                <div class="p-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between shrink-0">
+                    <div class="flex items-center gap-2 overflow-x-auto text-xs text-slate-400">
+                        <span class="text-slate-500"><i class="fa-solid fa-folder-tree mr-1"></i> File Explorer</span>
+                        <span>/</span>
+                        <select id="p1-sem-select" onchange="updateCourseList(1)" class="bg-slate-800 text-slate-200 rounded px-2 py-1 text-xs border border-slate-700 outline-none focus:border-brand-500">
+                            <!-- Populated via JS -->
+                        </select>
+                        <span>/</span>
+                        <select id="p1-course-select" onchange="updateCategoryList(1)" class="bg-slate-800 text-slate-200 rounded px-2 py-1 text-xs border border-slate-700 outline-none focus:border-brand-500">
+                            <!-- Populated via JS -->
+                        </select>
+                    </div>
+                    <span id="p1-file-count" class="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700 hidden sm:inline-block">6 Files</span>
+                </div>
+
+                <div class="flex-1 flex overflow-hidden">
+                    <!-- Left Mini Tree Bar (Folder Categories) -->
+                    <div class="w-48 border-r border-slate-800 bg-slate-950/80 p-2 overflow-y-auto shrink-0 hidden sm:block">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-2 mb-2">Categories</div>
+                        <div id="p1-category-tree" class="space-y-1">
+                            <!-- Folder items injected via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Main Document Preview Panel -->
+                    <div class="flex-1 flex flex-col bg-slate-900/30 overflow-hidden">
+                        <!-- Active File Header -->
+                        <div class="p-3 border-b border-slate-800 bg-slate-900/90 flex items-center justify-between shrink-0">
+                            <div class="flex items-center space-x-2 truncate">
+                                <span id="p1-doc-icon" class="text-brand-400 text-lg"><i class="fa-solid fa-file-pdf"></i></span>
+                                <div>
+                                    <h3 id="p1-doc-title" class="font-semibold text-sm text-slate-200 truncate">Select a file from sidebar</h3>
+                                    <p id="p1-doc-meta" class="text-[11px] text-slate-400">CS202 Data Structures & Algorithms • Lecture Notes</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <span class="text-xs bg-slate-800 text-slate-300 px-2 py-1 rounded border border-slate-700 font-mono" id="p1-page-indicator">Page 1/12</span>
+                                <button onclick="simulatePdfZoom()" class="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-slate-200 rounded text-xs"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Document Viewer Content Area (Mock PDF / Text Reader with highlighted snippets) -->
+                        <div id="p1-doc-viewer" class="flex-1 p-6 overflow-y-auto space-y-4 font-sans text-sm text-slate-300 leading-relaxed relative bg-slate-950/40">
+                            <div class="text-center py-20 text-slate-500">
+                                <i class="fa-regular fa-file-lines text-4xl mb-3 block"></i>
+                                Select a document from the category list or click a citation link in the chat to jump directly to source content.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: RAG Interactive Chat -->
+            <div class="w-full md:w-1/2 lg:w-5/12 flex flex-col bg-slate-950 h-full overflow-hidden">
+                
+                <!-- Chat Header -->
+                <div class="p-3.5 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <h2 class="font-semibold text-sm text-slate-200">Interactive RAG Assistant</h2>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="clearChatHistory(1)" class="text-xs text-slate-400 hover:text-slate-200 px-2 py-1 bg-slate-800 rounded border border-slate-700">Clear</button>
+                    </div>
+                </div>
+
+                <!-- Chat History Messages Container -->
+                <div id="p1-chat-messages" class="flex-1 p-4 overflow-y-auto space-y-4">
+                    <!-- Messages dynamically rendered here -->
+                </div>
+
+                <!-- Suggested Query Chips -->
+                <div class="px-4 py-2 border-t border-slate-800/80 bg-slate-900/30 flex items-center gap-2 overflow-x-auto text-xs shrink-0">
+                    <span class="text-slate-500 font-medium shrink-0"><i class="fa-solid fa-bolt text-amber-400 mr-1"></i> Quick:</span>
+                    <button onclick="sendQuickPrompt(1, 'What are the main topics tested in PYQ 2023 regarding Binary Search Trees?')" class="bg-slate-800/80 hover:bg-slate-800 text-slate-300 border border-slate-700/60 rounded-full px-3 py-1 shrink-0 transition hover:border-brand-500/50">
+                        PYQ 2023 BST Questions
+                    </button>
+                    <button onclick="sendQuickPrompt(1, 'Compare the code implementation in Lab 3 with Lecture Notes on QuickSort algorithm.')" class="bg-slate-800/80 hover:bg-slate-800 text-slate-300 border border-slate-700/60 rounded-full px-3 py-1 shrink-0 transition hover:border-brand-500/50">
+                        Compare Lab 3 vs Lecture Notes
+                    </button>
+                    <button onclick="sendQuickPrompt(1, 'Summarize the grading breakdown and assignment submission rules from Course Planner.')" class="bg-slate-800/80 hover:bg-slate-800 text-slate-300 border border-slate-700/60 rounded-full px-3 py-1 shrink-0 transition hover:border-brand-500/50">
+                        Grading & Schedule
+                    </button>
+                </div>
+
+                <!-- Chat Input Controls -->
+                <div class="p-3 border-t border-slate-800 bg-slate-900 shrink-0">
+                    <form onsubmit="handleChatSubmit(event, 1)" class="flex items-center gap-2">
+                        <input id="p1-chat-input" type="text" placeholder="Ask questions across your lecture notes, PYQs, labs..." class="flex-1 bg-slate-950 border border-slate-700/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition">
+                        <button type="submit" class="bg-brand-600 hover:bg-brand-500 text-white p-2.5 rounded-xl shadow-md transition shrink-0 flex items-center justify-center w-10 h-10">
+                            <i class="fa-solid fa-paper-plane text-sm"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- PROTOTYPE 2: FOCUS CHAT & DRAWER INSPECTOR -->
+        <!-- ========================================== -->
+        <div id="prototype-2" class="prototype-view w-full h-full hidden flex-row relative bg-slate-950">
+            
+            <!-- Main Content Area: Centered conversational AI UI -->
+            <div class="flex-1 flex flex-col h-full overflow-hidden max-w-5xl mx-auto border-x border-slate-800/60">
+                
+                <!-- Filter Bar Header -->
+                <div class="p-4 border-b border-slate-800 bg-slate-900/60 backdrop-blur-md flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center space-x-2">
+                        <div class="p-2 bg-brand-500/10 text-brand-400 rounded-lg">
+                            <i class="fa-solid fa-filter text-sm"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Context Scope</span>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span class="bg-slate-800 text-slate-200 text-xs px-2 py-0.5 rounded border border-slate-700" id="p2-active-scope">Semester 1 • CS202 • All Categories</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scope Multi-Filter Chips -->
+                    <div class="flex items-center gap-2 overflow-x-auto py-1">
+                        <select id="p2-sem-select" onchange="updateP2Scope()" class="bg-slate-800 text-xs text-slate-200 rounded px-2.5 py-1 border border-slate-700">
+                            <!-- Populated via JS -->
+                        </select>
+                        <select id="p2-course-select" onchange="updateP2Scope()" class="bg-slate-800 text-xs text-slate-200 rounded px-2.5 py-1 border border-slate-700">
+                            <!-- Populated via JS -->
+                        </select>
+                        <select id="p2-category-select" onchange="updateP2Scope()" class="bg-slate-800 text-xs text-slate-200 rounded px-2.5 py-1 border border-slate-700">
+                            <option value="ALL">All Categories (6)</option>
+                            <option value="Course Planner">Course Planner</option>
+                            <option value="Tutorial">Tutorials</option>
+                            <option value="PYQs">PYQs (Past Questions)</option>
+                            <option value="Notes">Student Notes</option>
+                            <option value="Lecture Notes">Lecture Slides/Notes</option>
+                            <option value="Labs">Lab Worksheets</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Chat History Container -->
+                <div id="p2-chat-messages" class="flex-1 p-6 overflow-y-auto space-y-6">
+                    <!-- Messages populated via JS -->
+                </div>
+
+                <!-- Bottom Input Section -->
+                <div class="p-4 border-t border-slate-800 bg-slate-900/80">
+                    <form onsubmit="handleChatSubmit(event, 2)" class="relative">
+                        <textarea id="p2-chat-input" rows="2" placeholder="Ask anything about your courses... (e.g. 'What is the recursion time complexity in Lecture 4 vs PYQ 2022?')" class="w-full bg-slate-950 border border-slate-700/80 rounded-2xl p-3.5 pr-24 text-sm text-slate-100 placeholder-slate-500 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition resize-none"></textarea>
+                        <div class="absolute right-3 bottom-3 flex items-center space-x-2">
+                            <button type="submit" class="bg-brand-600 hover:bg-brand-500 text-white font-medium text-xs px-4 py-2 rounded-xl shadow transition flex items-center gap-1.5">
+                                <span>Ask AI</span>
+                                <i class="fa-solid fa-paper-plane text-xs"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Slide-over Citation Inspector Drawer (Right) -->
+            <div id="p2-inspector-drawer" class="w-96 border-l border-slate-800 bg-slate-900 flex flex-col h-full transform transition-transform duration-300 translate-x-full absolute right-0 top-0 bottom-0 z-20 shadow-2xl">
+                <!-- Drawer Header -->
+                <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-quote-left text-brand-400"></i>
+                        <h3 class="font-semibold text-sm text-slate-200">Source Inspector</h3>
+                    </div>
+                    <button onclick="closeP2Drawer()" class="text-slate-400 hover:text-slate-200 p-1 rounded"><i class="fa-solid fa-xmark text-lg"></i></button>
+                </div>
+
+                <!-- Drawer Content -->
+                <div class="flex-1 p-4 overflow-y-auto space-y-4">
+                    <div id="p2-drawer-content">
+                        <!-- Populated dynamically when clicking inline citation -->
+                    </div>
+                </div>
+
+                <div class="p-3 border-t border-slate-800 bg-slate-950/40 text-center">
+                    <button onclick="openInP1View()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold py-2 rounded-lg border border-slate-700 transition">
+                        Open in Split Workspace
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- PROTOTYPE 3: PYQ MATRIX & FLASHCARD STUDIO -->
+        <!-- ========================================== -->
+        <div id="prototype-3" class="prototype-view w-full h-full hidden flex-col bg-slate-950 overflow-y-auto p-4 md:p-6 space-y-6">
+            
+            <!-- Dashboard Top Row: Course Scope & Quick Actions -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                        <i class="fa-solid fa-layer-group text-brand-400"></i> Multi-Source Synthesis & Exam Studio
+                    </h2>
+                    <p class="text-xs text-slate-400">Synthesize PYQs, Lecture Notes, Tutorials and Labs into interactive exam prep matrixes.</p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <select id="p3-sem-select" onchange="renderP3Studio()" class="bg-slate-950 text-xs text-slate-200 rounded-lg px-3 py-2 border border-slate-700">
+                        <!-- Populated via JS -->
+                    </select>
+                    <select id="p3-course-select" onchange="renderP3Studio()" class="bg-slate-950 text-xs text-slate-200 rounded-lg px-3 py-2 border border-slate-700">
+                        <!-- Populated via JS -->
+                    </select>
+                    <button onclick="generateFlashcards()" class="bg-gradient-to-r from-brand-600 to-accent-600 hover:from-brand-500 hover:to-accent-500 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-lg transition flex items-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Generate Flashcards
+                    </button>
+                </div>
+            </div>
+
+            <!-- Two Column Grid Layout for Studio -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Left 2 Columns: PYQ vs Lecture Citation Cross-Matrix Table -->
+                <div class="lg:col-span-2 space-y-4">
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold text-sm text-slate-200 flex items-center gap-2">
+                                <i class="fa-solid fa-table-cells text-amber-400"></i> Exam Topic Cross-Referencing Matrix
+                            </h3>
+                            <span class="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-medium">PYQ Analysis</span>
+                        </div>
+
+                        <!-- Matrix Table -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-800 text-slate-400 bg-slate-950/50">
+                                        <th class="p-3 font-semibold">Core Topic</th>
+                                        <th class="p-3 font-semibold">Lecture Reference</th>
+                                        <th class="p-3 font-semibold">PYQ Frequency</th>
+                                        <th class="p-3 font-semibold">Lab Implementation</th>
+                                        <th class="p-3 font-semibold">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="p3-matrix-body" class="divide-y divide-slate-800/60 text-slate-300">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- AI Synthesis Query Card -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                        <h3 class="font-bold text-sm text-slate-200 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-diagram-project text-brand-400"></i> Comprehensive Synthesis Query
+                        </h3>
+                        <p class="text-xs text-slate-400 mb-3">Ask a cross-document question that compiles answers across all 6 course categories simultaneously.</p>
+                        
+                        <div class="flex gap-2">
+                            <input id="p3-synth-input" type="text" placeholder="e.g. Compare Tree Traversal time complexities across PYQs, Lecture 4 and Lab 3..." class="flex-1 bg-slate-950 border border-slate-700 text-xs text-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-brand-500">
+                            <button onclick="runP3Synthesis()" class="bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition">Synthesize</button>
+                        </div>
+
+                        <div id="p3-synth-output" class="mt-4 hidden p-4 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-3">
+                            <!-- Populated on synthesis run -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Interactive Generated Flashcard Deck -->
+                <div class="space-y-4">
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col h-full">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold text-sm text-slate-200 flex items-center gap-2">
+                                <i class="fa-solid fa-clone text-accent-500"></i> Citation Flashcard Studio
+                            </h3>
+                            <span id="p3-card-counter" class="text-xs text-slate-400">Card 1 / 4</span>
+                        </div>
+
+                        <!-- Flashcard Flip Area -->
+                        <div id="p3-flashcard" onclick="flipFlashcard()" class="flex-1 min-h-[220px] bg-gradient-to-b from-slate-950 to-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 flex flex-col justify-between cursor-pointer transition transform active:scale-98 relative group">
+                            <div class="flex justify-between items-start text-xs">
+                                <span id="p3-card-category" class="bg-brand-500/10 text-brand-400 border border-brand-500/20 px-2.5 py-0.5 rounded-full font-medium">Lecture 4 • p. 12</span>
+                                <span class="text-slate-500 text-[10px]"><i class="fa-solid fa-rotate mr-1"></i> Click to Flip</span>
+                            </div>
+
+                            <div class="my-auto text-center py-4">
+                                <p id="p3-card-content" class="text-slate-200 font-medium text-sm leading-relaxed">
+                                    What is the worst-case time complexity of QuickSort and how can it be mitigated?
+                                </p>
+                            </div>
+
+                            <div id="p3-card-citation-badge" class="text-center pt-2 border-t border-slate-800/80">
+                                <span class="text-[11px] text-slate-400 flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-bookmark text-amber-400"></i> Cited in <span class="text-slate-200 underline font-medium">PYQ 2023 Q3(b)</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Card Navigation Controls -->
+                        <div class="flex items-center justify-between mt-4">
+                            <button onclick="prevFlashcard()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-xl transition">
+                                <i class="fa-solid fa-chevron-left mr-1"></i> Prev
+                            </button>
+                            <button onclick="markCardMastered()" class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 text-xs px-3 py-2 rounded-xl transition font-medium">
+                                <i class="fa-solid fa-check mr-1"></i> Mark Mastered
+                            </button>
+                            <button onclick="nextFlashcard()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-xl transition">
+                                Next <i class="fa-solid fa-chevron-right ml-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Document Upload Modal -->
+    <div id="upload-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
+            <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
+                <h3 class="font-bold text-sm text-slate-200 flex items-center gap-2">
+                    <i class="fa-solid fa-file-circle-plus text-brand-400"></i> Add Course Document to RAG Engine
+                </h3>
+                <button onclick="closeUploadModal()" class="text-slate-400 hover:text-slate-200 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="p-6 space-y-4 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1 font-semibold">Select Target Semester & Course</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <select id="upload-sem-select" class="bg-slate-950 text-slate-200 rounded-lg p-2.5 border border-slate-700 outline-none">
+                            <option value="Sem 1">Semester 1</option>
+                            <option value="Sem 2">Semester 2</option>
+                            <option value="Sem 3">Semester 3</option>
+                        </select>
+                        <select id="upload-course-select" class="bg-slate-950 text-slate-200 rounded-lg p-2.5 border border-slate-700 outline-none">
+                            <option value="CS202">CS202 Data Structures</option>
+                            <option value="CS101">CS101 Intro to CS</option>
+                            <option value="MATH201">MATH201 Linear Algebra</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-slate-400 mb-1 font-semibold">Document Category Folder</label>
+                    <select id="upload-cat-select" class="w-full bg-slate-950 text-slate-200 rounded-lg p-2.5 border border-slate-700 outline-none">
+                        <option value="Course Planner">Course Planner</option>
+                        <option value="Tutorial">Tutorial</option>
+                        <option value="PYQs">PYQs (Past Year Questions)</option>
+                        <option value="Notes">Notes</option>
+                        <option value="Lecture Notes">Lecture Notes</option>
+                        <option value="Labs">Labs</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-slate-400 mb-1 font-semibold">Upload File (PDF, DOCX, TXT)</label>
+                    <div class="border-2 border-dashed border-slate-700 hover:border-brand-500/50 rounded-2xl p-6 text-center cursor-pointer bg-slate-950/40 transition">
+                        <i class="fa-solid fa-cloud-arrow-up text-3xl text-brand-400 mb-2"></i>
+                        <p class="text-slate-300 font-medium">Drag & Drop files here or click to browse</p>
+                        <p class="text-[11px] text-slate-500 mt-1">Automatic vector indexing & chunking will occur on save</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-800 bg-slate-950/50 flex justify-end gap-2">
+                <button onclick="closeUploadModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">Cancel</button>
+                <button onclick="processMockUpload()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-brand-600 text-white hover:bg-brand-500 shadow-md">Index & Add Document</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl p-6 space-y-4">
+            <h3 class="font-bold text-base text-slate-100 flex items-center gap-2">
+                <i class="fa-solid fa-circle-info text-brand-400"></i> RAG Prototype Guide
+            </h3>
+            <div class="text-xs text-slate-300 space-y-3 leading-relaxed">
+                <p>This prototype suite demonstrates 3 UX models for a RAG-powered study platform:</p>
+                <ul class="list-disc list-inside space-y-1 text-slate-400">
+                    "><strong class="text-slate-200">Proto 1 (Split Workspace):</strong> Live visual sync between cited text snippets in chat and exact lines in the source PDF/Notes reader.</li>
+                    "><strong class="text-slate-200">Proto 2 (Focus Inspector):</strong> Minimalist conversational UI with slide-over drawer showing detailed source context, chunk relevance, and source metadata.</li>
+                    "><strong class="text-slate-200">Proto 3 (Synthesis & PYQs):</strong> Multi-source cross-referencing matrix and auto-generated flashcards grounded in citations.</li>
+                </ul>
+                <p class="text-slate-400 pt-2 border-t border-slate-800">Files are strictly organized per <span class="text-brand-400 font-semibold">Semester &rarr; Course &rarr; Category</span> (Planner, Tutorial, PYQs, Notes, Lecture Notes, Labs).</p>
+            </div>
+            <button onclick="toggleGlobalHelp()" class="w-full bg-brand-600 text-white text-xs font-semibold py-2.5 rounded-xl hover:bg-brand-500">Got it</button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // DATA STORE: Semesters, Courses, Categories
+        // ==========================================
+        const CATEGORIES = ["Course Planner", "Tutorial", "PYQs", "Notes", "Lecture Notes", "Labs"];
+
+        const STUDY_DATA = {
+            "Sem 1": {
+                "CS202": {
+                    name: "CS202 Data Structures & Algorithms",
+                    files: {
+                        "Course Planner": [
+                            { id: "cs202-plan", title: "CS202 Course Planner & Syllabus 2026.pdf", pages: 4, excerpt: "Grading scheme: Midterm Exam (25%), Final Exam (45%), Labs & Assignments (20%), Tutorials (10%). Attendance threshold is mandatory 80%. Prerequisites include CS101." }
+                        ],
+                        "Tutorial": [
+                            { id: "cs202-tut1", title: "Tutorial 1 - Big O & Complexity.pdf", pages: 3, excerpt: "Exercise 3: Analyze the time complexity of nested loops. Explain why O(N log N) dominates O(N) for large input sizes N > 10,000." },
+                            { id: "cs202-tut2", title: "Tutorial 2 - Linked Lists & Stacks.pdf", pages: 4, excerpt: "Implement a double-ended queue using a doubly linked list. Compare memory overhead of pointers vs array allocation." }
+                        ],
+                        "PYQs": [
+                            { id: "cs202-pyq2023", title: "PYQ 2023 - Final Examination.pdf", pages: 8, excerpt: "Q3(a) Explain the worst-case condition for QuickSort when choosing the first element as pivot. Show the recursion tree step-by-step. [10 Marks]\nQ3(b) Compare Binary Search Tree (BST) worst-case depth vs AVL Tree height balancing." },
+                            { id: "cs202-pyq2022", title: "PYQ 2022 - Midterm Paper.pdf", pages: 6, excerpt: "Q2 Given an unsorted array [14, 3, 22, 8, 12], illustrate the step-by-step execution of Heapify to construct a Max Heap." }
+                        ],
+                        "Notes": [
+                            { id: "cs202-notes1", title: "Student Summary - Trees & Graphs.pdf", pages: 12, excerpt: "Key Exam Cheat Sheet:\n1. AVL Trees maintain balance factor in {-1, 0, 1}.\n2. Dijkstra's Algorithm fails with negative edge weights; Bellman-Ford must be used instead." }
+                        ],
+                        "Lecture Notes": [
+                            { id: "cs202-lec4", title: "Lecture 4 - Sorting Algorithms & Divide and Conquer.pdf", pages: 28, excerpt: "QuickSort uses Divide & Conquer. Partitioning step takes O(N). If pivot selection is naive (e.g., always choosing first element), worst case degrades to O(N^2) on pre-sorted inputs. Solution: Randomized pivot or Median-of-Three." },
+                            { id: "cs202-lec7", title: "Lecture 7 - Graph Traversal BFS and DFS.pdf", pages: 32, excerpt: "Breadth-First Search (BFS) uses a Queue data structure to explore nodes layer by layer. DFS uses a Stack or Recursion." }
+                        ],
+                        "Labs": [
+                            { id: "cs202-lab3", title: "Lab 3 - QuickSort & MergeSort Benchmark Code.cpp", pages: 5, excerpt: "Lab Task: Write a C++ function `void randomizedQuickSort(int arr[], int low, int high)` that swaps a random element with `arr[high]` before partitioning to avoid worst-case O(N^2)." }
+                        ]
+                    }
+                },
+                "CS101": {
+                    name: "CS101 Introduction to Computer Science",
+                    files: {
+                        "Course Planner": [{ id: "cs101-plan", title: "CS101 Syllabus & Schedule.pdf", pages: 2, excerpt: "Overview of Python fundamentals, logic gates, and basic algorithm design." }],
+                        "Tutorial": [{ id: "cs101-tut1", title: "Tutorial 1 - Variables & Loops.pdf", pages: 3, excerpt: "Basic control flow exercises using Python for loops and while loops." }],
+                        "PYQs": [{ id: "cs101-pyq2023", title: "PYQ 2023 - CS101 Final.pdf", pages: 5, excerpt: "Q1 Write a Python function to check whether a given string is a palindrome." }],
+                        "Notes": [{ id: "cs101-notes", title: "CS101 Basics Notes.pdf", pages: 6, excerpt: "Summary of primitive data types, memory allocation, and recursion basics." }],
+                        "Lecture Notes": [{ id: "cs101-lec1", title: "Lecture 1 - Python Syntax & Flow.pdf", pages: 20, excerpt: "Variables, primitive data types, conditions, and list comprehensions." }],
+                        "Labs": [{ id: "cs101-lab1", title: "Lab 1 - Hello Python.py", pages: 2, excerpt: "Print statements, user input handling, and string formatting." }]
+                    }
+                }
+            },
+            "Sem 2": {
+                "MATH201": {
+                    name: "MATH201 Linear Algebra & Calculus",
+                    files: {
+                        "Course Planner": [{ id: "math-plan", title: "MATH201 Schedule.pdf", pages: 3, excerpt: "Linear systems, Matrix transformations, Eigenvalues, Vector spaces." }],
+                        "Tutorial": [{ id: "math-tut", title: "Tutorial 3 - Matrix Inverses.pdf", pages: 4, excerpt: "Calculate determinant and inverse using Gaussian Elimination." }],
+                        "PYQs": [{ id: "math-pyq", title: "PYQ 2023 - Linear Algebra.pdf", pages: 6, excerpt: "Q4 Find the Eigenvalues and Eigenvectors for Matrix A = [[4, 1], [2, 3]]." }],
+                        "Notes": [{ id: "math-notes", title: "Eigenvalue Formula Sheet.pdf", pages: 2, excerpt: "det(A - lambda * I) = 0 for finding eigenvalues." }],
+                        "Lecture Notes": [{ id: "math-lec", title: "Lecture 5 - Vector Spaces.pdf", pages: 22, excerpt: "Definition of subspace, linear independence, basis, and dimension." }],
+                        "Labs": [{ id: "math-lab", title: "Lab 2 - NumPy Matrix Computations.py", pages: 3, excerpt: "Using np.linalg.eig() to compute numerical eigenvalues." }]
+                    }
+                }
+            }
+        };
+
+        // Flashcards dataset for Prototype 3
+        const FLASHCARDS = [
+            {
+                category: "CS202 • Lecture 4 (p. 14)",
+                question: "What is the worst-case time complexity of QuickSort and when does it occur?",
+                answer: "Worst-case is O(N²). It occurs when the chosen pivot is consistently the minimum or maximum element (e.g. on already sorted array with naive pivot selection).",
+                citation: "PYQ 2023 Q3(a) & Lecture 4 Slide 18"
+            },
+            {
+                category: "CS202 • Lecture 7 (p. 22)",
+                question: "Why cannot Dijkstra's Algorithm handle graphs with negative edge weights?",
+                answer: "Dijkstra assumes that adding an edge to a path can only increase its total weight (greedy choice property). Negative edges violate this assumption, requiring Bellman-Ford instead.",
+                citation: "Student Notes p. 12 & Lab 5"
+            },
+            {
+                category: "CS202 • Course Planner (p. 2)",
+                question: "What is the weight distribution of Midterm vs Final Examination in CS202?",
+                answer: "Midterm Exam is weighted at 25%, while Final Examination is weighted at 45% of the total final grade.",
+                citation: "CS202 Course Planner 2026"
+            },
+            {
+                category: "CS202 • PYQ 2023 (p. 5)",
+                question: "What is the structural difference between an AVL Tree and a standard BST?",
+                answer: "An AVL Tree strictly maintains height balance where the balance factor (height(left) - height(right)) for every node is restricted to {-1, 0, +1}.",
+                citation: "PYQ 2023 Q3(b) & Lecture 5"
+            }
+        ];
+
+        let currentFlashcardIdx = 0;
+        let isCardFlipped = false;
+
+        // Current Active States
+        let currentSem = "Sem 1";
+        let currentCourse = "CS202";
+        let currentCategory = "Lecture Notes";
+        let currentActiveFile = null;
+
+        window.onload = function() {
+            populateDropdowns();
+            renderP1FileExplorer();
+            renderP1ChatWelcome();
+            renderP2ChatWelcome();
+            renderP3Studio();
+        };
+
+        function switchPrototype(num) {
+            document.querySelectorAll('.prototype-view').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.proto-tab').forEach(btn => {
+                btn.classList.remove('bg-brand-600', 'text-white', 'shadow-sm');
+                btn.classList.add('text-slate-400');
+            });
+
+            document.getElementById(`prototype-${num}`).classList.remove('hidden');
+            if(num === 2) document.getElementById(`prototype-${num}`).classList.add('flex');
+
+            const activeBtn = document.getElementById(`proto-btn-${num}`);
+            activeBtn.classList.add('bg-brand-600', 'text-white', 'shadow-sm');
+            activeBtn.classList.remove('text-slate-400');
+        }
+
+        function populateDropdowns() {
+            const semKeys = Object.keys(STUDY_DATA);
+            
+            // Populate P1 Selects
+            const p1SemSelect = document.getElementById('p1-sem-select');
+            const p2SemSelect = document.getElementById('p2-sem-select');
+            const p3SemSelect = document.getElementById('p3-sem-select');
+            const uploadSemSelect = document.getElementById('upload-sem-select');
+
+            p1SemSelect.innerHTML = semKeys.map(s => `<option value="${s}">${s}</option>`).join('');
+            p2SemSelect.innerHTML = semKeys.map(s => `<option value="${s}">${s}</option>`).join('');
+            p3SemSelect.innerHTML = semKeys.map(s => `<option value="${s}">${s}</option>`).join('');
+
+            updateCourseList(1);
+            updateCourseList(2);
+            updateCourseList(3);
+        }
+
+        function updateCourseList(protoNum) {
+            const semSelect = document.getElementById(`p${protoNum}-sem-select`);
+            const courseSelect = document.getElementById(`p${protoNum}-course-select`);
+            const sem = semSelect.value;
+            
+            const courses = STUDY_DATA[sem] ? Object.keys(STUDY_DATA[sem]) : [];
+            courseSelect.innerHTML = courses.map(c => `<option value="${c}">${STUDY_DATA[sem][c].name}</option>`).join('');
+
+            if(protoNum === 1) renderP1FileExplorer();
+            if(protoNum === 2) updateP2Scope();
+            if(protoNum === 3) renderP3Studio();
+        }
+
+        function updateCategoryList(protoNum) {
+            if(protoNum === 1) renderP1FileExplorer();
+        }
+
+        function renderP1FileExplorer() {
+            const sem = document.getElementById('p1-sem-select').value;
+            const course = document.getElementById('p1-course-select').value;
+            const treeContainer = document.getElementById('p1-category-tree');
+
+            const courseObj = STUDY_DATA[sem]?.[course];
+            if (!courseObj) return;
+
+            let html = '';
+            let totalFileCount = 0;
+
+            CATEGORIES.forEach(cat => {
+                const files = courseObj.files[cat] || [];
+                totalFileCount += files.length;
+                
+                html += `
+                    <div class="mb-2">
+                        <div class="text-[11px] font-semibold text-slate-400 px-2 py-1 flex items-center justify-between hover:text-slate-200">
+                            <span class="truncate"><i class="fa-regular fa-folder mr-1.5 text-brand-400"></i> ${cat}</span>
+                            <span class="text-[10px] bg-slate-800 text-slate-500 px-1.5 py-0.2 rounded-full">${files.length}</span>
+                        </div>
+                        <div class="pl-2 space-y-0.5 mt-0.5">
+                `;
+
+                files.forEach(f => {
+                    html += `
+                        <button onclick="loadDocumentInP1('${f.id}', '${cat}')" class="w-full text-left text-xs px-2 py-1 rounded flex items-center gap-1.5 text-slate-300 hover:bg-slate-800/80 hover:text-white transition group">
+                            <i class="fa-solid fa-file-pdf text-[10px] text-slate-500 group-hover:text-brand-400"></i>
+                            <span class="truncate">${f.title}</span>
+                        </button>
+                    `;
+                });
+
+                html += `</div></div>`;
+            });
+
+            treeContainer.innerHTML = html;
+            document.getElementById('p1-file-count').innerText = `${totalFileCount} Files Index`;
+
+            // Default load first available file
+            const firstCatWithFiles = CATEGORIES.find(cat => (courseObj.files[cat] || []).length > 0);
+            if (firstCatWithFiles && courseObj.files[firstCatWithFiles][0]) {
+                loadDocumentInP1(courseObj.files[firstCatWithFiles][0].id, firstCatWithFiles);
+            }
+        }
+
+        function loadDocumentInP1(fileId, cat) {
+            const sem = document.getElementById('p1-sem-select').value;
+            const course = document.getElementById('p1-course-select').value;
+            const files = STUDY_DATA[sem][course].files[cat] || [];
+            const file = files.find(f => f.id === fileId);
+
+            if(!file) return;
+            currentActiveFile = file;
+
+            document.getElementById('p1-doc-title').innerText = file.title;
+            document.getElementById('p1-doc-meta').innerText = `${course} • Category: ${cat}`;
+            document.getElementById('p1-page-indicator').innerText = `Page 1/${file.pages}`;
+
+            const viewer = document.getElementById('p1-doc-viewer');
+            viewer.innerHTML = `
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg space-y-4 max-w-2xl mx-auto">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <span class="text-xs font-bold uppercase tracking-wide text-brand-400"><i class="fa-solid fa-book-open mr-1"></i> ${cat} - Document Chunk View</span>
+                        <span class="text-[11px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">Indexed Page 1</span>
+                    </div>
+
+                    <div id="p1-chunk-target-1" class="citation-highlight p-4 rounded-xl border border-amber-500/30">
+                        <div class="text-[10px] font-bold uppercase text-amber-400 mb-1 flex items-center justify-between">
+                            <span><i class="fa-solid fa-bookmark mr-1"></i> RAG Ground Truth Section #1</span>
+                            <span>Relevance 98%</span>
+                        </div>
+                        <p class="text-slate-200 text-sm font-sans leading-relaxed">${file.excerpt}</p>
+                    </div>
+
+                    <div class="p-4 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2">
+                        <h4 class="text-xs font-semibold text-slate-300">Section 2: Supplementary Notes & References</h4>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            This chunk was automatically generated using dense vector embeddings (bge-large-en). All query answers generated by the AI model will cite the specific page numbers and bounding text blocks above.
+                        </p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function highlightP1Chunk(chunkId) {
+            const el = document.getElementById('p1-chunk-target-1');
+            if(el) {
+                el.classList.add('citation-highlight-active');
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => el.classList.remove('citation-highlight-active'), 2500);
+            }
+        }
+
+        function renderP1ChatWelcome() {
+            const container = document.getElementById('p1-chat-messages');
+            container.innerHTML = `
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 text-xs text-slate-300 space-y-2">
+                    <div class="flex items-center gap-2 font-bold text-slate-200">
+                        <i class="fa-solid fa-sparkles text-amber-400"></i> RAG AI Ready
+                    </div>
+                    <p class="text-slate-400 leading-relaxed">
+                        I am synced with your files in <strong class="text-slate-200">${currentCourse}</strong>. Ask any question, and I will cite the exact page and source category (*Course Planner, PYQs, Lecture Notes, Labs*).
+                    </p>
+                </div>
+            `;
+        }
+
+        function renderP2ChatWelcome() {
+            const container = document.getElementById('p2-chat-messages');
+            container.innerHTML = `
+                <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 text-center max-w-lg mx-auto my-8 space-y-3">
+                    <div class="w-12 h-12 bg-brand-500/10 text-brand-400 rounded-2xl flex items-center justify-center mx-auto text-xl">
+                        <i class="fa-solid fa-magnifying-glass-doc"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-200 text-sm">Focus AI Search & Inspector</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Filter files by semester, course, or material type above. Every generated answer will include inline inspector tags that slide open detailed source citations.
+                    </p>
+                </div>
+            `;
+        }
+
+        function handleChatSubmit(e, protoNum) {
+            e.preventDefault();
+            const inputEl = document.getElementById(`p${protoNum}-chat-input`);
+            const query = inputEl.value.trim();
+            if(!query) return;
+
+            inputEl.value = '';
+            processRagQuery(protoNum, query);
+        }
+
+        function sendQuickPrompt(protoNum, promptText) {
+            processRagQuery(protoNum, promptText);
+        }
+
+        function processRagQuery(protoNum, query) {
+            const container = document.getElementById(`p${protoNum}-chat-messages`);
+
+            // Append User Message
+            const userMsgHtml = `
+                <div class="flex justify-end">
+                    <div class="bg-brand-600 text-white text-xs px-4 py-2.5 rounded-2xl rounded-tr-none max-w-[85%] shadow-md">
+                        ${escapeHtml(query)}
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', userMsgHtml);
+            container.scrollTop = container.scrollHeight;
+
+            // Generate Simulated RAG Response with Citations
+            setTimeout(() => {
+                let aiResponseHtml = '';
+                
+                if(query.toLowerCase().includes('quicksort') || query.toLowerCase().includes('pyq')) {
+                    aiResponseHtml = `
+                        <div class="flex gap-3">
+                            <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-brand-600 to-accent-500 text-white font-bold text-xs flex items-center justify-center shrink-0">AI</div>
+                            <div class="space-y-2 max-w-[90%]">
+                                <div class="bg-slate-900 border border-slate-800 text-slate-200 text-xs p-4 rounded-2xl rounded-tl-none space-y-3 leading-relaxed">
+                                    <p>Based on your course materials in <strong class="text-brand-400">CS202 Data Structures</strong>:</p>
+                                    <p>
+                                        QuickSort's worst-case complexity is <strong>O(N²)</strong>. This occurs when the pivot selection consistently isolates a single element, such as on an already sorted array with naive pivot choices 
+                                        ${protoNum === 1 ? `<button onclick="highlightP1Chunk('cs202-lec4')" class="inline-flex items-center gap-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded text-[11px] font-medium hover:bg-amber-500/30 transition mr-1"><i class="fa-solid fa-link text-[9px]"></i> [Source 1: Lecture 4 p.18]</button>` : `<button onclick="openP2Inspector('Lecture 4 - QuickSort', 'Partitioning takes O(N). Naive pivot selection on pre-sorted array causes O(N^2) depth.', 'Lecture Notes', 4)" class="inline-flex items-center gap-1 bg-brand-500/20 text-brand-300 border border-brand-500/40 px-2 py-0.5 rounded text-[11px] font-medium hover:bg-brand-500/30 transition mr-1"><i class="fa-solid fa-quote-left text-[9px]"></i> 📎 Lecture 4 (p.18)</button>`}.
+                                    </p>
+                                    <p>
+                                        This exact question was tested in <strong>PYQ 2023 Q3(a)</strong>, which required drawing the recursion tree for worst-case inputs 
+                                        ${protoNum === 1 ? `<button onclick="highlightP1Chunk('cs202-pyq2023')" class="inline-flex items-center gap-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded text-[11px] font-medium hover:bg-amber-500/30 transition"><i class="fa-solid fa-link text-[9px]"></i> [Source 2: PYQ 2023 p.8]</button>` : `<button onclick="openP2Inspector('PYQ 2023 Paper', 'Q3(a) Explain worst-case condition for QuickSort when choosing first element as pivot.', 'PYQs', 8)" class="inline-flex items-center gap-1 bg-brand-500/20 text-brand-300 border border-brand-500/40 px-2 py-0.5 rounded text-[11px] font-medium hover:bg-brand-500/30 transition"><i class="fa-solid fa-quote-left text-[9px]"></i> 📎 PYQ 2023 Q3(a)</button>`}.
+                                    </p>
+                                    <div class="p-2.5 bg-slate-950 rounded-lg border border-slate-800/80 text-[11px] text-slate-400">
+                                        <strong class="text-slate-300">Lab 3 Recommendation:</strong> You can mitigate this by implementing randomized pivot selection or Median-of-Three partitioning as written in <span class="text-slate-200">Lab 3 - QuickSort.cpp</span>.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    aiResponseHtml = `
+                        <div class="flex gap-3">
+                            <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-brand-600 to-accent-500 text-white font-bold text-xs flex items-center justify-center shrink-0">AI</div>
+                            <div class="space-y-2 max-w-[90%]">
+                                <div class="bg-slate-900 border border-slate-800 text-slate-200 text-xs p-4 rounded-2xl rounded-tl-none space-y-2 leading-relaxed">
+                                    <p>Synthesizing context across <strong>${currentSem} &rarr; ${currentCourse}</strong> files:</p>
+                                    <p>
+                                        According to the <strong>Course Planner</strong>, assignments account for 20% of your grade, while final exam accounts for 45% 
+                                        ${protoNum === 1 ? `<button onclick="highlightP1Chunk('cs202-plan')" class="inline-flex items-center gap-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded text-[11px] font-medium"><i class="fa-solid fa-link text-[9px]"></i> [Source 1: Course Planner p.2]</button>` : `<button onclick="openP2Inspector('Course Planner', 'Grading Scheme: Final Exam 45%, Labs 20%, Midterm 25%', 'Course Planner', 2)" class="inline-flex items-center gap-1 bg-brand-500/20 text-brand-300 border border-brand-500/40 px-2 py-0.5 rounded text-[11px] font-medium"><i class="fa-solid fa-quote-left text-[9px]"></i> 📎 Course Planner</button>`}.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                container.insertAdjacentHTML('beforeend', aiResponseHtml);
+                container.scrollTop = container.scrollHeight;
+            }, 500);
+        }
+
+        function updateP2Scope() {
+            const sem = document.getElementById('p2-sem-select').value;
+            const course = document.getElementById('p2-course-select').value;
+            const cat = document.getElementById('p2-category-select').value;
+            
+            document.getElementById('p2-active-scope').innerText = `${sem} • ${course} • ${cat === 'ALL' ? 'All Categories' : cat}`;
+        }
+
+        function openP2Inspector(docTitle, excerpt, category, page) {
+            const drawer = document.getElementById('p2-inspector-drawer');
+            const content = document.getElementById('p2-drawer-content');
+
+            content.innerHTML = `
+                <div class="space-y-4 text-xs">
+                    <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                        <span class="text-[10px] font-bold text-brand-400 uppercase tracking-wider block mb-1">Source Context</span>
+                        <h4 class="font-bold text-slate-200 text-sm">${docTitle}</h4>
+                        <div class="flex items-center gap-2 mt-2 text-[11px] text-slate-400">
+                            <span class="bg-slate-800 px-2 py-0.5 rounded border border-slate-700">${category}</span>
+                            <span>Page ${page}</span>
+                        </div>
+                    </div>
+
+                    <div class="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2">
+                        <div class="flex justify-between items-center text-[10px] text-amber-400 font-bold uppercase">
+                            <span><i class="fa-solid fa-quote-left mr-1"></i> Citation Snippet</span>
+                            <span>Vector Similarity: 0.94</span>
+                        </div>
+                        <p class="text-slate-200 leading-relaxed italic">"${excerpt}"</p>
+                    </div>
+
+                    <div class="space-y-2">
+                        <h5 class="font-semibold text-slate-300 text-[11px]">Associated Files in Category</h5>
+                        <div class="bg-slate-950 p-2 rounded-xl border border-slate-800 space-y-1">
+                            <div class="flex items-center justify-between p-1.5 hover:bg-slate-900 rounded text-slate-300">
+                                <span class="truncate"><i class="fa-solid fa-file-pdf mr-1 text-slate-500"></i> ${docTitle}</span>
+                                <span class="text-[10px] text-slate-500">Indexed</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            drawer.classList.remove('translate-x-full');
+        }
+
+        function closeP2Drawer() {
+            document.getElementById('p2-inspector-drawer').classList.add('translate-x-full');
+        }
+
+        function openInP1View() {
+            closeP2Drawer();
+            switchPrototype(1);
+        }
+
+        function renderP3Studio() {
+            const sem = document.getElementById('p3-sem-select').value;
+            const course = document.getElementById('p3-course-select').value;
+            const tbody = document.getElementById('p3-matrix-body');
+
+            const topics = [
+                { topic: "QuickSort Worst Case & Pivoting", lec: "Lecture 4 (p. 18)", pyq: "Tested in PYQ 2023 Q3(a) [10M]", lab: "Lab 3 Implementation", badge: "High Priority" },
+                { topic: "Dijkstra vs Bellman-Ford Graphs", lec: "Lecture 7 (p. 22)", pyq: "Tested in PYQ 2022 Q4 [8M]", lab: "Lab 5 Graph Code", badge: "Medium Priority" },
+                { topic: "AVL Tree Height Balancing", lec: "Lecture 5 (p. 10)", pyq: "Tested in PYQ 2023 Q3(b) [6M]", lab: "Tutorial 4 Ex 2", badge: "High Priority" },
+                { topic: "Max Heapify & Priority Queues", lec: "Lecture 6 (p. 14)", pyq: "Tested in PYQ 2022 Q2 [12M]", lab: "Lab 4 Heapify.cpp", badge: "Medium Priority" }
+            ];
+
+            tbody.innerHTML = topics.map(t => `
+                <tr class="hover:bg-slate-950/40 transition">
+                    <td class="p-3 font-semibold text-slate-200">
+                        ${t.topic}
+                        <div class="mt-1"><span class="text-[9px] bg-brand-500/10 text-brand-400 border border-brand-500/20 px-2 py-0.5 rounded-full font-medium">${t.badge}</span></div>
+                    </td>
+                    <td class="p-3 text-slate-300">${t.lec}</td>
+                    <td class="p-3 text-amber-300 font-medium">${t.pyq}</td>
+                    <td class="p-3 text-slate-400">${t.lab}</td>
+                    <td class="p-3">
+                        <button onclick="switchPrototype(1)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] px-2.5 py-1 rounded border border-slate-700 transition">
+                            Inspect
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            updateFlashcardUI();
+        }
+
+        function updateFlashcardUI() {
+            const card = FLASHCARDS[currentFlashcardIdx];
+            document.getElementById('p3-card-counter').innerText = `Card ${currentFlashcardIdx + 1} / ${FLASHCARDS.length}`;
+            document.getElementById('p3-card-category').innerText = card.category;
+            document.getElementById('p3-card-content').innerText = isCardFlipped ? card.answer : card.question;
+            document.getElementById('p3-card-citation-badge').innerHTML = `
+                <span class="text-[11px] text-slate-400 flex items-center justify-center gap-1">
+                    <i class="fa-solid fa-bookmark text-amber-400"></i> Citation: <span class="text-slate-200 font-medium">${card.citation}</span>
+                </span>
+            `;
+        }
+
+        function flipFlashcard() {
+            isCardFlipped = !isCardFlipped;
+            updateFlashcardUI();
+        }
+
+        function nextFlashcard() {
+            isCardFlipped = false;
+            currentFlashcardIdx = (currentFlashcardIdx + 1) % FLASHCARDS.length;
+            updateFlashcardUI();
+        }
+
+        function prevFlashcard() {
+            isCardFlipped = false;
+            currentFlashcardIdx = (currentFlashcardIdx - 1 + FLASHCARDS.length) % FLASHCARDS.length;
+            updateFlashcardUI();
+        }
+
+        function markCardMastered() {
+            nextFlashcard();
+        }
+
+        function generateFlashcards() {
+            alert("RAG Engine re-indexed current course files and generated 4 ground-truth flashcards!");
+        }
+
+        function runP3Synthesis() {
+            const query = document.getElementById('p3-synth-input').value.trim();
+            const output = document.getElementById('p3-synth-output');
+            if(!query) return;
+
+            output.classList.remove('hidden');
+            output.innerHTML = `
+                <div class="flex items-center gap-2 text-brand-400 font-bold mb-1">
+                    <i class="fa-solid fa-diagram-project"></i> Multi-Doc RAG Synthesis Generated:
+                </div>
+                <p class="leading-relaxed text-slate-300">
+                    Across <strong>PYQ 2023</strong>, <strong>Lecture 4</strong>, and <strong>Lab 3</strong>: Tree Traversal time complexity is strictly O(N) where N is the number of nodes. In PYQs, full credit required writing the recursive recurrence T(N) = 2T(N/2) + O(1).
+                </p>
+                <div class="flex gap-2 mt-2 text-[10px]">
+                    <span class="bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">Cited: Lecture 4 p.12</span>
+                    <span class="bg-brand-500/20 text-brand-300 px-2 py-0.5 rounded border border-brand-500/30">Cited: PYQ 2023 Q2</span>
+                </div>
+            `;
+        }
+
+        function openUploadModal() {
+            document.getElementById('upload-modal').classList.remove('hidden');
+        }
+
+        function closeUploadModal() {
+            document.getElementById('upload-modal').classList.add('hidden');
+        }
+
+        function processMockUpload() {
+            const sem = document.getElementById('upload-sem-select').value;
+            const course = document.getElementById('upload-course-select').value;
+            const cat = document.getElementById('upload-cat-select').value;
+
+            if(!STUDY_DATA[sem][course].files[cat]) {
+                STUDY_DATA[sem][course].files[cat] = [];
+            }
+
+            const newFile = {
+                id: `uploaded-${Date.now()}`,
+                title: `Uploaded_${cat}_Doc.pdf`,
+                pages: 5,
+                excerpt: "User uploaded study material. Automatic chunking completed successfully with dense embedding indexing."
+            };
+
+            STUDY_DATA[sem][course].files[cat].push(newFile);
+            closeUploadModal();
+            renderP1FileExplorer();
+            alert(`File successfully indexed under ${sem} > ${course} > ${cat}!`);
+        }
+
+        function toggleGlobalHelp() {
+            const modal = document.getElementById('help-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        function simulatePdfZoom() {
+            const viewer = document.getElementById('p1-doc-viewer');
+            viewer.classList.toggle('text-base');
+        }
+
+        function clearChatHistory(protoNum) {
+            if(protoNum === 1) renderP1ChatWelcome();
+            if(protoNum === 2) renderP2ChatWelcome();
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+    </script>
+</body>
+</html>
