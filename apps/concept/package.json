@@ -1,0 +1,11 @@
+{
+  "name": "concept",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "vite --open main.html"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  }
+}
