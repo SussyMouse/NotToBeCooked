@@ -1,0 +1,29 @@
+{
+  "name": "NotToBeCooked",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "dev:web": "turbo --filter web dev",
+    "dev:desktop": "pnpm --filter desktop tauri dev",
+    "dev:android": "pnpm --filter desktop tauri android dev",
+    "lint": "turbo lint",
+    "format": "turbo format",
+    "typecheck": "turbo typecheck"
+  },
+  "devDependencies": {
+    "prettier": "^3.8.3",
+    "prettier-plugin-tailwindcss": "^0.8.0",
+    "turbo": "^2.9.18",
+    "typescript": "~6"
+  },
+  "packageManager": "pnpm@10.33.4",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "react-hook-form": "^7.82.0",
+    "react-router": "^8.3.0"
+  }
+}
