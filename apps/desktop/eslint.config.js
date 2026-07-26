@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'src-tauri']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -17,16 +17,6 @@ export default defineConfig([
     ],
     languageOptions: {
       globals: globals.browser,
-    },
-  },
-  {
-    // shadcn's generator emits `export { Button, buttonVariants }` — a component
-    // and a cva() object from the same file, which trips the Fast Refresh rule.
-    // These files are overwritten by `pnpm dlx shadcn add`, so hand-edits would
-    // be lost; relax the rule here instead of fighting the CLI.
-    files: ['src/components/**/*.tsx'],
-    rules: {
-      'react-refresh/only-export-components': 'off',
     },
   },
 ])

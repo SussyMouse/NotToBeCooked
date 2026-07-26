@@ -23,10 +23,5 @@
   "packageManager": "pnpm@10.33.4",
   "engines": {
     "node": ">=20"
-  },
-  "dependencies": {
-    "react-hook-form": "^7.82.0",
-    "react-router": "^8.3.0",
-    "zustand": "^5.0.14"
   }
 }
