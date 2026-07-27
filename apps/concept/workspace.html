@@ -1,0 +1,2631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  NotToBeCooked — unified workspace UI concept.
+
+  Loaded by main.html as "Proto 4" inside an <iframe>, deliberately:
+  this file defines global `body` / `*` / `:focus-visible` rules that
+  would otherwise leak into the prototype suite's Tailwind styles.
+
+  Visual design only — no production code. The five palettes here are
+  the same ones generated into packages/ui/src/styles/globals.css
+  (Daylight = :root, Midnight = .dark, Carbon = .dark[data-theme=carbon]).
+-->
+<title>NotToBeCooked — Workspace UI Concept</title>
+<style>
+/* ============================================================
+   PAGE CHROME TOKENS  (theme-aware — the wrapper around the mockup)
+   ============================================================ */
+:root{
+  --page-bg:#F1F4F6;
+  --page-raised:#FFFFFF;
+  --page-fg:#141C24;
+  --page-dim:#4E5C6A;
+  --page-faint:#7C8A98;
+  --page-line:#D9DFE5;
+  --page-accent:#1F6F9E;
+  --page-shadow:0 1px 2px rgba(20,28,36,.05), 0 18px 50px rgba(20,28,36,.10);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --page-bg:#080C11;
+    --page-raised:#0F161D;
+    --page-fg:#DFE6ED;
+    --page-dim:#93A1B0;
+    --page-faint:#66737F;
+    --page-line:#1E2A35;
+    --page-accent:#68B4E8;
+    --page-shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 50px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  --page-bg:#080C11;
+  --page-raised:#0F161D;
+  --page-fg:#DFE6ED;
+  --page-dim:#93A1B0;
+  --page-faint:#66737F;
+  --page-line:#1E2A35;
+  --page-accent:#68B4E8;
+  --page-shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 50px rgba(0,0,0,.5);
+}
+
+/* ============================================================
+   APP TOKENS  —  five palettes, switched via .app[data-pal]
+
+   Semantic slots stay constant across every palette:
+     --acc     navigation / selection / focus
+     --cite    evidence & citations (amber in all dark palettes —
+               it is the one colour that always means "source")
+     --ok      progress / success
+     --danger  destructive
+   Only the hue families and the ground shift between palettes.
+   ============================================================ */
+.app{
+  /* --- ground --- */
+  --bg-bar:#101821;
+  --bg-panel:#121A23;
+  --bg-canvas:#161F29;
+  --bg-raise:#1C2833;
+  --bg-hover:#213040;
+  --line:#25313E;
+  --line-soft:#1B2530;
+  --line-hover:#31404F;
+  /* --- type --- */
+  --tx:#DCE3EA;
+  --tx-dim:#8B98A7;
+  --tx-faint:#5C6976;
+  --tx-strong:#EDF2F6;
+  /* --- accent --- */
+  --acc:#52A8EA;
+  --acc-rgb:82,168,234;
+  --acc-deep:#1D5D8A;
+  --acc-deep-h:#246C9E;
+  --acc-btn-line:#2A73A6;
+  --on-acc:#EAF5FD;
+  --on-acc-bright:#08131C;
+  --acc-tx:#CFE6F8;
+  --acc-tx-soft:#A8D4F2;
+  --acc-tx-mute:#CBDDEB;
+  /* --- evidence --- */
+  --cite:#E3A63F;
+  --cite-rgb:227,166,63;
+  --cite-tx:#EADCC2;
+  --cite-bg:rgba(var(--cite-rgb),.09);
+  --cite-line:rgba(var(--cite-rgb),.38);
+  /* --- status --- */
+  --ok:#4FB07C;
+  --ok-rgb:79,176,124;
+  --on-ok:#0B1A12;
+  --bar-track:#0E1720;
+  --danger:#E0625C;
+  --danger-rgb:224,98,92;
+  --danger-tx:#F0A19D;
+  /* --- file-type chips --- */
+  --pdf-bg:#2A1A1C; --pdf-fg:#E0625C; --pdf-line:#3A2326;
+  --md-bg:#152430;  --md-fg:#52A8EA;  --md-line:#1E3646;
+  /* --- depth --- */
+  --veil:rgba(255,255,255,.012);
+  --scrim:rgba(6,10,14,.68);
+  --sh-pop:0 12px 40px rgba(0,0,0,.55);
+  --sh-pop-lg:0 14px 44px rgba(0,0,0,.58);
+  --sh-up:0 -4px 30px rgba(0,0,0,.5);
+  --sh-toast:0 10px 34px rgba(0,0,0,.55);
+  --sh-modal:0 24px 70px rgba(0,0,0,.6);
+}
+
+/* ---------- 2 · AMETHYST — purple-biased dark, violet navigation ---------- */
+.app[data-pal="violet"]{
+  --bg-bar:#15121D;
+  --bg-panel:#181523;
+  --bg-canvas:#1D1A2A;
+  --bg-raise:#252134;
+  --bg-hover:#2F2942;
+  --line:#332C48;
+  --line-soft:#241F33;
+  --line-hover:#413859;
+  --tx:#E2DEEC;
+  --tx-dim:#9A93AF;
+  --tx-faint:#6B6482;
+  --tx-strong:#F0EDF7;
+  --acc:#A78BFA;
+  --acc-rgb:167,139,250;
+  --acc-deep:#5B3FA8;
+  --acc-deep-h:#6B4BC4;
+  --acc-btn-line:#7355C9;
+  --on-acc:#F3EEFE;
+  --on-acc-bright:#150B2B;
+  --acc-tx:#DACEFB;
+  --acc-tx-soft:#C4B2F7;
+  --acc-tx-mute:#CFC3F2;
+  --cite:#E3A63F;
+  --cite-rgb:227,166,63;
+  --cite-tx:#EEDCB9;
+  --ok:#5CC08D;
+  --ok-rgb:92,192,141;
+  --on-ok:#0A1C13;
+  --bar-track:#130F1C;
+  --danger:#E86A7C;
+  --danger-rgb:232,106,124;
+  --danger-tx:#F5A8B4;
+  --pdf-bg:#2C1620; --pdf-fg:#E86A7C; --pdf-line:#3D1F2C;
+  --md-bg:#221B39;  --md-fg:#A78BFA;  --md-line:#332A52;
+  --scrim:rgba(10,6,18,.70);
+}
+
+/* ---------- 3 · DEEP SEA — green-cyan dark, teal navigation ---------- */
+.app[data-pal="teal"]{
+  --bg-bar:#0C1719;
+  --bg-panel:#0F1B1E;
+  --bg-canvas:#132125;
+  --bg-raise:#1A2C31;
+  --bg-hover:#21393F;
+  --line:#22383D;
+  --line-soft:#182A2E;
+  --line-hover:#2E4A50;
+  --tx:#DAE7E9;
+  --tx-dim:#87A1A6;
+  --tx-faint:#5A7175;
+  --tx-strong:#ECF5F6;
+  --acc:#2DD4BF;
+  --acc-rgb:45,212,191;
+  --acc-deep:#12706A;
+  --acc-deep-h:#178780;
+  --acc-btn-line:#1D8F87;
+  --on-acc:#E4FBF8;
+  --on-acc-bright:#04201D;
+  --acc-tx:#A8EDE4;
+  --acc-tx-soft:#8FE5DA;
+  --acc-tx-mute:#B4E4DE;
+  --cite:#E9A83A;
+  --cite-rgb:233,168,58;
+  --cite-tx:#EEDCB4;
+  /* pushed yellow-green so progress never reads as the teal accent */
+  --ok:#9BCB5B;
+  --ok-rgb:155,203,91;
+  --on-ok:#16210A;
+  --bar-track:#0B1618;
+  --danger:#E76A62;
+  --danger-rgb:231,106,98;
+  --danger-tx:#F3A69F;
+  --pdf-bg:#2A1719; --pdf-fg:#E76A62; --pdf-line:#3A2124;
+  --md-bg:#12292C;  --md-fg:#2DD4BF;  --md-line:#1C3E41;
+  --scrim:rgba(4,14,15,.70);
+}
+
+/* ---------- 4 · CARBON — near-neutral dark; the only saturated
+     colours left are the evidence amber and the progress green,
+     so citations become the loudest thing on screen ---------- */
+.app[data-pal="carbon"]{
+  --bg-bar:#141618;
+  --bg-panel:#17191C;
+  --bg-canvas:#1C1F22;
+  --bg-raise:#24282C;
+  --bg-hover:#2E3338;
+  --line:#31363B;
+  --line-soft:#232729;
+  --line-hover:#3E444A;
+  --tx:#E0E3E6;
+  --tx-dim:#969BA0;
+  --tx-faint:#6A6F74;
+  --tx-strong:#F2F4F6;
+  --acc:#9FB3C8;
+  --acc-rgb:159,179,200;
+  --acc-deep:#4A5762;
+  --acc-deep-h:#5A6874;
+  --acc-btn-line:#616F7C;
+  --on-acc:#F0F4F8;
+  --on-acc-bright:#14181C;
+  --acc-tx:#D2DCE6;
+  --acc-tx-soft:#BCCAD8;
+  --acc-tx-mute:#C8D2DC;
+  --cite:#E8A33A;
+  --cite-rgb:232,163,58;
+  --cite-tx:#EFDCB6;
+  --ok:#5FB584;
+  --ok-rgb:95,181,132;
+  --on-ok:#0C1D14;
+  --bar-track:#121416;
+  --danger:#DE6660;
+  --danger-rgb:222,102,96;
+  --danger-tx:#EFA39E;
+  --pdf-bg:#2A1D1E; --pdf-fg:#DE6660; --pdf-line:#3A2829;
+  --md-bg:#242A30;  --md-fg:#9FB3C8;  --md-line:#333B43;
+  --scrim:rgba(8,10,12,.70);
+}
+
+/* ---------- 5 · DAYLIGHT — the light one. Every depth cue has to
+     invert: shadows soften, tint alphas rise, "text on accent"
+     flips from near-black to near-white. ---------- */
+.app[data-pal="light"]{
+  --bg-bar:#EFF2F5;
+  --bg-panel:#F5F7F9;
+  --bg-canvas:#FFFFFF;
+  --bg-raise:#FFFFFF;
+  --bg-hover:#E6EBF1;
+  --line:#D7DEE6;
+  --line-soft:#E7ECF1;
+  --line-hover:#BCC7D2;
+  --tx:#1B2530;
+  --tx-dim:#55636F;
+  --tx-faint:#8493A1;
+  --tx-strong:#0E1620;
+  --acc:#1F6FB0;
+  --acc-rgb:31,111,176;
+  --acc-deep:#1B6098;
+  --acc-deep-h:#154F7E;
+  --acc-btn-line:#175E93;
+  --on-acc:#F2F8FD;
+  --on-acc-bright:#FFFFFF;
+  --acc-tx:#124A78;
+  --acc-tx-soft:#1A5E93;
+  --acc-tx-mute:#2A6A9E;
+  --cite:#9A6A0E;
+  --cite-rgb:154,106,14;
+  --cite-tx:#5C4108;
+  --cite-bg:rgba(var(--cite-rgb),.11);
+  --cite-line:rgba(var(--cite-rgb),.44);
+  --ok:#2C7D57;
+  --ok-rgb:44,125,87;
+  --on-ok:#FFFFFF;
+  --bar-track:#DEE4EA;
+  --danger:#C4453F;
+  --danger-rgb:196,69,63;
+  --danger-tx:#93302B;
+  --pdf-bg:#FBE9E8; --pdf-fg:#C4453F; --pdf-line:#F0D2D0;
+  --md-bg:#E6F0F9;  --md-fg:#1F6FB0;  --md-line:#CCE0F0;
+  --veil:rgba(20,32,48,.018);
+  --scrim:rgba(28,38,50,.42);
+  --sh-pop:0 10px 32px rgba(20,32,48,.14);
+  --sh-pop-lg:0 12px 36px rgba(20,32,48,.16);
+  --sh-up:0 -4px 26px rgba(20,32,48,.13);
+  --sh-toast:0 8px 28px rgba(20,32,48,.16);
+  --sh-modal:0 20px 60px rgba(20,32,48,.22);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--page-bg);
+  color:var(--page-fg);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:ui-monospace,"SF Mono","Cascadia Code","JetBrains Mono",Consolas,"Liberation Mono",monospace}
+
+/* ---------- page header ---------- */
+.wrap{max-width:1320px;margin:0 auto;padding:0 clamp(16px,3vw,32px)}
+.phead{padding:clamp(32px,5vw,56px) 0 clamp(20px,3vw,28px)}
+.peyebrow{
+  font-family:ui-monospace,"SF Mono",Consolas,monospace;
+  font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--page-accent);margin:0 0 12px;
+}
+.phead h1{
+  font-size:clamp(26px,3.6vw,38px);line-height:1.14;margin:0 0 12px;
+  letter-spacing:-.02em;font-weight:700;text-wrap:balance;
+}
+.plede{margin:0;max-width:64ch;color:var(--page-dim);font-size:15.5px}
+.pchips{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+
+/* ---------- palette switcher ---------- */
+.palbar{
+  margin-top:26px;padding-top:20px;border-top:1px solid var(--page-line);
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;
+}
+.pal-lab{
+  font-family:ui-monospace,"SF Mono",Consolas,monospace;
+  font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--page-faint);flex:0 0 auto;
+}
+.pal-opts{display:flex;flex-wrap:wrap;gap:7px}
+.pal{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--page-raised);border:1px solid var(--page-line);
+  border-radius:8px;padding:5px 11px 5px 7px;
+  font:inherit;font-size:12.5px;color:var(--page-dim);cursor:pointer;
+  transition:border-color .14s ease,color .14s ease,background .14s ease;
+}
+.pal:hover{border-color:var(--page-accent);color:var(--page-fg)}
+.pal.on{
+  border-color:var(--page-accent);color:var(--page-fg);
+  box-shadow:0 0 0 2.5px color-mix(in srgb, var(--page-accent) 22%, transparent);
+}
+.pal-sw{
+  display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;
+  width:19px;height:19px;border-radius:5px;overflow:hidden;flex:0 0 auto;
+  border:1px solid var(--page-line);
+}
+.pal-sw i{display:block}
+.pal-sw i:nth-child(1){background:var(--s1)}
+.pal-sw i:nth-child(2){background:var(--s2)}
+.pal-sw i:nth-child(3){background:var(--s3)}
+.pal-sw i:nth-child(4){background:var(--s4)}
+.pal-n{white-space:nowrap}
+.pal-note{
+  flex:1 1 100%;margin:2px 0 0;font-size:12.5px;color:var(--page-faint);
+  min-height:1.4em;
+}
+.pchip{
+  font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:11.5px;
+  padding:4px 10px;border-radius:5px;border:1px solid var(--page-line);
+  background:var(--page-raised);color:var(--page-dim);
+}
+.pchip b{color:var(--page-fg);font-weight:600}
+
+/* ---------- stage ---------- */
+.stage{overflow-x:auto;padding:6px 0 4px}
+.stage-inner{min-width:1120px;padding:0 clamp(16px,3vw,32px);max-width:1320px;margin:0 auto}
+.scrollhint{
+  display:none;font-size:12.5px;color:var(--page-faint);
+  padding:0 clamp(16px,3vw,32px);max-width:1320px;margin:0 auto 8px;
+}
+@media (max-width:1180px){ .scrollhint{display:block} }
+
+/* ============================================================
+   THE APP
+   ============================================================ */
+.app{
+  position:relative;
+  height:704px;
+  display:flex;flex-direction:column;
+  background:var(--bg-canvas);
+  color:var(--tx);
+  border:1px solid var(--line);
+  border-radius:10px;
+  overflow:hidden;
+  box-shadow:var(--page-shadow);
+  font-size:13px;
+}
+
+/* ---------- top bar ---------- */
+.topbar{
+  flex:0 0 auto;height:46px;
+  display:flex;align-items:center;gap:14px;
+  padding:0 12px;
+  background:var(--bg-bar);
+  border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:9px;padding-right:4px}
+.brand-mk{
+  width:22px;height:22px;border-radius:5px;flex:0 0 auto;
+  background:linear-gradient(145deg,var(--acc),var(--acc-deep));
+  display:grid;place-items:center;color:var(--on-acc-bright);font-weight:800;font-size:10px;
+  font-family:ui-monospace,Consolas,monospace;letter-spacing:-.04em;
+}
+.brand-tx{font-weight:650;font-size:13px;letter-spacing:-.01em;white-space:nowrap}
+.brand-ver{
+  font-family:ui-monospace,Consolas,monospace;font-size:10px;color:var(--tx-faint);
+  border:1px solid var(--line);border-radius:4px;padding:1px 5px;
+}
+.tsep{width:1px;height:20px;background:var(--line);flex:0 0 auto}
+.scope{display:flex;align-items:center;gap:5px}
+.topbar-sp{flex:1 1 auto}
+.topbar-act{display:flex;align-items:center;gap:7px}
+
+/* select-style buttons */
+.sel{
+  display:inline-flex;align-items:center;gap:7px;
+  height:28px;padding:0 9px;
+  background:var(--bg-raise);border:1px solid var(--line);border-radius:6px;
+  color:var(--tx);font:inherit;font-size:12.5px;cursor:pointer;white-space:nowrap;
+  transition:background .12s ease,border-color .12s ease;
+}
+.sel:hover{background:var(--bg-hover);border-color:var(--line-hover)}
+.sel[aria-expanded="true"]{border-color:var(--acc);background:var(--bg-hover)}
+.sel .cd{color:var(--tx-faint);flex:0 0 auto}
+.sel-course .cc{
+  font-family:ui-monospace,Consolas,monospace;font-weight:700;
+  color:var(--acc);font-size:12px;
+}
+.sel-course .cn{color:var(--tx-dim);max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn{
+  display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 11px;
+  border-radius:6px;border:1px solid transparent;font:inherit;font-size:12.5px;
+  cursor:pointer;white-space:nowrap;transition:background .12s ease;
+}
+.btn-primary{background:var(--acc-deep);color:var(--on-acc);border-color:var(--acc-btn-line)}
+.btn-primary:hover{background:var(--acc-deep-h)}
+.btn-ghost{background:transparent;color:var(--tx-dim)}
+.btn-ghost:hover{background:var(--bg-hover);color:var(--tx)}
+.icon-btn{
+  width:28px;height:28px;display:grid;place-items:center;border-radius:6px;
+  background:transparent;border:1px solid transparent;color:var(--tx-faint);cursor:pointer;
+  transition:background .12s ease,color .12s ease;
+}
+.icon-btn:hover{background:var(--bg-hover);color:var(--tx)}
+
+/* ---------- global search ---------- */
+.searchwrap{position:relative;flex:0 0 auto}
+.searchbox{
+  display:flex;align-items:center;gap:7px;height:28px;padding:0 8px 0 9px;width:250px;
+  background:var(--bg-canvas);border:1px solid var(--line);border-radius:6px;
+  transition:border-color .14s ease,background .14s ease;
+}
+.searchbox:focus-within{border-color:var(--acc-deep);background:var(--bg-raise)}
+.searchbox .si{color:var(--tx-faint);flex:0 0 auto;display:grid;place-items:center}
+.searchbox input{
+  flex:1 1 auto;min-width:0;background:transparent;border:0;outline:none;
+  color:var(--tx);font:inherit;font-size:12.5px;
+}
+.searchbox input::placeholder{color:var(--tx-faint)}
+.qk{
+  flex:0 0 auto;font-family:ui-monospace,Consolas,monospace;font-size:9.5px;
+  border:1px solid var(--line);border-radius:3px;padding:1px 4px;color:var(--tx-faint);
+}
+.searchbox:focus-within .qk{opacity:0}
+.qres{
+  position:absolute;top:calc(100% + 6px);right:0;width:392px;z-index:70;
+  background:var(--bg-raise);border:1px solid var(--line);border-radius:9px;
+  box-shadow:var(--sh-pop-lg);
+  max-height:296px;overflow-y:auto;padding:4px;display:none;
+}
+.qres.on{display:block}
+.qsec{
+  padding:7px 9px 4px;font-family:ui-monospace,Consolas,monospace;font-size:9.5px;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--tx-faint);
+  display:flex;align-items:center;gap:7px;
+}
+.qsec .qn{margin-left:auto;opacity:.7}
+.qrow{
+  display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:6px;cursor:pointer;
+}
+.qrow:hover,.qrow.cursor{background:var(--bg-hover)}
+.qrow .qi{color:var(--tx-faint);flex:0 0 auto;display:grid;place-items:center}
+.qrow.course .qi{color:var(--acc)}
+.qt{min-width:0;flex:1 1 auto;font-size:12.5px;color:var(--tx-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qt b{color:var(--tx);font-weight:650;font-family:ui-monospace,Consolas,monospace;font-size:12px}
+.qrow.cursor .qt,.qrow:hover .qt{color:var(--tx)}
+.qm{
+  flex:0 0 auto;font-family:ui-monospace,Consolas,monospace;font-size:9.5px;color:var(--tx-faint);
+}
+.qres mark{background:rgba(var(--acc-rgb),.26);color:var(--acc-tx);border-radius:2px;padding:0 1px}
+.qempty{padding:18px 12px;text-align:center;font-size:12px;color:var(--tx-faint);line-height:1.6}
+.qfoot{
+  border-top:1px solid var(--line-soft);margin-top:4px;padding:7px 10px 4px;
+  font-family:ui-monospace,Consolas,monospace;font-size:9.5px;color:var(--tx-faint);
+  display:flex;gap:12px;
+}
+
+/* ---------- body split ---------- */
+.split{flex:1 1 auto;display:flex;min-height:0}
+
+/* ---------- explorer ---------- */
+.explorer{
+  flex:0 0 246px;display:flex;flex-direction:column;min-height:0;position:relative;
+  background:var(--bg-panel);border-right:1px solid var(--line);
+}
+/* drag-to-upload — the primary path now that the top-bar button is gone */
+.drop-veil{
+  position:absolute;inset:6px;z-index:15;border-radius:9px;
+  border:1.5px dashed var(--acc);background:rgba(var(--acc-rgb),.11);
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  text-align:center;padding:16px;pointer-events:none;
+}
+.explorer.drag-over .drop-veil{display:flex}
+.drop-veil .dv-ic{color:var(--acc)}
+.drop-veil .dv-t{font-size:12.5px;font-weight:600;color:var(--acc-tx)}
+.drop-veil .dv-s{font-size:11px;color:var(--tx-dim)}
+
+/* empty explorer */
+.tree-empty{padding:22px 16px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:9px}
+.tree-empty .te-ic{
+  width:42px;height:42px;border-radius:10px;display:grid;place-items:center;
+  border:1.5px dashed var(--line);color:var(--tx-faint);
+}
+.tree-empty h4{margin:2px 0 0;font-size:12.5px;font-weight:650;color:var(--tx-dim)}
+.tree-empty p{margin:0;font-size:11.5px;color:var(--tx-faint);line-height:1.6;max-width:24ch}
+.te-btn{
+  margin-top:3px;display:inline-flex;align-items:center;gap:6px;
+  background:var(--acc-deep);border:1px solid var(--acc-btn-line);color:var(--on-acc);
+  border-radius:6px;padding:5px 11px;font:inherit;font-size:12px;cursor:pointer;
+  transition:background .12s ease;
+}
+.te-btn:hover{background:var(--acc-deep-h)}
+.ex-head{
+  flex:0 0 auto;height:34px;display:flex;align-items:center;gap:8px;
+  padding:0 8px 0 12px;border-bottom:1px solid var(--line-soft);
+}
+.ex-title{
+  font-family:ui-monospace,Consolas,monospace;font-size:10.5px;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--tx-faint);
+}
+.ex-count{
+  margin-left:auto;font-family:ui-monospace,Consolas,monospace;font-size:10px;
+  color:var(--tx-faint);border:1px solid var(--line);border-radius:999px;padding:1px 7px;
+}
+.ex-tools{display:flex;gap:1px}
+.tool{
+  width:22px;height:22px;display:grid;place-items:center;border-radius:4px;
+  background:transparent;border:0;color:var(--tx-faint);cursor:pointer;
+}
+.tool:hover{background:var(--bg-hover);color:var(--tx)}
+.tree{flex:1 1 auto;overflow-y:auto;padding:6px 0 10px}
+
+.cat{user-select:none}
+.cat-row,.file-row{
+  display:flex;align-items:center;gap:6px;
+  height:26px;padding:0 8px 0 8px;cursor:pointer;position:relative;
+}
+.cat-row:hover,.file-row:hover{background:var(--bg-hover)}
+.cat-row .tw{color:var(--tx-faint);display:grid;place-items:center;transition:transform .14s ease;flex:0 0 auto}
+.cat.collapsed .tw{transform:rotate(-90deg)}
+.cat.collapsed .files{display:none}
+.cat-name{
+  font-size:12.5px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.cat-n{
+  font-family:ui-monospace,Consolas,monospace;font-size:9.5px;color:var(--tx-faint);
+  background:var(--bg-raise);border-radius:999px;padding:0 5px;line-height:15px;min-width:16px;text-align:center;
+}
+.row-acts{
+  display:none;margin-left:auto;gap:1px;align-items:center;
+  padding-left:4px;
+}
+.cat-row:hover .row-acts,.file-row:hover .row-acts,.row-acts.open{display:flex}
+.cat-row:hover .cat-n,.file-row:hover .f-meta{display:none}
+
+.files{display:block}
+.file-row{padding-left:26px}
+.file-row.root{padding-left:12px}
+.file-row.justadded{animation:justAdded 2s ease}
+@keyframes justAdded{0%,50%{background:rgba(var(--acc-rgb),.22)}100%{background:transparent}}
+.cat-empty{padding:3px 8px 7px 30px;font-size:11px;color:var(--tx-faint);font-style:italic}
+.root-lab{
+  padding:9px 8px 3px 12px;font-family:ui-monospace,Consolas,monospace;
+  font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx-faint);
+}
+.file-row .fi{color:var(--tx-faint);flex:0 0 auto;display:grid;place-items:center}
+.file-name{
+  font-size:12.5px;color:var(--tx-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.file-row.open .file-name{color:var(--tx)}
+.file-row.active{background:rgba(var(--acc-rgb),.13);box-shadow:inset 2px 0 0 var(--acc)}
+.file-row.active .file-name{color:var(--acc-tx)}
+.file-row.active .fi{color:var(--acc)}
+.f-meta{
+  margin-left:auto;font-family:ui-monospace,Consolas,monospace;
+  font-size:9.5px;color:var(--tx-faint);flex:0 0 auto;
+}
+
+/* progress widget */
+.prog{
+  flex:0 0 auto;border-top:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(var(--acc-rgb),.045),transparent 70%);
+  padding:11px 12px 12px;cursor:pointer;transition:background .14s ease;
+}
+.prog:hover{background:var(--bg-hover)}
+.prog-top{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.prog-lab{
+  font-family:ui-monospace,Consolas,monospace;font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--tx-faint);
+}
+.prog-pct{
+  margin-left:auto;font-family:ui-monospace,Consolas,monospace;
+  font-size:12px;font-weight:700;color:var(--ok);font-variant-numeric:tabular-nums;
+}
+.bar{height:5px;border-radius:3px;background:var(--bar-track);overflow:hidden;display:flex}
+.bar i{display:block;height:100%;background:var(--ok);border-radius:3px;transition:width .3s ease}
+.prog-sub{
+  display:flex;align-items:center;gap:6px;margin-top:9px;
+  font-size:11.5px;color:var(--tx-dim);
+}
+.prog-sub .wk{color:var(--tx);font-weight:600}
+.prog-open{margin-left:auto;color:var(--tx-faint);font-size:11px}
+
+/* ---------- editor ---------- */
+.editor{flex:1 1 auto;display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--bg-canvas)}
+.tabstrip{
+  flex:0 0 auto;height:35px;display:flex;align-items:stretch;
+  background:var(--bg-bar);border-bottom:1px solid var(--line);
+}
+.tabs{display:flex;align-items:stretch;overflow-x:auto;scrollbar-width:none;flex:1 1 auto;min-width:0}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  display:flex;align-items:center;gap:7px;
+  padding:0 9px 0 11px;max-width:230px;flex:0 0 auto;
+  background:transparent;border:0;border-right:1px solid var(--line);
+  color:var(--tx-faint);font:inherit;font-size:12.5px;cursor:pointer;position:relative;
+  transition:background .12s ease,color .12s ease;
+}
+.tab:hover{background:var(--bg-raise);color:var(--tx-dim)}
+.tab.active{background:var(--bg-canvas);color:var(--tx)}
+.tab.active::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--acc);
+}
+.tab .ti{flex:0 0 auto;display:grid;place-items:center;color:currentColor;opacity:.75}
+.tab .tn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tab .tx{
+  width:16px;height:16px;border-radius:3px;display:grid;place-items:center;
+  color:var(--tx-faint);flex:0 0 auto;opacity:0;transition:opacity .12s ease;
+}
+.tab:hover .tx,.tab.active .tx{opacity:1}
+.tab .tx:hover{background:var(--bg-hover);color:var(--tx)}
+.tab.enter{animation:tabIn .18s ease}
+@keyframes tabIn{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+.tabset-tag{
+  flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:0 11px;
+  border-left:1px solid var(--line);
+  font-family:ui-monospace,Consolas,monospace;font-size:10px;color:var(--tx-faint);
+  white-space:nowrap;
+}
+.tabset-tag b{color:var(--acc);font-weight:700}
+
+.docbar{
+  flex:0 0 auto;height:42px;display:flex;align-items:center;gap:11px;
+  padding:0 14px;border-bottom:1px solid var(--line-soft);
+}
+.doc-ic{
+  width:22px;height:26px;border-radius:3px;flex:0 0 auto;display:grid;place-items:center;
+  background:var(--pdf-bg);color:var(--pdf-fg);font-family:ui-monospace,Consolas,monospace;
+  font-size:7px;font-weight:700;letter-spacing:-.02em;border:1px solid var(--pdf-line);
+}
+.doc-ic.md{background:var(--md-bg);color:var(--md-fg);border-color:var(--md-line)}
+.doc-t{min-width:0}
+.doc-name{font-size:13px;font-weight:600;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-meta{font-size:11px;color:var(--tx-faint);display:flex;align-items:center;gap:6px}
+.doc-meta .dot{width:2px;height:2px;border-radius:50%;background:var(--tx-faint)}
+.pager{
+  margin-left:auto;display:flex;align-items:center;gap:2px;flex:0 0 auto;
+  background:var(--bg-raise);border:1px solid var(--line);border-radius:6px;padding:2px;
+}
+.pager .pg{
+  width:22px;height:20px;display:grid;place-items:center;border-radius:4px;
+  background:transparent;border:0;color:var(--tx-faint);cursor:pointer;
+}
+.pager .pg:hover:not(:disabled){background:var(--bg-hover);color:var(--tx)}
+.pager .pg:disabled{opacity:.3;cursor:default}
+.pager .pn{
+  font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--tx-dim);
+  padding:0 5px;font-variant-numeric:tabular-nums;
+}
+
+.canvas{flex:1 1 auto;overflow-y:auto;padding:26px 0 60px}
+.page{
+  max-width:660px;margin:0 auto;padding:0 26px;
+}
+.page-tagrow{display:flex;align-items:center;gap:9px;margin-bottom:16px}
+.page-tag{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:ui-monospace,Consolas,monospace;font-size:10px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--tx-faint);
+}
+.idx-pill{
+  margin-left:auto;font-family:ui-monospace,Consolas,monospace;font-size:9.5px;
+  color:var(--tx-faint);border:1px solid var(--line);border-radius:999px;padding:2px 8px;
+}
+.blk{margin:0 0 14px}
+.blk-h{font-size:19px;font-weight:680;letter-spacing:-.015em;color:var(--tx-strong);margin:0 0 4px;line-height:1.3}
+.blk-sub{font-size:12.5px;color:var(--tx-faint);margin:0 0 18px}
+.blk-p{font-size:13.5px;color:var(--tx-dim);line-height:1.72;margin:0 0 13px}
+.blk-ev{
+  position:relative;border:1px solid var(--cite-line);background:var(--cite-bg);
+  border-radius:7px;padding:13px 15px 14px;margin:0 0 15px;
+}
+.ev-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.ev-lab{
+  font-family:ui-monospace,Consolas,monospace;font-size:9.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--cite);font-weight:700;
+}
+.ev-rel{
+  margin-left:auto;font-family:ui-monospace,Consolas,monospace;font-size:9.5px;
+  color:var(--cite);opacity:.8;font-variant-numeric:tabular-nums;
+}
+.ev-tx{font-size:13.5px;color:var(--cite-tx);line-height:1.68;margin:0}
+.blk-ev.flash{animation:evFlash 1.5s ease}
+@keyframes evFlash{
+  0%,100%{box-shadow:0 0 0 0 rgba(var(--cite-rgb),0)}
+  15%{box-shadow:0 0 0 3px rgba(var(--cite-rgb),.30)}
+  55%{box-shadow:0 0 0 3px rgba(var(--cite-rgb),.18)}
+}
+.blk-note{
+  border:1px solid var(--line);border-radius:7px;padding:12px 15px;background:var(--veil);
+}
+.blk-note h4{
+  margin:0 0 6px;font-size:12px;font-weight:650;color:var(--tx-dim);
+}
+.blk-note p{margin:0;font-size:12.5px;color:var(--tx-faint);line-height:1.65}
+
+.empty{
+  height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;color:var(--tx-faint);padding:30px;text-align:center;
+}
+.empty-ic{
+  width:48px;height:48px;border-radius:10px;border:1px dashed var(--line);
+  display:grid;place-items:center;color:var(--tx-faint);
+}
+.empty h3{margin:0;font-size:14px;font-weight:600;color:var(--tx-dim)}
+.empty p{margin:0;font-size:12.5px;max-width:34ch;line-height:1.6}
+
+/* ---------- chat ---------- */
+.chat{
+  flex:0 0 338px;display:flex;flex-direction:column;min-height:0;
+  background:var(--bg-panel);border-left:1px solid var(--line);
+}
+.chat-head{
+  flex:0 0 auto;height:34px;display:flex;align-items:center;gap:8px;
+  padding:0 8px 0 12px;border-bottom:1px solid var(--line-soft);
+}
+.live{width:6px;height:6px;border-radius:50%;background:var(--ok);flex:0 0 auto;box-shadow:0 0 0 3px rgba(var(--ok-rgb),.15)}
+.chat-title{font-size:12.5px;font-weight:600;color:var(--tx)}
+.chat-scope{
+  margin-left:auto;font-family:ui-monospace,Consolas,monospace;font-size:10px;
+  color:var(--tx-faint);
+}
+.msgs{flex:1 1 auto;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:14px}
+.msg{display:flex;flex-direction:column;gap:6px}
+.msg-who{
+  display:flex;align-items:center;gap:7px;
+  font-family:ui-monospace,Consolas,monospace;font-size:9.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--tx-faint);
+}
+.who-av{
+  width:16px;height:16px;border-radius:4px;display:grid;place-items:center;flex:0 0 auto;
+  font-size:8px;font-weight:800;font-family:ui-monospace,Consolas,monospace;
+}
+.msg.ai .who-av{background:linear-gradient(145deg,var(--acc),var(--acc-deep));color:var(--on-acc-bright)}
+.msg.me .who-av{background:var(--bg-hover);color:var(--tx-dim)}
+.bubble{
+  font-size:12.8px;line-height:1.66;color:var(--tx-dim);
+  border-radius:8px;padding:10px 12px;
+}
+.msg.ai .bubble{background:var(--bg-raise);border:1px solid var(--line-soft);color:var(--tx-dim)}
+.msg.me .bubble{background:rgba(var(--acc-rgb),.09);border:1px solid rgba(var(--acc-rgb),.20);color:var(--acc-tx-mute)}
+.bubble b{color:var(--tx);font-weight:650}
+.mention{
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(var(--acc-rgb),.16);border:1px solid rgba(var(--acc-rgb),.3);
+  color:var(--acc-tx-soft);border-radius:4px;padding:0 5px;font-size:11.5px;
+  font-family:ui-monospace,Consolas,monospace;white-space:nowrap;
+}
+.cites{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.cite{
+  display:inline-flex;align-items:center;gap:5px;
+  background:var(--cite-bg);border:1px solid var(--cite-line);color:var(--cite);
+  border-radius:5px;padding:2px 7px;font-size:10.5px;cursor:pointer;
+  font-family:ui-monospace,Consolas,monospace;
+  transition:background .12s ease;
+}
+.cite:hover{background:rgba(var(--cite-rgb),.19)}
+.typing{display:flex;gap:3px;padding:3px 0}
+.typing i{width:5px;height:5px;border-radius:50%;background:var(--tx-faint);animation:tp 1.1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}
+.typing i:nth-child(3){animation-delay:.3s}
+@keyframes tp{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+
+.quick{
+  flex:0 0 auto;display:flex;gap:5px;padding:0 12px 9px;flex-wrap:wrap;align-items:center;
+}
+.quick-lab{
+  font-family:ui-monospace,Consolas,monospace;font-size:9.5px;color:var(--tx-faint);
+  letter-spacing:.08em;text-transform:uppercase;margin-right:2px;
+}
+.qb{
+  background:var(--bg-raise);border:1px solid var(--line);color:var(--tx-dim);
+  border-radius:999px;padding:3px 9px;font:inherit;font-size:11px;cursor:pointer;
+  transition:background .12s ease,color .12s ease;
+}
+.qb:hover{background:var(--bg-hover);color:var(--tx)}
+
+.composer{flex:0 0 auto;padding:0 12px 12px;position:relative}
+.composer-box{
+  display:flex;align-items:flex-end;gap:8px;
+  background:var(--bg-raise);border:1px solid var(--line);border-radius:9px;padding:8px 8px 8px 11px;
+  transition:border-color .14s ease;
+}
+.composer-box:focus-within{border-color:var(--acc-deep)}
+.composer input{
+  flex:1 1 auto;background:transparent;border:0;outline:none;color:var(--tx);
+  font:inherit;font-size:12.5px;padding:3px 0;min-width:0;
+}
+.composer input::placeholder{color:var(--tx-faint)}
+.send{
+  width:26px;height:26px;border-radius:6px;flex:0 0 auto;display:grid;place-items:center;
+  background:var(--acc-deep);border:0;color:var(--on-acc);cursor:pointer;transition:background .12s ease;
+}
+.send:hover{background:var(--acc-deep-h)}
+.at-hint{
+  font-size:10.5px;color:var(--tx-faint);margin-top:6px;
+  font-family:ui-monospace,Consolas,monospace;
+}
+.at-hint kbd{
+  background:var(--bg-raise);border:1px solid var(--line);border-radius:3px;
+  padding:0 4px;color:var(--tx-dim);font-family:inherit;
+}
+
+/* @ mention picker */
+.atpick{
+  position:absolute;bottom:calc(100% - 4px);left:12px;right:12px;
+  background:var(--bg-raise);border:1px solid var(--line);border-radius:9px;
+  box-shadow:var(--sh-up);overflow:hidden;display:none;z-index:20;
+}
+.atpick.on{display:block}
+.atpick-h{
+  padding:7px 11px;border-bottom:1px solid var(--line-soft);
+  font-family:ui-monospace,Consolas,monospace;font-size:9.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--tx-faint);
+}
+.atpick-l{max-height:196px;overflow-y:auto;padding:4px}
+.atrow{
+  display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:5px;cursor:pointer;
+}
+.atrow:hover,.atrow.sel{background:var(--bg-hover)}
+.atrow .ai{color:var(--tx-faint);flex:0 0 auto;display:grid;place-items:center}
+.atrow .an{font-size:12px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.atrow .ac{
+  margin-left:auto;font-family:ui-monospace,Consolas,monospace;font-size:9.5px;
+  color:var(--tx-faint);flex:0 0 auto;
+}
+
+/* ---------- menus ---------- */
+.menu{
+  position:absolute;z-index:60;min-width:200px;
+  background:var(--bg-raise);border:1px solid var(--line);border-radius:8px;
+  box-shadow:var(--sh-pop);padding:4px;display:none;
+}
+.menu.on{display:block}
+.menu-lab{
+  padding:6px 10px 4px;font-family:ui-monospace,Consolas,monospace;font-size:9.5px;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--tx-faint);
+}
+.mi{
+  display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:5px;cursor:pointer;
+  font-size:12.5px;color:var(--tx-dim);position:relative;
+}
+.mi:hover{background:var(--bg-hover);color:var(--tx)}
+.mi.on{color:var(--tx)}
+.mi .mck{color:var(--acc);flex:0 0 auto;width:14px;display:grid;place-items:center}
+.mi .mcc{
+  font-family:ui-monospace,Consolas,monospace;font-weight:700;color:var(--acc);
+  font-size:11.5px;flex:0 0 auto;width:44px;
+}
+.mi .mnn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mi-acts{display:none;margin-left:auto;gap:1px;flex:0 0 auto}
+.mi:hover .mi-acts{display:flex}
+.mi.danger:hover{background:rgba(var(--danger-rgb),.13);color:var(--danger-tx)}
+.msep{height:1px;background:var(--line);margin:4px 2px}
+
+/* ---------- toast ---------- */
+.toast{
+  position:absolute;left:50%;bottom:22px;transform:translate(-50%,10px);
+  background:var(--bg-raise);border:1px solid var(--line);border-radius:8px;
+  padding:9px 14px;font-size:12.5px;color:var(--tx);
+  box-shadow:var(--sh-toast);
+  display:flex;align-items:center;gap:9px;z-index:70;
+  opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;
+}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast .tk{color:var(--acc);flex:0 0 auto;display:grid;place-items:center}
+.toast b{color:var(--tx);font-weight:650}
+
+/* ---------- modal ---------- */
+.scrim{
+  position:absolute;inset:0;background:var(--scrim);
+  display:none;align-items:center;justify-content:center;z-index:80;padding:26px;
+  backdrop-filter:blur(2px);
+}
+.scrim.on{display:flex}
+.modal{
+  width:min(620px,100%);max-height:100%;display:flex;flex-direction:column;
+  background:var(--bg-panel);border:1px solid var(--line);border-radius:11px;
+  box-shadow:var(--sh-modal);overflow:hidden;
+  animation:mIn .18s ease;
+}
+@keyframes mIn{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:none}}
+.modal-h{
+  flex:0 0 auto;padding:16px 18px 14px;border-bottom:1px solid var(--line);
+  display:flex;align-items:flex-start;gap:12px;
+}
+.modal-h h3{margin:0 0 3px;font-size:15px;font-weight:670;letter-spacing:-.01em;color:var(--tx-strong)}
+.modal-h p{margin:0;font-size:12px;color:var(--tx-faint)}
+.modal-x{margin-left:auto;flex:0 0 auto}
+.modal-stats{
+  flex:0 0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+  background:var(--line);border-bottom:1px solid var(--line);
+}
+.mstat{background:var(--bg-panel);padding:11px 14px}
+.mstat .k{
+  font-family:ui-monospace,Consolas,monospace;font-size:9.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--tx-faint);margin-bottom:4px;
+}
+.mstat .v{font-size:17px;font-weight:700;color:var(--tx);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.mstat .v.ok{color:var(--ok)}
+.mstat .v small{font-size:11px;font-weight:500;color:var(--tx-faint);margin-left:3px}
+.modal-b{flex:1 1 auto;overflow-y:auto;padding:8px}
+.ms{
+  display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:7px;cursor:pointer;
+  transition:background .12s ease;
+}
+.ms:hover{background:var(--bg-hover)}
+.ms-box{
+  width:17px;height:17px;border-radius:5px;flex:0 0 auto;display:grid;place-items:center;
+  border:1.5px solid var(--line);color:transparent;transition:all .14s ease;
+}
+.ms.done .ms-box{background:var(--ok);border-color:var(--ok);color:var(--on-ok)}
+.ms.now .ms-box{border-color:var(--acc);box-shadow:0 0 0 3px rgba(var(--acc-rgb),.12)}
+.ms-t{min-width:0;flex:1 1 auto}
+.ms-wk{
+  font-family:ui-monospace,Consolas,monospace;font-size:9.5px;color:var(--tx-faint);
+  letter-spacing:.06em;margin-bottom:2px;
+}
+.ms-n{font-size:13px;color:var(--tx-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms.done .ms-n{color:var(--tx-faint);text-decoration:line-through;text-decoration-color:var(--line)}
+.ms.now .ms-n{color:var(--tx);font-weight:600}
+.ms-tag{
+  flex:0 0 auto;font-family:ui-monospace,Consolas,monospace;font-size:9.5px;
+  border-radius:999px;padding:2px 8px;border:1px solid var(--line);color:var(--tx-faint);
+}
+.ms-tag.now{border-color:rgba(var(--acc-rgb),.4);color:var(--acc);background:rgba(var(--acc-rgb),.10)}
+.ms-tag.exam{border-color:rgba(var(--danger-rgb),.4);color:var(--danger);background:rgba(var(--danger-rgb),.09)}
+.modal-f{
+  flex:0 0 auto;padding:12px 16px;border-top:1px solid var(--line);
+  display:flex;align-items:center;gap:10px;background:var(--veil);
+}
+.modal-f .ft{font-size:12px;color:var(--tx-faint)}
+.modal-f .ft b{color:var(--tx-dim);font-weight:600}
+.modal-f.acts{justify-content:flex-end;gap:8px}
+
+/* ---------- new-course dialog ---------- */
+.modal-sm{width:min(524px,100%)}
+.nc-body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:14px}
+.nc-row{display:flex;align-items:center;gap:12px}
+.nc-l{
+  font-family:ui-monospace,Consolas,monospace;font-size:9.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--tx-faint);flex:0 0 52px;
+}
+.nc-in{
+  flex:1 1 auto;min-width:0;background:var(--bg-canvas);border:1px solid var(--line);
+  border-radius:6px;padding:7px 10px;color:var(--tx);font:inherit;font-size:12.5px;outline:none;
+  transition:border-color .14s ease;
+}
+.nc-in:focus{border-color:var(--acc-deep)}
+.nc-in::placeholder{color:var(--tx-faint)}
+.nc-sec{border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:10px}
+.nc-sec-h{display:flex;align-items:center;gap:10px}
+.nc-presets{margin-left:auto;display:flex;gap:5px}
+.nc-presets button{
+  background:var(--bg-raise);border:1px solid var(--line);color:var(--tx-dim);
+  border-radius:5px;padding:2px 9px;font:inherit;font-size:11px;cursor:pointer;
+  transition:background .12s ease,color .12s ease;
+}
+.nc-presets button:hover{background:var(--bg-hover);color:var(--tx)}
+.nc-cats{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ncc{
+  display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:6px;
+  border:1px solid var(--line);background:var(--bg-canvas);cursor:pointer;
+  transition:background .12s ease,border-color .12s ease;
+}
+.ncc:hover{background:var(--bg-hover)}
+.ncc.on{border-color:rgba(var(--acc-rgb),.45);background:rgba(var(--acc-rgb),.08)}
+.ncc .cb{
+  width:15px;height:15px;border-radius:4px;flex:0 0 auto;display:grid;place-items:center;
+  border:1.5px solid var(--line);color:transparent;transition:all .14s ease;
+}
+.ncc.on .cb{background:var(--acc);border-color:var(--acc);color:var(--on-acc-bright)}
+.ncc .cn2{font-size:12px;color:var(--tx-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ncc.on .cn2{color:var(--tx)}
+.ncc .rm{margin-left:auto;color:var(--tx-faint);flex:0 0 auto;display:grid;place-items:center;opacity:0}
+.ncc:hover .rm{opacity:1}
+.ncc .rm:hover{color:var(--danger)}
+.nc-add{display:flex;gap:6px}
+.nc-add .nc-in{flex:1 1 auto}
+.nc-addb{
+  background:var(--bg-raise);border:1px solid var(--line);color:var(--tx-dim);
+  border-radius:6px;padding:0 12px;font:inherit;font-size:12px;cursor:pointer;flex:0 0 auto;
+}
+.nc-addb:hover{background:var(--bg-hover);color:var(--tx)}
+.nc-hint{margin:0;font-size:11px;color:var(--tx-faint);line-height:1.5}
+.nc-empty-note{
+  padding:24px 16px;text-align:center;font-size:12px;color:var(--tx-faint);line-height:1.6;
+}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+/* menu with an inline input */
+.menu-in{padding:5px 6px 6px}
+.menu-in input{
+  width:100%;background:var(--bg-canvas);border:1px solid var(--line);border-radius:5px;
+  padding:6px 8px;color:var(--tx);font:inherit;font-size:12px;outline:none;
+}
+.menu-in input:focus{border-color:var(--acc-deep)}
+
+/* ============================================================
+   ANNOTATION SECTIONS
+   ============================================================ */
+.legend{padding:clamp(30px,5vw,48px) 0 0}
+.legend h2,.after h2{
+  font-size:19px;font-weight:680;letter-spacing:-.015em;margin:0 0 6px;
+}
+.legend .dek,.after .dek{margin:0 0 20px;color:var(--page-dim);font-size:14px;max-width:62ch}
+.lgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:12px}
+.lcard{
+  background:var(--page-raised);border:1px solid var(--page-line);border-radius:9px;
+  padding:14px 15px 15px;
+}
+.lcard-h{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.lnum{
+  width:19px;height:19px;border-radius:5px;flex:0 0 auto;display:grid;place-items:center;
+  background:var(--page-accent);color:var(--page-raised);
+  font-family:ui-monospace,Consolas,monospace;font-size:10.5px;font-weight:700;
+}
+.lcard h3{margin:0;font-size:13.5px;font-weight:650}
+.fbadge{
+  margin-left:auto;font-family:ui-monospace,Consolas,monospace;font-size:10px;font-weight:700;
+  border:1px solid var(--page-line);border-radius:4px;padding:1px 6px;color:var(--page-accent);
+}
+.lcard p{margin:0;font-size:12.8px;color:var(--page-dim);line-height:1.62}
+.lcard .owner{
+  margin-top:9px;padding-top:9px;border-top:1px solid var(--page-line);
+  font-size:11.5px;color:var(--page-faint);
+}
+.lcard .owner b{color:var(--page-dim);font-weight:600}
+
+.after{padding:clamp(28px,4vw,42px) 0 clamp(40px,6vw,72px)}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:11px}
+.tcard{
+  background:var(--page-raised);border:1px solid var(--page-line);border-radius:9px;padding:13px 15px 14px;
+}
+.tcard h4{
+  margin:0 0 5px;font-size:12.8px;font-weight:650;display:flex;align-items:center;gap:7px;
+}
+.tkey{
+  font-family:ui-monospace,Consolas,monospace;font-size:10px;
+  background:var(--page-bg);border:1px solid var(--page-line);border-radius:4px;
+  padding:1px 6px;color:var(--page-accent);font-weight:700;flex:0 0 auto;
+}
+.tcard p{margin:0;font-size:12.5px;color:var(--page-dim);line-height:1.6}
+.callout{
+  margin-top:22px;border:1px solid var(--page-line);border-left:3px solid var(--page-accent);
+  border-radius:0 9px 9px 0;padding:14px 17px;background:var(--page-raised);
+}
+.callout .cl{
+  font-family:ui-monospace,Consolas,monospace;font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--page-accent);margin-bottom:6px;
+}
+.callout p{margin:0;font-size:13px;color:var(--page-dim);line-height:1.66;max-width:74ch}
+.callout p + p{margin-top:8px}
+.pfoot{
+  border-top:1px solid var(--page-line);padding:18px 0 40px;
+  font-size:12px;color:var(--page-faint);
+}
+
+:focus-visible{outline:2px solid var(--acc);outline-offset:1px;border-radius:3px}
+.lcard:focus-visible,.tcard:focus-visible{outline-color:var(--page-accent)}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;transition-duration:.001ms !important}
+}
+</style>
+
+</head>
+<body>
+
+<div class="wrap">
+  <header class="phead">
+    <p class="peyebrow">NotToBeCooked · UI Concept · 25 Jul 2026</p>
+    <h1>One workspace instead of four screens</h1>
+    <p class="plede">A VS&nbsp;Code-shaped study environment: course files on the left, the document you are reading in the middle, and a retrieval assistant on the right that cites the exact page it answered from. Everything below is live — click it.</p>
+    <div class="pchips">
+      <span class="pchip"><b>Explorer</b> · files + CRUD</span>
+      <span class="pchip"><b>Tabs</b> · remembered per course</span>
+      <span class="pchip"><b>Chat</b> · @-mention + citations</span>
+      <span class="pchip"><b>Roadmap</b> · progress modal</span>
+    </div>
+
+    <div class="palbar" role="group" aria-label="Interface colour scheme">
+      <span class="pal-lab">Palette</span>
+      <div class="pal-opts" id="palOpts">
+        <button class="pal on" data-pal="" aria-pressed="true"
+          style="--s1:#101821;--s2:#1C2833;--s3:#52A8EA;--s4:#E3A63F">
+          <span class="pal-sw"><i></i><i></i><i></i><i></i></span>
+          <span class="pal-n">Midnight</span>
+        </button>
+        <button class="pal" data-pal="violet" aria-pressed="false"
+          style="--s1:#15121D;--s2:#252134;--s3:#A78BFA;--s4:#E3A63F">
+          <span class="pal-sw"><i></i><i></i><i></i><i></i></span>
+          <span class="pal-n">Amethyst</span>
+        </button>
+        <button class="pal" data-pal="teal" aria-pressed="false"
+          style="--s1:#0C1719;--s2:#1A2C31;--s3:#2DD4BF;--s4:#E9A83A">
+          <span class="pal-sw"><i></i><i></i><i></i><i></i></span>
+          <span class="pal-n">Deep Sea</span>
+        </button>
+        <button class="pal" data-pal="carbon" aria-pressed="false"
+          style="--s1:#141618;--s2:#24282C;--s3:#9FB3C8;--s4:#E8A33A">
+          <span class="pal-sw"><i></i><i></i><i></i><i></i></span>
+          <span class="pal-n">Carbon</span>
+        </button>
+        <button class="pal" data-pal="light" aria-pressed="false"
+          style="--s1:#EFF2F5;--s2:#FFFFFF;--s3:#1F6FB0;--s4:#9A6A0E">
+          <span class="pal-sw"><i></i><i></i><i></i><i></i></span>
+          <span class="pal-n">Daylight</span>
+        </button>
+      </div>
+      <p class="pal-note" id="palNote">Blue navigation, amber evidence — the original.</p>
+    </div>
+  </header>
+</div>
+
+<p class="scrollhint">← Scroll sideways to see the full workspace, or open on a wider screen.</p>
+
+<div class="stage">
+  <div class="stage-inner">
+    <div class="app" id="app">
+
+      <!-- ============ TOP BAR ============ -->
+      <div class="topbar">
+        <div class="brand">
+          <div class="brand-mk">N</div>
+          <div class="brand-tx">NotToBeCooked</div>
+          <div class="brand-ver mono">v0.1</div>
+        </div>
+        <div class="tsep"></div>
+        <div class="scope">
+          <button class="sel" id="selYear" aria-haspopup="true" aria-expanded="false">
+            <span id="lblYear">Year 2</span>
+            <svg class="cd" width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M2 4l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="sel" id="selSem" aria-haspopup="true" aria-expanded="false">
+            <span id="lblSem">Sem 1</span>
+            <svg class="cd" width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M2 4l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="sel sel-course" id="selCourse" aria-haspopup="true" aria-expanded="false">
+            <span class="cc" id="lblCode">CS202</span>
+            <span class="cn" id="lblName">Data Structures &amp; Algorithms</span>
+            <svg class="cd" width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M2 4l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <div class="topbar-sp"></div>
+        <div class="topbar-act">
+          <div class="searchwrap">
+            <div class="searchbox">
+              <span class="si"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="6.1" cy="6.1" r="4.1" stroke="currentColor" stroke-width="1.3"/><path d="M9.2 9.2l2.6 2.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>
+              <input id="q" type="text" placeholder="Search courses and files…" autocomplete="off" aria-label="Search courses and files">
+              <span class="qk">⌘K</span>
+            </div>
+            <div class="qres" id="qres"></div>
+          </div>
+          <button class="icon-btn" id="btnHelp" title="What can I click?">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.2" stroke="currentColor" stroke-width="1.3"/><path d="M6.4 6.2a1.65 1.65 0 013.2.55c0 1.1-1.6 1.35-1.6 2.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="11.4" r=".75" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ============ SPLIT ============ -->
+      <div class="split">
+
+        <!-- ---------- EXPLORER ---------- -->
+        <aside class="explorer">
+          <div class="ex-head">
+            <span class="ex-title">Explorer</span>
+            <span class="ex-count mono" id="exCount">9 files</span>
+            <div class="ex-tools">
+              <button class="tool" id="btnUpload" title="Upload files to this course">
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 9.6V2.9M7 2.9L4.4 5.5M7 2.9l2.6 2.6M2.6 9.8v1a1.3 1.3 0 001.3 1.3h6.2a1.3 1.3 0 001.3-1.3v-1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <button class="tool" id="btnNewCat" title="New category">
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 3.2v7.6M3.2 7h7.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="tree" id="tree"></div>
+          <div class="drop-veil">
+            <span class="dv-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 16V5M12 5L7.5 9.5M12 5l4.5 4.5M4 16.5V18a2.5 2.5 0 002.5 2.5h11A2.5 2.5 0 0020 18v-1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span class="dv-t">Drop to upload</span>
+            <span class="dv-s">Files land in this course</span>
+          </div>
+          <div class="prog" id="progWidget" role="button" tabindex="0">
+            <div class="prog-top">
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2 11.5V8.2M5.7 11.5V4.5M9.3 11.5V6.4M13 11.5V2.5" stroke="var(--ok)" stroke-width="1.5" stroke-linecap="round"/></svg>
+              <span class="prog-lab">Roadmap</span>
+              <span class="prog-pct mono" id="progPct">38%</span>
+            </div>
+            <div class="bar"><i id="progBar" style="width:38%"></i></div>
+            <div class="prog-sub">
+              <span class="wk" id="progWk">Week 5 of 14</span>
+              <span id="progNext">· Sorting algorithms</span>
+              <span class="prog-open">Open ↗</span>
+            </div>
+          </div>
+        </aside>
+
+        <!-- ---------- EDITOR ---------- -->
+        <main class="editor">
+          <div class="tabstrip">
+            <div class="tabs" id="tabs"></div>
+            <div class="tabset-tag mono" id="tabsetTag">
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><rect x="1.5" y="2.5" width="9" height="7" rx="1.5" stroke="currentColor" stroke-width="1.1"/><path d="M1.5 5h9" stroke="currentColor" stroke-width="1.1"/></svg>
+              <span><b id="tagCode">CS202</b> tab set</span>
+            </div>
+          </div>
+          <div id="docWrap" style="display:flex;flex-direction:column;flex:1 1 auto;min-height:0"></div>
+        </main>
+
+        <!-- ---------- CHAT ---------- -->
+        <aside class="chat">
+          <div class="chat-head">
+            <span class="live"></span>
+            <span class="chat-title">Assistant</span>
+            <span class="chat-scope mono" id="chatScope">CS202 · 9 files</span>
+            <button class="tool" id="btnClearChat" title="Clear conversation">
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M3 4h8M5.6 4V2.8h2.8V4M4.2 4l.5 7.2h4.6L9.8 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+          <div class="msgs" id="msgs"></div>
+          <div class="quick" id="quick"></div>
+          <div class="composer">
+            <div class="atpick" id="atpick">
+              <div class="atpick-h">Mention a file or category</div>
+              <div class="atpick-l" id="atlist"></div>
+            </div>
+            <div class="composer-box">
+              <input id="chatInput" type="text" placeholder="Ask across your notes, PYQs, labs…" autocomplete="off">
+              <button class="send" id="btnSend" title="Send">
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M1.8 7h9.4M7.4 3.2L11.2 7l-3.8 3.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+            <div class="at-hint">Type <kbd>@</kbd> to scope the question to a file</div>
+          </div>
+        </aside>
+      </div>
+
+      <!-- ============ OVERLAYS ============ -->
+      <div class="menu" id="menu"></div>
+      <div class="toast" id="toast">
+        <span class="tk"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.3l3 3 6-6.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span id="toastTx"></span>
+      </div>
+
+      <div class="scrim" id="scrim">
+        <div class="modal" role="dialog" aria-modal="true" aria-label="Course roadmap">
+          <div class="modal-h">
+            <div>
+              <h3 id="mTitle">CS202 — Learning Roadmap</h3>
+              <p id="mSub">Semester 1, 2026 · 14 teaching weeks · tick a milestone to update progress</p>
+            </div>
+            <button class="icon-btn modal-x" id="mClose">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+          <div class="modal-stats">
+            <div class="mstat"><div class="k">Completion</div><div class="v ok" id="mPct">38%</div></div>
+            <div class="mstat"><div class="k">Milestones</div><div class="v" id="mDone">5<small id="mTotal">/ 13</small></div></div>
+            <div class="mstat"><div class="k">Current week</div><div class="v" id="mWeek">5<small>/ 14</small></div></div>
+          </div>
+          <div class="modal-b" id="mBody"></div>
+          <div class="modal-f">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" style="flex:0 0 auto"><circle cx="7" cy="7" r="5.6" stroke="var(--acc)" stroke-width="1.3"/><path d="M7 4v3.3l2 1.2" stroke="var(--acc)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="ft">This week: <b id="mTarget">finish Lab 3 and read Lecture 4 before Friday</b></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- new course dialog -->
+      <div class="scrim" id="scrimNew">
+        <div class="modal modal-sm" role="dialog" aria-modal="true" aria-label="New course">
+          <div class="modal-h">
+            <div>
+              <h3>New course</h3>
+              <p id="ncCtx">Year 2 · Sem 1 — choose the folders you want, or start blank</p>
+            </div>
+            <button class="icon-btn modal-x" id="ncClose">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+          <div class="nc-body">
+            <div class="nc-row">
+              <label class="nc-l" for="ncCode">Code</label>
+              <input class="nc-in mono" id="ncCode" placeholder="CS215" maxlength="10" autocomplete="off">
+            </div>
+            <div class="nc-row">
+              <label class="nc-l" for="ncName">Name</label>
+              <input class="nc-in" id="ncName" placeholder="Operating Systems" autocomplete="off">
+            </div>
+            <div class="nc-sec">
+              <div class="nc-sec-h">
+                <span class="nc-l" style="flex:0 0 auto">Folders</span>
+                <div class="nc-presets">
+                  <button type="button" data-preset="all">Select all</button>
+                  <button type="button" data-preset="none">Start blank</button>
+                </div>
+              </div>
+              <div class="nc-cats" id="ncCats"></div>
+              <div class="nc-add">
+                <input class="nc-in" id="ncCustom" placeholder="Add your own folder…" autocomplete="off">
+                <button class="nc-addb" type="button" id="ncAdd">Add</button>
+              </div>
+              <p class="nc-hint" id="ncHint">6 folders selected · you can add or remove folders later from the explorer.</p>
+            </div>
+          </div>
+          <div class="modal-f acts">
+            <button class="btn btn-ghost" id="ncCancel">Cancel</button>
+            <button class="btn btn-primary" id="ncCreate">Create course</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<script>
+(function(){
+"use strict";
+
+/* ============================ ICONS ============================ */
+var I = {
+  chev:'<svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M4 2.5L7.5 6 4 9.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  file:'<svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M8 1.8H4.2a1 1 0 00-1 1v8.4a1 1 0 001 1h5.6a1 1 0 001-1V4.6L8 1.8z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><path d="M8 1.8v2.8h2.8" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>',
+  folder:'<svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M1.8 4.2a1 1 0 011-1h2.3l1 1.4h4.1a1 1 0 011 1v4.6a1 1 0 01-1 1H2.8a1 1 0 01-1-1V4.2z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>',
+  plus:'<svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 3.4v7.2M3.4 7h7.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  dots:'<svg width="12" height="12" viewBox="0 0 14 14" fill="none"><circle cx="3.2" cy="7" r="1.05" fill="currentColor"/><circle cx="7" cy="7" r="1.05" fill="currentColor"/><circle cx="10.8" cy="7" r="1.05" fill="currentColor"/></svg>',
+  close:'<svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  check:'<svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2.2 6.2l2.6 2.6 5-5.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  pen:'<svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M9.4 2.6l2 2L5.2 10.8l-2.6.6.6-2.6 6.2-6.2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
+  trash:'<svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M3 4h8M5.6 4V2.9h2.8V4M4.3 4l.5 7.1h4.4L9.7 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  prev:'<svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M7.5 2.5L4 6l3.5 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  next:'<svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M4.5 2.5L8 6l-3.5 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  book:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 5.5A1.5 1.5 0 015.5 4H10a2 2 0 012 2v13a2 2 0 00-2-2H5.5A1.5 1.5 0 014 15.5v-10zM20 5.5A1.5 1.5 0 0018.5 4H14a2 2 0 00-2 2v13a2 2 0 012-2h4.5a1.5 1.5 0 001.5-1.5v-10z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>',
+  book16:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M4 5.5A1.5 1.5 0 015.5 4H10a2 2 0 012 2v13a2 2 0 00-2-2H5.5A1.5 1.5 0 014 15.5v-10zM20 5.5A1.5 1.5 0 0018.5 4H14a2 2 0 00-2 2v13a2 2 0 012-2h4.5a1.5 1.5 0 001.5-1.5v-10z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>'
+};
+
+/* ============================ DATA ============================ */
+function f(id,name,cat,kind,pages){ return {id:id,name:name,cat:cat,kind:kind||"pdf",pages:pages}; }
+
+var FILES = {
+  /* ---- CS202 ---- */
+  "cs202-planner": f("cs202-planner","CS202 Course Planner & Syllabus 2026.pdf","Course Planner","pdf",[
+    [
+      {t:"h",x:"CS202 — Data Structures & Algorithms"},
+      {t:"sub",x:"Course Planner & Syllabus · Semester 1, 2026 · Faculty of Computing"},
+      {t:"p",x:"This course develops the ability to reason about the time and space cost of an algorithm, and to choose an appropriate data structure for a given problem rather than defaulting to a familiar one."},
+      {t:"ev",id:"ev-grading",rel:"98%",x:"Grading scheme: Midterm Exam (25%), Final Exam (45%), Labs & Assignments (20%), Tutorials (10%). Attendance threshold is mandatory 80%. Prerequisites include CS101."},
+      {t:"p",x:"Consultation hours are Tuesdays 14:00–16:00 in Block C, Level 3. Late submissions incur a 10% penalty per day, capped at three days, after which the submission is not marked."},
+      {t:"note",h:"Section 2: Supplementary notes & references",x:"This chunk was generated with dense vector embeddings (bge-large-en). Answers that use it will cite this page and the highlighted text block above."}
+    ],
+    [
+      {t:"h",x:"Weekly Schedule"},
+      {t:"sub",x:"Page 2 of 4 · teaching weeks 1–14"},
+      {t:"p",x:"Weeks 1–2 — Complexity analysis, asymptotic notation, cost models. Week 3 — Arrays and dynamic arrays. Week 4 — Linked lists, stacks and queues."},
+      {t:"ev",id:"ev-week5",rel:"94%",x:"Week 5 (25 Aug – 29 Aug): Sorting algorithms — QuickSort, MergeSort and HeapSort. Lab 3 is released on Monday and is due Sunday 23:59."},
+      {t:"p",x:"Week 6 — Binary search trees. Week 7 — Heaps and priority queues. Week 8 — Midterm examination, covering weeks 1 through 7 inclusive."}
+    ]
+  ]),
+  "cs202-tut1": f("cs202-tut1","Tutorial 1 - Big O & Complexity.pdf","Tutorial","pdf",[
+    [
+      {t:"h",x:"Tutorial 1 — Big O & Complexity"},
+      {t:"sub",x:"Attempt every question before the session · partial credit is given for correct reasoning"},
+      {t:"p",x:"Exercise 1: State the time complexity of a single pass over an array of length N, and justify your answer in one sentence."},
+      {t:"p",x:"Exercise 2: Compare the growth of O(N) and O(log N). Sketch both curves for N between 1 and 1 000 and mark the crossing point, if any."},
+      {t:"ev",id:"ev-bigo",rel:"98%",x:"Exercise 3: Analyze the time complexity of nested loops. Explain why O(N log N) dominates O(N) for large input sizes N > 10,000."},
+      {t:"note",h:"Section 2: Supplementary notes & references",x:"This chunk was generated with dense vector embeddings (bge-large-en). Answers that use it will cite this page and the highlighted text block above."}
+    ],
+    [
+      {t:"h",x:"Tutorial 1 — continued"},
+      {t:"sub",x:"Page 2 of 3"},
+      {t:"p",x:"Exercise 4: A function calls itself twice on half the input each time. Write the recurrence and solve it using the master theorem."},
+      {t:"p",x:"Exercise 5: Explain why amortised analysis gives a fairer picture of dynamic array insertion than worst-case analysis alone."},
+      {t:"p",x:"Exercise 6: Give one realistic example where an O(N²) algorithm is preferable to an O(N log N) one, and state the condition that makes it so."}
+    ]
+  ]),
+  "cs202-tut2": f("cs202-tut2","Tutorial 2 - Linked Lists.pdf","Tutorial","pdf",[
+    [
+      {t:"h",x:"Tutorial 2 — Linked Lists"},
+      {t:"sub",x:"Singly, doubly and circular lists"},
+      {t:"p",x:"Exercise 1: Implement insertion at the head of a singly linked list and state its complexity."},
+      {t:"ev",id:"ev-ll",rel:"91%",x:"Exercise 4: Explain why deleting a node from a doubly linked list is O(1) once you hold a pointer to it, while the same operation on a singly linked list is O(N)."},
+      {t:"p",x:"Exercise 5: Describe a case where an array outperforms a linked list despite both offering the same asymptotic complexity."}
+    ]
+  ]),
+  "cs202-pyq23": f("cs202-pyq23","PYQ 2023 - Final Exam.pdf","PYQs","pdf",[
+    [
+      {t:"h",x:"Final Examination 2023"},
+      {t:"sub",x:"CS202 · 3 hours · answer all questions in Section A"},
+      {t:"ev",id:"ev-pyq23",rel:"96%",x:"Question 4 (20 marks): Given an unbalanced binary search tree of N nodes, state the worst-case complexity of search and describe one rebalancing strategy that restores O(log N) behaviour."},
+      {t:"p",x:"Question 5 (15 marks): Compare adjacency list and adjacency matrix representations for a sparse graph with 10 000 vertices and 30 000 edges."}
+    ]
+  ]),
+  "cs202-pyq22": f("cs202-pyq22","PYQ 2022 - Midterm Paper.pdf","PYQs","pdf",[
+    [
+      {t:"h",x:"Midterm Examination 2022"},
+      {t:"sub",x:"CS202 · 90 minutes · covers weeks 1–7"},
+      {t:"ev",id:"ev-pyq22",rel:"89%",x:"Question 2 (10 marks): Trace QuickSort on the array [7, 2, 9, 4, 1] using the last element as pivot. Show the array after each partition step."},
+      {t:"p",x:"Question 3 (10 marks): State the space complexity of MergeSort and explain where the additional memory is consumed."}
+    ]
+  ]),
+  "cs202-notes": f("cs202-notes","Student Summary - Trees & Heaps.md","Notes","md",[
+    [
+      {t:"h",x:"My summary — Trees & Heaps"},
+      {t:"sub",x:"Personal notes · last edited 3 days ago"},
+      {t:"p",x:"A binary heap is a complete binary tree, so it can live inside an array with no pointers. Parent of index i sits at (i−1)/2, children at 2i+1 and 2i+2."},
+      {t:"ev",id:"ev-heap",rel:"87%",x:"Build-heap is O(N), not O(N log N) — the common mistake is multiplying the height by N instead of summing the work level by level, where most nodes sit near the bottom and sift down very little."},
+      {t:"p",x:"Still unclear: when does a BST beat a hash table in practice? Ask in the next tutorial."}
+    ]
+  ]),
+  "cs202-lec4": f("cs202-lec4","Lecture 4 - Sorting Algorithms.pdf","Lecture Notes","pdf",[
+    [
+      {t:"h",x:"Lecture 4 — Sorting Algorithms"},
+      {t:"sub",x:"32 slides · QuickSort, MergeSort, HeapSort"},
+      {t:"p",x:"Comparison sorts cannot beat O(N log N) in the worst case. The proof follows from the height of the decision tree over N! possible orderings."},
+      {t:"ev",id:"ev-quick",rel:"95%",x:"QuickSort averages O(N log N) but degrades to O(N²) when the pivot is consistently the smallest or largest element — for example, when sorting already-sorted input with a naive last-element pivot."},
+      {t:"p",x:"MergeSort is stable and predictable at O(N log N) in every case, at the cost of O(N) auxiliary memory. HeapSort sorts in place but is not stable."}
+    ]
+  ]),
+  "cs202-lec7": f("cs202-lec7","Lecture 7 - Graph Traversal.pdf","Lecture Notes","pdf",[
+    [
+      {t:"h",x:"Lecture 7 — Graph Traversal"},
+      {t:"sub",x:"28 slides · BFS, DFS and their applications"},
+      {t:"ev",id:"ev-bfs",rel:"93%",x:"Breadth-first search visits vertices in order of distance from the source, which is what makes it correct for shortest paths on unweighted graphs. Depth-first search offers no such guarantee."},
+      {t:"p",x:"Both traversals run in O(V + E) with an adjacency list, and O(V²) with an adjacency matrix."}
+    ]
+  ]),
+  "cs202-lab3": f("cs202-lab3","Lab 3 - QuickSort & Merge.pdf","Labs","pdf",[
+    [
+      {t:"h",x:"Lab 3 — QuickSort & Merge"},
+      {t:"sub",x:"Released Mon week 5 · due Sunday 23:59 · 5% of final grade"},
+      {t:"p",x:"Task 1: Implement QuickSort with a median-of-three pivot. Your implementation must sort in place."},
+      {t:"ev",id:"ev-lab3",rel:"97%",x:"Task 2: Implement MergeSort recursively and instrument it to count comparisons. Submit a plot of comparisons against N for N = 100, 1 000 and 10 000, and comment on whether the curve matches N log N."},
+      {t:"p",x:"Submission: one zip containing your source, the plot as a PNG, and a README of at most one page."}
+    ]
+  ]),
+
+  /* ---- CS210 ---- */
+  "cs210-planner": f("cs210-planner","CS210 Course Planner 2026.pdf","Course Planner","pdf",[
+    [
+      {t:"h",x:"CS210 — Database Systems"},
+      {t:"sub",x:"Course Planner · Semester 1, 2026"},
+      {t:"ev",id:"ev-db-grading",rel:"96%",x:"Grading scheme: Final Exam (40%), Project (30%), Labs (20%), Quizzes (10%). The project is done in pairs and the schema design is submitted in week 7."},
+      {t:"p",x:"Prerequisite: CS101. Recommended companion reading is Database System Concepts, chapters 1 through 8."}
+    ]
+  ]),
+  "cs210-lec2": f("cs210-lec2","Lecture 2 - Relational Algebra.pdf","Lecture Notes","pdf",[
+    [
+      {t:"h",x:"Lecture 2 — Relational Algebra"},
+      {t:"sub",x:"24 slides · selection, projection, join"},
+      {t:"ev",id:"ev-ra",rel:"94%",x:"A natural join is equivalent to a Cartesian product followed by a selection on the equality of shared attributes, followed by a projection that removes the duplicate columns."},
+      {t:"p",x:"Query optimisers rely on this equivalence, pushing selections below joins to shrink intermediate results early."}
+    ]
+  ]),
+  "cs210-lab1": f("cs210-lab1","Lab 1 - SQL Joins.pdf","Labs","pdf",[
+    [
+      {t:"h",x:"Lab 1 — SQL Joins"},
+      {t:"sub",x:"Due end of week 3"},
+      {t:"ev",id:"ev-joins",rel:"92%",x:"Task 3: Write a query returning every student with no enrolment record. Use a LEFT JOIN with an IS NULL filter rather than NOT IN, and explain the difference when the subquery contains nulls."},
+      {t:"p",x:"Test your queries against the seed database provided on the course portal before submitting."}
+    ]
+  ]),
+  "cs210-pyq23": f("cs210-pyq23","PYQ 2023 - Final Exam.pdf","PYQs","pdf",[
+    [
+      {t:"h",x:"Final Examination 2023"},
+      {t:"sub",x:"CS210 · 2 hours"},
+      {t:"ev",id:"ev-db-pyq",rel:"90%",x:"Question 3 (25 marks): Normalise the given relation to third normal form. State every functional dependency you rely on at each step."},
+      {t:"p",x:"Question 4 (15 marks): Explain how a B+ tree index changes the cost of a range query compared with a full table scan."}
+    ]
+  ]),
+
+  /* ---- MA201 ---- */
+  "ma201-planner": f("ma201-planner","MA201 Course Outline.pdf","Course Planner","pdf",[
+    [
+      {t:"h",x:"MA201 — Linear Algebra"},
+      {t:"sub",x:"Course Outline · Semester 1, 2026"},
+      {t:"ev",id:"ev-ma-grading",rel:"95%",x:"Grading scheme: Final Exam (50%), Midterm (25%), Weekly problem sets (25%). The lowest two problem-set scores are dropped."},
+      {t:"p",x:"Topics run from vector spaces and linear maps through to eigenvalues, diagonalisation and the singular value decomposition."}
+    ]
+  ]),
+  "ma201-lec3": f("ma201-lec3","Lecture 3 - Eigenvalues.pdf","Lecture Notes","pdf",[
+    [
+      {t:"h",x:"Lecture 3 — Eigenvalues & Eigenvectors"},
+      {t:"sub",x:"18 slides"},
+      {t:"ev",id:"ev-eig",rel:"93%",x:"A square matrix is diagonalisable exactly when it has a full set of linearly independent eigenvectors. Repeated eigenvalues do not by themselves prevent diagonalisation — a deficient eigenspace does."},
+      {t:"p",x:"The characteristic polynomial gives the eigenvalues, but numerically it is a poor route; iterative methods are used in practice."}
+    ]
+  ]),
+  /* ---- CS101 · Year 1 Sem 1 ---- */
+  "cs101-outline": f("cs101-outline","CS101 Course Outline.pdf","Course Planner","pdf",[
+    [
+      {t:"h",x:"CS101 — Introduction to Programming"},
+      {t:"sub",x:"Course Outline · Semester 1 · Year 1"},
+      {t:"ev",id:"ev-cs101-grade",rel:"95%",x:"Grading scheme: Final Exam (40%), Practical Test (30%), Weekly Labs (30%). There is no midterm; the practical test is held in week 9."},
+      {t:"p",x:"No prior programming experience is assumed. All labs are completed in Python 3."}
+    ]
+  ]),
+  "cs101-lec1": f("cs101-lec1","Lecture 1 - Variables & Types.pdf","Lecture Notes","pdf",[
+    [
+      {t:"h",x:"Lecture 1 — Variables & Types"},
+      {t:"sub",x:"20 slides"},
+      {t:"ev",id:"ev-cs101-types",rel:"91%",x:"A variable is a name bound to a value, not a box holding one. Rebinding a name never changes the object it previously referred to — which is why two names can point at the same list and both appear to change."},
+      {t:"p",x:"Python decides the type from the value, but the type still matters: adding a string to an integer is an error, not a coercion."}
+    ]
+  ]),
+
+  /* ---- CS150 · Year 1 Sem 2 ---- */
+  "cs150-planner": f("cs150-planner","CS150 Course Planner.pdf","Course Planner","pdf",[
+    [
+      {t:"h",x:"CS150 — Web Development Basics"},
+      {t:"sub",x:"Course Planner · Semester 2 · Year 1"},
+      {t:"ev",id:"ev-cs150-grade",rel:"93%",x:"Grading scheme: Portfolio Project (45%), Weekly Labs (30%), Final Quiz (25%). The portfolio must be deployed to a public URL by week 13."},
+      {t:"p",x:"Topics run from HTML semantics and CSS layout through to fetch, forms and basic accessibility."}
+    ]
+  ]),
+  "cs150-lab2": f("cs150-lab2","Lab 2 - CSS Layout.pdf","Labs","pdf",[
+    [
+      {t:"h",x:"Lab 2 — CSS Layout"},
+      {t:"sub",x:"Flexbox and Grid"},
+      {t:"ev",id:"ev-cs150-lab",rel:"90%",x:"Task 3: Rebuild the given three-column layout using CSS Grid instead of floats, and explain in two sentences why the grid version survives a narrow viewport without media queries."},
+      {t:"p",x:"Submit the HTML and CSS files, plus a screenshot at 375px and 1280px wide."}
+    ]
+  ]),
+
+  /* ---- CS220 · Year 2 Sem 2 ---- */
+  "cs220-planner": f("cs220-planner","CS220 Course Planner.pdf","Course Planner","pdf",[
+    [
+      {t:"h",x:"CS220 — Software Engineering"},
+      {t:"sub",x:"Course Planner · Semester 2 · Year 2"},
+      {t:"ev",id:"ev-cs220-grade",rel:"94%",x:"Grading scheme: Group Project (50%), Final Exam (30%), Sprint Reviews (20%). Groups of four are fixed in week 2 and cannot be changed after week 4."},
+      {t:"p",x:"The project runs as four two-week sprints with a review at the end of each."}
+    ]
+  ]),
+  "cs220-tut1": f("cs220-tut1","Tutorial 1 - Requirements.pdf","Tutorial","pdf",[
+    [
+      {t:"h",x:"Tutorial 1 — Requirements"},
+      {t:"sub",x:"Eliciting and writing them down"},
+      {t:"ev",id:"ev-cs220-req",rel:"92%",x:"Exercise 2: Rewrite the three vague requirements below so each one is testable. A requirement you cannot write a failing test for is a wish, not a requirement."},
+      {t:"p",x:"Bring your rewritten set to the session; we will swap and critique in pairs."}
+    ]
+  ]),
+
+  "ma201-tut2": f("ma201-tut2","Tutorial 2 - Matrix Decomposition.pdf","Tutorial","pdf",[
+    [
+      {t:"h",x:"Tutorial 2 — Matrix Decomposition"},
+      {t:"sub",x:"LU, QR and SVD"},
+      {t:"ev",id:"ev-svd",rel:"89%",x:"Exercise 2: Show that the singular values of a matrix are the square roots of the eigenvalues of AᵀA, and explain why they are always real and non-negative."},
+      {t:"p",x:"Exercise 3: Use LU decomposition to solve the given 3×3 system, showing the forward and backward substitution steps."}
+    ]
+  ])
+};
+
+var CAT_ORDER = ["Course Planner","Tutorial","PYQs","Notes","Lecture Notes","Labs"];
+
+var COURSES = {
+  "CS202": {
+    code:"CS202", name:"Data Structures & Algorithms", year:"Year 2", sem:"Sem 1",
+    cats:["Course Planner","Tutorial","PYQs","Notes","Lecture Notes","Labs"],
+    files:["cs202-planner","cs202-tut1","cs202-tut2","cs202-pyq23","cs202-pyq22","cs202-notes","cs202-lec4","cs202-lec7","cs202-lab3"],
+    tabs:["cs202-planner","cs202-tut1"], active:"cs202-tut1", page:{},
+    week:5, weeks:14,
+    target:"finish Lab 3 and read Lecture 4 before Friday",
+    roadmap:[
+      {w:"Week 1",n:"Complexity analysis & asymptotic notation",s:1},
+      {w:"Week 2",n:"Cost models and empirical timing",s:1},
+      {w:"Week 3",n:"Arrays & dynamic arrays",s:1},
+      {w:"Week 4",n:"Linked lists, stacks & queues",s:1},
+      {w:"Week 4",n:"Tutorial 1 submission",s:1},
+      {w:"Week 5",n:"Sorting — QuickSort, MergeSort, HeapSort",s:0,now:true},
+      {w:"Week 5",n:"Lab 3 — QuickSort & Merge",s:0,now:true},
+      {w:"Week 6",n:"Binary search trees",s:0},
+      {w:"Week 7",n:"Heaps & priority queues",s:0},
+      {w:"Week 8",n:"Midterm examination",s:0,tag:"exam"},
+      {w:"Week 9",n:"Graphs & traversal",s:0},
+      {w:"Week 11",n:"Hashing & collision resolution",s:0},
+      {w:"Week 14",n:"Final examination",s:0,tag:"exam"}
+    ],
+    chat:[
+      {r:"ai",x:"Synced with <b>9 files</b> in CS202. Ask anything — I will cite the exact page and category I answered from."},
+      {r:"me",x:"@Tutorial 1 - Big O & Complexity.pdf Why does O(N log N) dominate O(N) once N passes 10,000?"},
+      {r:"ai",x:"Exercise 3 is asking about growth rate, not raw operation counts. At N = 10,000 the log factor is about 13.3, so an O(N log N) algorithm does roughly <b>13× the work</b> of a single O(N) pass over the same input — the factor stops being negligible and starts dominating the running time. Lecture 4 makes the same point concretely with QuickSort's average case.",
+       cites:[{f:"cs202-tut1",p:1,b:"ev-bigo",l:"Tutorial 1 · p.1"},{f:"cs202-lec4",p:1,b:"ev-quick",l:"Lecture 4 · p.1"}]}
+    ]
+  },
+  "CS210": {
+    code:"CS210", name:"Database Systems", year:"Year 2", sem:"Sem 1",
+    cats:["Course Planner","PYQs","Lecture Notes","Labs"],
+    files:["cs210-planner","cs210-lec2","cs210-lab1","cs210-pyq23"],
+    tabs:["cs210-lec2"], active:"cs210-lec2", page:{},
+    week:5, weeks:14,
+    target:"submit Lab 1 and start the project schema draft",
+    roadmap:[
+      {w:"Week 1",n:"Relational model & keys",s:1},
+      {w:"Week 2",n:"Relational algebra",s:1},
+      {w:"Week 3",n:"Lab 1 — SQL joins",s:0,now:true},
+      {w:"Week 5",n:"Normalisation to 3NF",s:0,now:true},
+      {w:"Week 7",n:"Project schema design submission",s:0},
+      {w:"Week 9",n:"Indexing & B+ trees",s:0},
+      {w:"Week 12",n:"Transactions & concurrency",s:0},
+      {w:"Week 14",n:"Final examination",s:0,tag:"exam"}
+    ],
+    chat:[
+      {r:"ai",x:"Synced with <b>4 files</b> in CS210. Ask anything — I will cite the exact page and category I answered from."},
+      {r:"me",x:"What's the grading breakdown for this course?"},
+      {r:"ai",x:"Final Exam 40%, Project 30%, Labs 20%, Quizzes 10%. The project is done in pairs, and the schema design is due in <b>week 7</b>.",
+       cites:[{f:"cs210-planner",p:1,b:"ev-db-grading",l:"Course Planner · p.1"}]}
+    ]
+  },
+  "MA201": {
+    code:"MA201", name:"Linear Algebra", year:"Year 2", sem:"Sem 1",
+    cats:["Course Planner","Tutorial","Lecture Notes"],
+    files:["ma201-planner","ma201-lec3","ma201-tut2"],
+    tabs:[], active:null, page:{},
+    week:5, weeks:14,
+    target:"clear the week 5 problem set",
+    roadmap:[
+      {w:"Week 1",n:"Vector spaces & subspaces",s:1},
+      {w:"Week 2",n:"Linear maps & matrices",s:1},
+      {w:"Week 4",n:"Determinants",s:1},
+      {w:"Week 5",n:"Eigenvalues & eigenvectors",s:0,now:true},
+      {w:"Week 8",n:"Midterm examination",s:0,tag:"exam"},
+      {w:"Week 10",n:"Diagonalisation",s:0},
+      {w:"Week 12",n:"Singular value decomposition",s:0},
+      {w:"Week 14",n:"Final examination",s:0,tag:"exam"}
+    ],
+    chat:[
+      {r:"ai",x:"Synced with <b>3 files</b> in MA201. Ask anything — I will cite the exact page and category I answered from."}
+    ]
+  },
+  "CS215": {
+    code:"CS215", name:"Operating Systems", year:"Year 2", sem:"Sem 1",
+    cats:[],
+    files:[],
+    tabs:[], active:null, page:{},
+    week:5, weeks:14,
+    target:"upload the course outline so the roadmap can be filled in",
+    roadmap:[
+      {w:"Week 1",n:"Processes & threads",s:0,now:true},
+      {w:"Week 4",n:"CPU scheduling",s:0},
+      {w:"Week 8",n:"Midterm examination",s:0,tag:"exam"},
+      {w:"Week 14",n:"Final examination",s:0,tag:"exam"}
+    ],
+    chat:[
+      {r:"ai",x:"No files indexed for CS215 yet. Upload the course outline or a lecture deck and I will be able to answer from it — with citations."}
+    ]
+  },
+  "CS101": {
+    code:"CS101", name:"Introduction to Programming", year:"Year 1", sem:"Sem 1",
+    cats:["Course Planner","Lecture Notes","Labs"],
+    files:["cs101-outline","cs101-lec1"],
+    tabs:[], active:null, page:{},
+    week:14, weeks:14, target:"course complete — kept for reference",
+    roadmap:[
+      {w:"Week 4",n:"Control flow & loops",s:1},
+      {w:"Week 9",n:"Practical test",s:1,tag:"exam"},
+      {w:"Week 14",n:"Final examination",s:1,tag:"exam"}
+    ],
+    chat:[{r:"ai",x:"Synced with <b>2 files</b> in CS101. This course is finished — the files stay searchable."}]
+  },
+  "CS150": {
+    code:"CS150", name:"Web Development Basics", year:"Year 1", sem:"Sem 2",
+    cats:["Course Planner","Labs","Notes"],
+    files:["cs150-planner","cs150-lab2"],
+    tabs:[], active:null, page:{},
+    week:14, weeks:14, target:"course complete — kept for reference",
+    roadmap:[
+      {w:"Week 6",n:"CSS layout & responsive design",s:1},
+      {w:"Week 13",n:"Portfolio deployed",s:1}
+    ],
+    chat:[{r:"ai",x:"Synced with <b>2 files</b> in CS150. This course is finished — the files stay searchable."}]
+  },
+  "CS220": {
+    code:"CS220", name:"Software Engineering", year:"Year 2", sem:"Sem 2",
+    cats:["Course Planner","Tutorial","Lecture Notes"],
+    files:["cs220-planner","cs220-tut1"],
+    tabs:[], active:null, page:{},
+    week:1, weeks:14, target:"read the planner and form a project group",
+    roadmap:[
+      {w:"Week 2",n:"Project groups fixed",s:0,now:true},
+      {w:"Week 4",n:"Sprint 1 review",s:0},
+      {w:"Week 14",n:"Final examination",s:0,tag:"exam"}
+    ],
+    chat:[{r:"ai",x:"Synced with <b>2 files</b> in CS220. Semester 2 has not started yet — the planner is already indexed."}]
+  }
+};
+
+var QUICKS = {
+  "CS202":["Explain Exercise 3","What's the grading breakdown?","Compare Lab 3 with Lecture 4"],
+  "CS210":["Explain natural joins","When is the project due?"],
+  "MA201":["What is diagonalisable?","Show the grading split"],
+  "CS215":[]
+};
+
+/* ============================ STATE ============================ */
+var S = { year:"Year 2", sem:"Sem 1", course:"CS202", collapsed:{} };
+var $ = function(id){ return document.getElementById(id); };
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]; }); }
+function cur(){ return COURSES[S.course]; }
+function pageOf(fid){ var c=cur(); return c.page[fid]||0; }
+
+/* Alphabetical, but number-aware: "Lecture 2" sorts before "Lecture 10". */
+function sortNames(a,b){ return String(a).localeCompare(String(b), undefined, {numeric:true, sensitivity:"base"}); }
+/* Known folders keep their teaching order; folders the student invented follow, A–Z. */
+function orderedCats(c){
+  var known = CAT_ORDER.filter(function(x){ return c.cats.indexOf(x) >= 0; });
+  var custom = c.cats.filter(function(x){ return CAT_ORDER.indexOf(x) < 0; }).sort(sortNames);
+  return known.concat(custom);
+}
+
+/* ---- year / semester scopes are derived from the courses that exist ---- */
+function years(){
+  var seen = {}, out = [];
+  Object.keys(COURSES).forEach(function(k){ var y = COURSES[k].year; if(!seen[y]){ seen[y]=1; out.push(y); } });
+  return out.sort(sortNames);
+}
+function semsFor(year){
+  var seen = {}, out = [];
+  Object.keys(COURSES).forEach(function(k){
+    var c = COURSES[k];
+    if(c.year===year && !seen[c.sem]){ seen[c.sem]=1; out.push(c.sem); }
+  });
+  return out.sort(sortNames);
+}
+function coursesIn(year, sem){
+  return Object.keys(COURSES).filter(function(k){ return COURSES[k].year===year && COURSES[k].sem===sem; });
+}
+function shortScope(c){ return c.year.replace("Year ","Y") + " · " + c.sem.replace("Sem ","S"); }
+
+/* ============================ TREE ============================ */
+function fileRow(fl, c, justAdded, isRoot){
+  var isOpen = c.tabs.indexOf(fl.id) >= 0;
+  var isAct = c.active === fl.id;
+  var h = '<div class="file-row' + (isRoot?" root":"") + (isOpen?" open":"") + (isAct?" active":"") +
+          (justAdded===fl.id?" justadded":"") + '" data-act="openFile" data-id="' + fl.id + '">';
+  h += '<span class="fi">' + I.file + '</span>';
+  h += '<span class="file-name">' + esc(fl.name) + '</span>';
+  h += '<span class="f-meta">' + fl.pages.length + 'p</span>';
+  h += '<span class="row-acts"><button class="tool" data-act="fileMenu" data-id="' + fl.id + '" title="More">' + I.dots + '</button></span>';
+  return h + '</div>';
+}
+
+function renderTree(justAdded){
+  var c = cur(), tree = $("tree"), html = "";
+  $("exCount").textContent = c.files.length + (c.files.length===1 ? " file" : " files");
+
+  if(!c.cats.length && !c.files.length){
+    tree.innerHTML =
+      '<div class="tree-empty">' +
+      '<span class="te-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 15.5V5M12 5L8 9M12 5l4 4M4.5 16v2A2.5 2.5 0 007 20.5h10a2.5 2.5 0 002.5-2.5v-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
+      '<h4>' + esc(c.code) + ' is empty</h4>' +
+      '<p>This course was created with no folders. Drag files onto this panel and they will sit at the top level, sorted A–Z.</p>' +
+      '<button class="te-btn" data-act="uploadHere">' + I.plus + 'Upload files</button>' +
+      '</div>';
+    return;
+  }
+
+  /* group, then sort every group alphabetically */
+  var byCat = {};
+  c.files.forEach(function(id){
+    var fl = FILES[id], k = fl.cat || "__root";
+    (byCat[k] = byCat[k] || []).push(fl);
+  });
+  Object.keys(byCat).forEach(function(k){
+    byCat[k].sort(function(a,b){ return sortNames(a.name, b.name); });
+  });
+
+  orderedCats(c).forEach(function(cat){
+    var list = byCat[cat] || [];
+    var key = S.course + "|" + cat;
+    var isCol = !!S.collapsed[key];
+    html += '<div class="cat' + (isCol?" collapsed":"") + '" data-cat="' + esc(cat) + '">';
+    html += '<div class="cat-row" data-act="toggleCat" data-cat="' + esc(cat) + '">';
+    html += '<span class="tw">' + I.chev + '</span>';
+    html += '<span class="fi" style="color:var(--tx-faint);display:grid;place-items:center">' + I.folder + '</span>';
+    html += '<span class="cat-name">' + esc(cat) + '</span>';
+    html += '<span class="cat-n mono">' + list.length + '</span>';
+    html += '<span class="row-acts">';
+    html += '<button class="tool" data-act="catAdd" data-cat="' + esc(cat) + '" title="Upload into ' + esc(cat) + '">' + I.plus + '</button>';
+    html += '<button class="tool" data-act="catMenu" data-cat="' + esc(cat) + '" title="More">' + I.dots + '</button>';
+    html += '</span></div>';
+    html += '<div class="files">';
+    if(list.length){ list.forEach(function(fl){ html += fileRow(fl, c, justAdded, false); }); }
+    else { html += '<div class="cat-empty">Empty — drop files here</div>'; }
+    html += '</div></div>';
+  });
+
+  /* files that belong to no folder sit at the top level, after the folders */
+  var loose = byCat["__root"] || [];
+  if(loose.length){
+    if(c.cats.length) html += '<div class="root-lab">Top level</div>';
+    loose.forEach(function(fl){ html += fileRow(fl, c, justAdded, true); });
+  }
+
+  tree.innerHTML = html;
+}
+
+/* ============================ TABS ============================ */
+function renderTabs(justOpened){
+  var c = cur(), el = $("tabs"), html = "";
+  c.tabs.forEach(function(id){
+    var fl = FILES[id];
+    var act = c.active === id;
+    html += '<button class="tab' + (act?" active":"") + (justOpened===id?" enter":"") + '" data-act="focusTab" data-id="' + id + '">';
+    html += '<span class="ti">' + I.file + '</span>';
+    html += '<span class="tn">' + esc(fl.name.replace(/\.(pdf|md)$/,"")) + '</span>';
+    html += '<span class="tx" data-act="closeTab" data-id="' + id + '">' + I.close + '</span>';
+    html += '</button>';
+  });
+  el.innerHTML = html;
+  $("tagCode").textContent = c.code;
+}
+
+/* ============================ DOCUMENT ============================ */
+function renderDoc(flashBlock){
+  var c = cur(), wrap = $("docWrap");
+  if(!c.active){
+    wrap.innerHTML = '<div class="empty">' +
+      '<div class="empty-ic">' + I.book + '</div>' +
+      '<h3>No file open</h3>' +
+      '<p>Pick a file from the explorer on the left. Tabs you open here are remembered for ' + esc(c.code) + ' only.</p>' +
+      '</div>';
+    return;
+  }
+  var fl = FILES[c.active], pi = pageOf(c.active), pg = fl.pages[pi];
+  var h = '<div class="docbar">';
+  h += '<div class="doc-ic' + (fl.kind==="md"?" md":"") + '">' + (fl.kind==="md"?"MD":"PDF") + '</div>';
+  h += '<div class="doc-t"><div class="doc-name">' + esc(fl.name) + '</div>';
+  h += '<div class="doc-meta"><span>' + esc(c.code) + '</span><span class="dot"></span><span>' + esc(fl.cat || "Top level") + '</span><span class="dot"></span><span class="mono">Indexed</span></div></div>';
+  h += '<div class="pager">';
+  h += '<button class="pg" data-act="pgPrev"' + (pi===0?" disabled":"") + '>' + I.prev + '</button>';
+  h += '<span class="pn">' + (pi+1) + " / " + fl.pages.length + '</span>';
+  h += '<button class="pg" data-act="pgNext"' + (pi>=fl.pages.length-1?" disabled":"") + '>' + I.next + '</button>';
+  h += '</div></div>';
+
+  h += '<div class="canvas" id="canvas"><div class="page">';
+  h += '<div class="page-tagrow"><span class="page-tag">' + I.folder + esc(fl.cat).toUpperCase() + ' — DOCUMENT CHUNK VIEW</span>';
+  h += '<span class="idx-pill mono">Indexed page ' + (pi+1) + '</span></div>';
+
+  pg.forEach(function(b){
+    if(b.t==="h") h += '<h2 class="blk blk-h">' + esc(b.x) + '</h2>';
+    else if(b.t==="sub") h += '<p class="blk-sub">' + esc(b.x) + '</p>';
+    else if(b.t==="p") h += '<p class="blk-p">' + esc(b.x) + '</p>';
+    else if(b.t==="ev"){
+      h += '<div class="blk-ev" id="' + b.id + '">';
+      h += '<div class="ev-head"><span class="ev-lab">▸ RAG ground truth · section 1</span>';
+      h += '<span class="ev-rel mono">Relevance ' + b.rel + '</span></div>';
+      h += '<p class="ev-tx">' + esc(b.x) + '</p></div>';
+    }
+    else if(b.t==="note"){
+      h += '<div class="blk-note"><h4>' + esc(b.h) + '</h4><p>' + esc(b.x) + '</p></div>';
+    }
+  });
+  h += '</div></div>';
+  wrap.innerHTML = h;
+
+  if(flashBlock){
+    var t = document.getElementById(flashBlock);
+    if(t){
+      t.classList.add("flash");
+      try{ t.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){ t.scrollIntoView(); }
+      setTimeout(function(){ t.classList.remove("flash"); },1600);
+    }
+  }
+}
+
+/* ============================ CHAT ============================ */
+function mentionize(s){
+  return esc(s).replace(/@([^@?]+?\.(?:pdf|md)|[A-Z][A-Za-z ]{2,20}(?= |$))/g, function(m,g){
+    return '<span class="mention">@' + g.trim() + '</span>';
+  });
+}
+function renderChat(){
+  var c = cur(), el = $("msgs"), html = "";
+  c.chat.forEach(function(m){
+    html += '<div class="msg ' + m.r + '">';
+    html += '<div class="msg-who"><span class="who-av">' + (m.r==="ai"?"AI":"ME") + '</span>' + (m.r==="ai"?"Assistant":"You") + '</div>';
+    html += '<div class="bubble">' + (m.r==="me" ? mentionize(m.x) : m.x);
+    if(m.cites && m.cites.length){
+      html += '<div class="cites">';
+      m.cites.forEach(function(ct){
+        html += '<span class="cite" data-act="jump" data-f="' + ct.f + '" data-p="' + ct.p + '" data-b="' + ct.b + '">';
+        html += '<svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M2 5.2l2 2 4-4.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        html += esc(ct.l) + '</span>';
+      });
+      html += '</div>';
+    }
+    html += '</div></div>';
+  });
+  el.innerHTML = html;
+  el.scrollTop = el.scrollHeight;
+  $("chatScope").textContent = c.code + " · " + c.files.length + " files";
+
+  var q = QUICKS[S.course] || [];
+  $("quick").innerHTML = '<span class="quick-lab">Try</span>' + q.map(function(t){
+    return '<button class="qb" data-act="quick" data-q="' + esc(t) + '">' + esc(t) + '</button>';
+  }).join("");
+}
+
+function answerFor(text){
+  var c = cur(), t = text.toLowerCase();
+  if(/grad|mark|percent|breakdown|weight/.test(t)){
+    var pl = c.files.filter(function(id){ return FILES[id].cat==="Course Planner"; })[0];
+    if(pl){
+      var evb = FILES[pl].pages[0].filter(function(b){ return b.t==="ev"; })[0];
+      return { x: evb ? esc(evb.x).replace(/^Grading scheme: /,"The breakdown is ") : "See the course planner.",
+               cites:[{f:pl,p:1,b:evb?evb.id:"",l:"Course Planner · p.1"}] };
+    }
+  }
+  if(/big o|complex|n log n|nested|exercise 3/.test(t) && S.course==="CS202"){
+    return { x:"At N = 10,000 the log factor is about 13.3, so an O(N log N) algorithm does roughly <b>13× the work</b> of a single O(N) pass. Below a few hundred elements the difference is invisible; past ten thousand it dominates the runtime.",
+             cites:[{f:"cs202-tut1",p:1,b:"ev-bigo",l:"Tutorial 1 · p.1"},{f:"cs202-lec4",p:1,b:"ev-quick",l:"Lecture 4 · p.1"}] };
+  }
+  if(/lab 3|lecture 4|compare/.test(t) && S.course==="CS202"){
+    return { x:"Lab 3 asks you to <b>measure</b> what Lecture 4 asserts. The lecture states QuickSort averages O(N log N) and degrades to O(N²) on a bad pivot; the lab has you count comparisons at N = 100, 1 000 and 10 000 and check the curve against N log N yourself.",
+             cites:[{f:"cs202-lab3",p:1,b:"ev-lab3",l:"Lab 3 · p.1"},{f:"cs202-lec4",p:1,b:"ev-quick",l:"Lecture 4 · p.1"}] };
+  }
+  if(/join|relational|algebra/.test(t) && S.course==="CS210"){
+    return { x:"A natural join is a Cartesian product, then a selection on equality of the shared attributes, then a projection dropping the duplicate columns. Optimisers use that equivalence to push selections below joins.",
+             cites:[{f:"cs210-lec2",p:1,b:"ev-ra",l:"Lecture 2 · p.1"}] };
+  }
+  if(/project|due|deadline|when/.test(t) && S.course==="CS210"){
+    return { x:"The project is done in pairs and the <b>schema design is due in week 7</b>. It carries 30% of the final grade.",
+             cites:[{f:"cs210-planner",p:1,b:"ev-db-grading",l:"Course Planner · p.1"}] };
+  }
+  if(/diagonal|eigen/.test(t) && S.course==="MA201"){
+    return { x:"A square matrix is diagonalisable exactly when it has a full set of linearly independent eigenvectors. Repeated eigenvalues are fine on their own — the problem is a deficient eigenspace.",
+             cites:[{f:"ma201-lec3",p:1,b:"ev-eig",l:"Lecture 3 · p.1"}] };
+  }
+  /* grounded fallback — cite whatever is open */
+  var fid = c.active || c.files[0], fl = FILES[fid];
+  var ev = fl.pages[0].filter(function(b){ return b.t==="ev"; })[0];
+  return { x:"I found <b>3 passages</b> in " + esc(c.code) + " related to that. The closest sits in " + esc(fl.name.replace(/\.(pdf|md)$/,"")) + " under " + esc(fl.cat) + " — open the citation to read it in context.",
+           cites:[{f:fid,p:1,b:ev?ev.id:"",l:fl.cat + " · p.1"}] };
+}
+
+function send(text){
+  text = (text||"").trim();
+  if(!text) return;
+  var c = cur();
+  c.chat.push({r:"me",x:text});
+  renderChat();
+  $("chatInput").value = "";
+  closeAt();
+
+  var el = $("msgs");
+  var pend = document.createElement("div");
+  pend.className = "msg ai";
+  pend.innerHTML = '<div class="msg-who"><span class="who-av">AI</span>Assistant</div>' +
+                   '<div class="bubble"><div class="typing"><i></i><i></i><i></i></div></div>';
+  el.appendChild(pend);
+  el.scrollTop = el.scrollHeight;
+
+  setTimeout(function(){
+    var a = answerFor(text);
+    c.chat.push({r:"ai",x:a.x,cites:a.cites});
+    renderChat();
+  }, 620);
+}
+
+/* ============================ @ MENTION ============================ */
+function openAt(){
+  var c = cur(), html = "";
+  orderedCats(c).forEach(function(cat){
+    var has = c.files.filter(function(id){ return FILES[id].cat===cat; });
+    if(!has.length) return;
+    html += '<div class="atrow" data-at="' + esc(cat) + '"><span class="ai">' + I.folder + '</span>' +
+            '<span class="an">' + esc(cat) + '</span><span class="ac mono">' + has.length + ' files</span></div>';
+  });
+  c.files.map(function(id){ return FILES[id]; })
+         .sort(function(a,b){ return sortNames(a.name, b.name); })
+         .forEach(function(fl){
+    html += '<div class="atrow" data-at="' + esc(fl.name) + '"><span class="ai">' + I.file + '</span>' +
+            '<span class="an">' + esc(fl.name) + '</span><span class="ac mono">' + esc(fl.cat || "top level") + '</span></div>';
+  });
+  if(!html) html = '<div class="nc-empty-note">No files in this course yet.</div>';
+  $("atlist").innerHTML = html;
+  $("atpick").classList.add("on");
+}
+function closeAt(){ $("atpick").classList.remove("on"); }
+
+/* ============================ MENUS ============================ */
+function showMenu(anchor, html, align){
+  var m = $("menu"), app = $("app");
+  m.innerHTML = html;
+  m.classList.add("on");
+  var a = anchor.getBoundingClientRect(), p = app.getBoundingClientRect();
+  var top = a.bottom - p.top + 5;
+  var left = (align==="right") ? (a.right - p.left - m.offsetWidth) : (a.left - p.left);
+  if(left + m.offsetWidth > p.width - 8) left = p.width - m.offsetWidth - 8;
+  if(left < 8) left = 8;
+  if(top + m.offsetHeight > p.height - 8) top = Math.max(8, a.top - p.top - m.offsetHeight - 5);
+  m.style.top = top + "px";
+  m.style.left = left + "px";
+}
+function hideMenu(){ $("menu").classList.remove("on"); }
+
+function courseMenu(){
+  var h = '<div class="menu-lab">' + esc(S.year) + ' · ' + esc(S.sem) + '</div>';
+  coursesIn(S.year, S.sem).forEach(function(k){
+    var c = COURSES[k], on = k===S.course;
+    h += '<div class="mi' + (on?" on":"") + '" data-act="pickCourse" data-k="' + k + '">';
+    h += '<span class="mck">' + (on?I.check:"") + '</span>';
+    h += '<span class="mcc">' + esc(c.code) + '</span>';
+    h += '<span class="mnn">' + esc(c.name) + '</span>';
+    h += '<span class="mi-acts"><button class="tool" data-act="stub" data-t="Rename course">' + I.pen + '</button>';
+    h += '<button class="tool" data-act="stub" data-t="Delete course">' + I.trash + '</button></span>';
+    h += '</div>';
+  });
+  h += '<div class="msep"></div>';
+  h += '<div class="mi" data-act="newCourse"><span class="mck">' + I.plus + '</span><span class="mnn">New course…</span></div>';
+  return h;
+}
+/* where should a course-level upload land? */
+function destMenu(){
+  var c = cur();
+  var h = '<div class="menu-lab">Upload into</div>';
+  orderedCats(c).forEach(function(cat){
+    h += '<div class="mi" data-act="uploadTo" data-cat="' + esc(cat) + '">' +
+         '<span class="mck">' + I.folder + '</span><span class="mnn">' + esc(cat) + '</span></div>';
+  });
+  if(c.cats.length) h += '<div class="msep"></div>';
+  h += '<div class="mi" data-act="uploadTo" data-cat=""><span class="mck">' + I.file + '</span><span class="mnn">No folder (top level)</span></div>';
+  return h;
+}
+/* folders this course does not have yet */
+function newCatMenu(){
+  var c = cur();
+  var missing = CAT_ORDER.filter(function(x){ return c.cats.indexOf(x) < 0; });
+  var h = '<div class="menu-lab">Add a folder</div>';
+  missing.forEach(function(cat){
+    h += '<div class="mi" data-act="addCat" data-cat="' + esc(cat) + '">' +
+         '<span class="mck">' + I.plus + '</span><span class="mnn">' + esc(cat) + '</span></div>';
+  });
+  if(missing.length) h += '<div class="msep"></div>';
+  h += '<div class="menu-in"><input id="newCatIn" placeholder="Custom folder name…" autocomplete="off"></div>';
+  return h;
+}
+function listMenu(items, curVal, act){
+  var h = "";
+  items.forEach(function(v){
+    var on = v===curVal;
+    h += '<div class="mi' + (on?" on":"") + '" data-act="' + act + '" data-v="' + esc(v) + '">';
+    h += '<span class="mck">' + (on?I.check:"") + '</span><span class="mnn">' + esc(v) + '</span>';
+    h += '<span class="mi-acts"><button class="tool" data-act="stub" data-t="Rename">' + I.pen + '</button></span></div>';
+  });
+  h += '<div class="msep"></div><div class="mi" data-act="stub" data-t="Add entry"><span class="mck">' + I.plus + '</span><span class="mnn">Add…</span></div>';
+  return h;
+}
+function crudMenu(label){
+  return '<div class="menu-lab">' + esc(label) + '</div>' +
+    '<div class="mi" data-act="stub" data-t="Rename"><span class="mck">' + I.pen + '</span><span class="mnn">Rename</span></div>' +
+    '<div class="mi" data-act="stub" data-t="Move to category"><span class="mck">' + I.folder + '</span><span class="mnn">Move to…</span></div>' +
+    '<div class="mi" data-act="stub" data-t="Re-index"><span class="mck">' + I.check + '</span><span class="mnn">Re-index for search</span></div>' +
+    '<div class="msep"></div>' +
+    '<div class="mi danger" data-act="stub" data-t="Delete"><span class="mck">' + I.trash + '</span><span class="mnn">Delete</span></div>';
+}
+
+/* ============================ UPLOAD (simulated) ============================ */
+var SAMPLE = {
+  "Course Planner":["Assessment Brief 2026.pdf","Course Outline (revised).pdf"],
+  "Tutorial":["Tutorial 3 - Recursion.pdf","Tutorial 10 - Revision Set.pdf"],
+  "PYQs":["PYQ 2021 - Final Exam.pdf","PYQ 2024 - Mock Paper.pdf"],
+  "Notes":["Cheat Sheet - Complexity.md","Annotated Slides - Week 5.md"],
+  "Lecture Notes":["Lecture 2 - Arrays & Lists.pdf","Lecture 10 - Hashing.pdf"],
+  "Labs":["Lab 1 - Warmup.pdf","Lab 10 - Revision.pdf"]
+};
+var GENERIC = ["Reading List.pdf","Seminar Slides.pdf","Handout.pdf","Reference Sheet.pdf"];
+var upSeq = 0;
+
+function simulateUpload(cat){
+  var c = cur();
+  var pool = SAMPLE[cat] || GENERIC;
+  var taken = c.files.map(function(id){ return FILES[id].name; });
+  var name = null;
+  for(var i=0;i<pool.length;i++){ if(taken.indexOf(pool[i]) < 0){ name = pool[i]; break; } }
+  if(!name) name = "Upload " + (++upSeq) + ".pdf";
+
+  var id = "up-" + (++upSeq) + "-" + Date.now();
+  var base = name.replace(/\.(pdf|md)$/,"");
+  FILES[id] = {
+    id:id, name:name, cat:cat||"", kind:/\.md$/.test(name) ? "md" : "pdf",
+    pages:[[
+      {t:"h",x:base},
+      {t:"sub",x:"Uploaded just now · " + c.code + (cat ? " · " + cat : " · top level")},
+      {t:"note",h:"Preview not available in this concept",
+       x:"In the built product the uploaded file renders here, chunked and indexed for retrieval. This mock only shows where the file lands in the explorer."}
+    ]]
+  };
+  c.files.push(id);
+  renderTree(id);
+  renderChat();
+
+  var where = cat ? esc(cat) : "the top level";
+  toast('Added <b>' + esc(name) + '</b> to ' + where + ' · sorted into place');
+}
+
+/* ============================ ROADMAP ============================ */
+function stats(){
+  var c = cur(), total = c.roadmap.length;
+  var done = c.roadmap.filter(function(m){ return m.s===1; }).length;
+  return { done:done, total:total, pct: total ? Math.round(done / total * 100) : 0 };
+}
+function renderProgress(){
+  var c = cur(), st = stats();
+  $("progPct").textContent = st.pct + "%";
+  $("progBar").style.width = st.pct + "%";
+  $("progWk").textContent = "Week " + c.week + " of " + c.weeks;
+  var nowItem = c.roadmap.filter(function(m){ return m.now && m.s===0; })[0] ||
+                c.roadmap.filter(function(m){ return m.s===0; })[0];
+  $("progNext").textContent = c.roadmap.length ? (nowItem ? "· " + nowItem.n.split("—")[0].trim() : "· all clear")
+                                               : "· no milestones yet";
+}
+function renderModal(){
+  var c = cur(), st = stats();
+  $("mTitle").textContent = c.code + " — Learning Roadmap";
+  $("mSub").textContent = c.sem + ", 2026 · " + c.weeks + " teaching weeks · tick a milestone to update progress";
+  $("mPct").textContent = st.pct + "%";
+  $("mDone").innerHTML = st.done + '<small>/ ' + st.total + '</small>';
+  $("mWeek").innerHTML = c.week + '<small>/ ' + c.weeks + '</small>';
+  $("mTarget").textContent = c.target;
+  if(!c.roadmap.length){
+    $("mBody").innerHTML = '<div class="nc-empty-note">No milestones yet.<br>Upload the course outline and the weekly plan can be filled in from it.</div>';
+    return;
+  }
+  var h = "";
+  c.roadmap.forEach(function(m,i){
+    h += '<div class="ms' + (m.s===1?" done":"") + (m.now&&m.s===0?" now":"") + '" data-act="toggleMs" data-i="' + i + '">';
+    h += '<span class="ms-box">' + I.check + '</span>';
+    h += '<span class="ms-t"><span class="ms-wk mono">' + esc(m.w) + '</span><span class="ms-n">' + esc(m.n) + '</span></span>';
+    if(m.tag==="exam") h += '<span class="ms-tag exam mono">EXAM</span>';
+    else if(m.now && m.s===0) h += '<span class="ms-tag now mono">THIS WEEK</span>';
+    else if(m.s===1) h += '<span class="ms-tag mono">DONE</span>';
+    h += '</div>';
+  });
+  $("mBody").innerHTML = h;
+}
+
+/* ============================ ACTIONS ============================ */
+var toastT = null;
+function toast(msg){
+  $("toastTx").innerHTML = msg;
+  var t = $("toast");
+  t.classList.add("on");
+  clearTimeout(toastT);
+  toastT = setTimeout(function(){ t.classList.remove("on"); }, 2600);
+}
+
+function openFile(id, flashBlock, page){
+  var c = cur();
+  if(c.tabs.indexOf(id) < 0) c.tabs.push(id);
+  c.active = id;
+  if(typeof page === "number") c.page[id] = page;
+  renderTree(); renderTabs(id); renderDoc(flashBlock);
+}
+function closeTab(id){
+  var c = cur(), i = c.tabs.indexOf(id);
+  if(i < 0) return;
+  c.tabs.splice(i,1);
+  if(c.active === id) c.active = c.tabs.length ? c.tabs[Math.min(i, c.tabs.length-1)] : null;
+  renderTree(); renderTabs(); renderDoc();
+}
+function switchCourse(k, silent){
+  if(k === S.course) return;
+  var from = cur().code;
+  S.course = k;
+  var c = cur();
+  $("lblCode").textContent = c.code;
+  $("lblName").textContent = c.name;
+  renderTree(); renderTabs(); renderDoc(); renderChat(); renderProgress();
+  if(silent) return;
+  if(c.tabs.length){
+    toast('Restored <b>' + c.tabs.length + ' tab' + (c.tabs.length>1?"s":"") + '</b> for ' + c.code + ' · ' + from + ' tabs saved');
+  }else{
+    toast('<b>' + c.code + '</b> has no open tabs · ' + from + ' tabs saved');
+  }
+}
+/* keep year / sem / course consistent after a scope change */
+function ensureScope(){
+  var sems = semsFor(S.year);
+  if(sems.indexOf(S.sem) < 0) S.sem = sems[0];
+  $("lblYear").textContent = S.year;
+  $("lblSem").textContent = S.sem;
+  var list = coursesIn(S.year, S.sem);
+  if(list.indexOf(S.course) < 0 && list.length) switchCourse(list[0], true);
+}
+/* search results jump across year and semester, not just course */
+function gotoCourse(k){
+  var c = COURSES[k];
+  S.year = c.year; S.sem = c.sem;
+  $("lblYear").textContent = S.year;
+  $("lblSem").textContent = S.sem;
+  switchCourse(k);
+}
+
+/* ============================ EVENTS ============================ */
+document.addEventListener("click", function(e){
+  var t = e.target.closest("[data-act]");
+
+  /* dropdown triggers */
+  if(e.target.closest("#selCourse")){
+    e.stopPropagation();
+    var b = $("selCourse"), open = b.getAttribute("aria-expanded")==="true";
+    hideAllSel(); if(!open){ b.setAttribute("aria-expanded","true"); showMenu(b, courseMenu()); } else hideMenu();
+    return;
+  }
+  if(e.target.closest("#selYear")){
+    e.stopPropagation();
+    var b2 = $("selYear"), o2 = b2.getAttribute("aria-expanded")==="true";
+    hideAllSel(); if(!o2){ b2.setAttribute("aria-expanded","true"); showMenu(b2, listMenu(years(), S.year, "pickYear")); } else hideMenu();
+    return;
+  }
+  if(e.target.closest("#selSem")){
+    e.stopPropagation();
+    var b3 = $("selSem"), o3 = b3.getAttribute("aria-expanded")==="true";
+    hideAllSel(); if(!o3){ b3.setAttribute("aria-expanded","true"); showMenu(b3, listMenu(semsFor(S.year), S.sem, "pickSem")); } else hideMenu();
+    return;
+  }
+
+  if(!e.target.closest(".searchwrap")) $("qres").classList.remove("on");
+
+  if(!t){
+    if(!e.target.closest("#menu")) { hideMenu(); hideAllSel(); }
+    if(!e.target.closest("#atpick") && !e.target.closest("#chatInput")) closeAt();
+    return;
+  }
+
+  var act = t.getAttribute("data-act");
+
+  if(act==="toggleCat"){
+    var key = S.course + "|" + t.getAttribute("data-cat");
+    S.collapsed[key] = !S.collapsed[key];
+    renderTree();
+  }
+  else if(act==="openFile"){ openFile(t.getAttribute("data-id")); }
+  else if(act==="focusTab"){ var c0=cur(); c0.active=t.getAttribute("data-id"); renderTree(); renderTabs(); renderDoc(); }
+  else if(act==="closeTab"){ e.stopPropagation(); closeTab(t.getAttribute("data-id")); }
+  else if(act==="pgPrev"){ var c1=cur(); c1.page[c1.active]=Math.max(0,pageOf(c1.active)-1); renderDoc(); }
+  else if(act==="pgNext"){ var c2=cur(); c2.page[c2.active]=Math.min(FILES[c2.active].pages.length-1,pageOf(c2.active)+1); renderDoc(); }
+  else if(act==="jump"){
+    var fid=t.getAttribute("data-f"), pg=parseInt(t.getAttribute("data-p"),10)-1, bl=t.getAttribute("data-b");
+    openFile(fid, bl, pg);
+  }
+  else if(act==="pickCourse"){ hideMenu(); hideAllSel(); switchCourse(t.getAttribute("data-k")); }
+  else if(act==="pickYear"){
+    S.year = t.getAttribute("data-v"); hideMenu(); hideAllSel(); ensureScope();
+    toast("<b>" + esc(S.year) + " · " + esc(S.sem) + "</b> · " + coursesIn(S.year,S.sem).length + " courses");
+  }
+  else if(act==="pickSem"){
+    S.sem = t.getAttribute("data-v"); hideMenu(); hideAllSel(); ensureScope();
+    toast("<b>" + esc(S.year) + " · " + esc(S.sem) + "</b> · " + coursesIn(S.year,S.sem).length + " courses");
+  }
+  else if(act==="catAdd"){ e.stopPropagation(); simulateUpload(t.getAttribute("data-cat")); }
+  else if(act==="uploadHere"){ simulateUpload(""); }
+  else if(act==="uploadTo"){ hideMenu(); simulateUpload(t.getAttribute("data-cat")); }
+  else if(act==="addCat"){
+    hideMenu();
+    var cc = cur(), nm = t.getAttribute("data-cat");
+    if(cc.cats.indexOf(nm) < 0){ cc.cats.push(nm); renderTree(); toast('Added folder <b>' + esc(nm) + '</b>'); }
+  }
+  else if(act==="newCourse"){ hideMenu(); hideAllSel(); openNewCourse(); }
+  else if(act==="catMenu"){ e.stopPropagation(); showMenu(t, crudMenu(t.getAttribute("data-cat"))); }
+  else if(act==="fileMenu"){ e.stopPropagation(); showMenu(t, crudMenu(FILES[t.getAttribute("data-id")].name), "right"); }
+  else if(act==="stub"){ e.stopPropagation(); hideMenu(); hideAllSel(); toast('<b>' + esc(t.getAttribute("data-t")) + '</b> — visual concept only'); }
+  else if(act==="quick"){ send(t.getAttribute("data-q")); }
+  else if(act==="toggleMs"){
+    var c3=cur(), i=parseInt(t.getAttribute("data-i"),10);
+    c3.roadmap[i].s = c3.roadmap[i].s===1 ? 0 : 1;
+    renderModal(); renderProgress();
+  }
+});
+
+function hideAllSel(){
+  ["selCourse","selYear","selSem"].forEach(function(id){ $(id).setAttribute("aria-expanded","false"); });
+}
+
+/* explorer + chat + misc */
+$("progWidget").addEventListener("click", function(){ renderModal(); $("scrim").classList.add("on"); });
+$("progWidget").addEventListener("keydown", function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); renderModal(); $("scrim").classList.add("on"); } });
+$("mClose").addEventListener("click", function(){ $("scrim").classList.remove("on"); });
+$("scrim").addEventListener("click", function(e){ if(e.target===$("scrim")) $("scrim").classList.remove("on"); });
+document.addEventListener("keydown", function(e){
+  if(e.key==="Escape"){ $("scrim").classList.remove("on"); closeNewCourse(); hideMenu(); hideAllSel(); closeAt(); }
+});
+
+$("btnSend").addEventListener("click", function(){ send($("chatInput").value); });
+$("chatInput").addEventListener("keydown", function(e){
+  if(e.key==="Enter"){ e.preventDefault(); send(this.value); }
+});
+$("chatInput").addEventListener("input", function(){
+  var v = this.value;
+  if(v.charAt(v.length-1) === "@") openAt();
+  else if(!/@[^\s]*$/.test(v)) closeAt();
+});
+$("atlist").addEventListener("click", function(e){
+  var r = e.target.closest(".atrow");
+  if(!r) return;
+  var inp = $("chatInput");
+  inp.value = inp.value.replace(/@$/,"") + "@" + r.getAttribute("data-at") + " ";
+  closeAt(); inp.focus();
+});
+$("btnClearChat").addEventListener("click", function(){
+  var c = cur();
+  c.chat = [{r:"ai",x:"Conversation cleared. Still synced with <b>" + c.files.length + " files</b> in " + c.code + "."}];
+  renderChat();
+});
+$("btnUpload").addEventListener("click", function(e){
+  e.stopPropagation();
+  var c = cur();
+  if(!c.cats.length){ simulateUpload(""); return; }   /* blank course → straight to top level */
+  showMenu(this, destMenu());
+});
+$("btnNewCat").addEventListener("click", function(e){
+  e.stopPropagation();
+  showMenu(this, newCatMenu());
+  var inp = $("newCatIn");
+  if(inp) inp.focus();
+});
+/* Enter inside the "custom folder" field */
+document.addEventListener("keydown", function(e){
+  if(e.target && e.target.id === "newCatIn" && e.key === "Enter"){
+    var nm = e.target.value.trim();
+    if(!nm) return;
+    var c = cur();
+    if(c.cats.indexOf(nm) < 0) c.cats.push(nm);
+    hideMenu(); renderTree();
+    toast('Added folder <b>' + esc(nm) + '</b>');
+  }
+});
+
+/* ============================ SEARCH ============================
+   Rule: every term must match somewhere in the row's searchable text.
+   Folder names and semester are part of that text — which makes them
+   filters that narrow files, never destinations of their own.
+   ================================================================ */
+function escRe(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
+function hl(text, terms){
+  var ok = terms.filter(Boolean).map(function(t){ return escRe(esc(t)); });
+  if(!ok.length) return esc(text);
+  return esc(text).replace(new RegExp("(" + ok.join("|") + ")","ig"), "<mark>$1</mark>");
+}
+function runSearch(q){
+  var terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+  var hits = { courses:[], files:[] };
+  if(!terms.length) return hits;
+  var every = function(hay){ return terms.every(function(t){ return hay.indexOf(t) >= 0; }); };
+
+  Object.keys(COURSES).forEach(function(k){
+    var c = COURSES[k];
+    if(every((c.code + " " + c.name + " " + c.year + " " + c.sem).toLowerCase())){
+      hits.courses.push({ k:k, c:c });
+    }
+    c.files.forEach(function(fid){
+      var fl = FILES[fid];
+      var hay = (fl.name + " " + (fl.cat||"top level") + " " + c.code + " " + c.name + " " + c.sem).toLowerCase();
+      if(every(hay)) hits.files.push({ k:k, c:c, fl:fl });
+    });
+  });
+
+  /* current course first, then A–Z — the file you want is usually in front of you */
+  hits.files.sort(function(a,b){
+    if(a.k===S.course && b.k!==S.course) return -1;
+    if(b.k===S.course && a.k!==S.course) return 1;
+    return sortNames(a.fl.name, b.fl.name);
+  });
+  hits.courses.sort(function(a,b){ return sortNames(a.c.code, b.c.code); });
+  return hits;
+}
+function renderSearch(q){
+  var box = $("qres");
+  q = (q||"").trim();
+  if(!q){ box.classList.remove("on"); box.innerHTML = ""; return; }
+  var terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+  var r = runSearch(q), html = "";
+
+  if(r.courses.length){
+    html += '<div class="qsec">Courses<span class="qn mono">' + r.courses.length + '</span></div>';
+    r.courses.forEach(function(x){
+      html += '<div class="qrow course" data-go="course" data-k="' + x.k + '">';
+      html += '<span class="qi">' + I.book16 + '</span>';
+      html += '<span class="qt"><b>' + hl(x.c.code, terms) + '</b> ' + hl(x.c.name, terms) + '</span>';
+      html += '<span class="qm">' + esc(shortScope(x.c)) + '</span></div>';
+    });
+  }
+  if(r.files.length){
+    html += '<div class="qsec">Files<span class="qn mono">' + r.files.length + '</span></div>';
+    r.files.forEach(function(x){
+      html += '<div class="qrow" data-go="file" data-k="' + x.k + '" data-f="' + x.fl.id + '">';
+      html += '<span class="qi">' + I.file + '</span>';
+      html += '<span class="qt">' + hl(x.fl.name, terms) + '</span>';
+      html += '<span class="qm">' + esc(x.c.code) + ' · ' + esc(x.fl.cat || "top level") + '</span></div>';
+    });
+  }
+  if(!html){
+    html = '<div class="qempty">No course or file matches <b>' + esc(q) + '</b>.<br>Try a course code, a file name, or a folder like “tutorial”.</div>';
+  }else{
+    html += '<div class="qfoot"><span>↑↓ move</span><span>⏎ open</span><span>esc close</span></div>';
+  }
+  box.innerHTML = html;
+  box.classList.add("on");
+  qCursor = -1;
+}
+var qCursor = -1;
+function qRows(){ return Array.prototype.slice.call($("qres").querySelectorAll(".qrow")); }
+function qMove(d){
+  var rows = qRows();
+  if(!rows.length) return;
+  rows.forEach(function(r){ r.classList.remove("cursor"); });
+  qCursor = (qCursor + d + rows.length) % rows.length;
+  rows[qCursor].classList.add("cursor");
+  rows[qCursor].scrollIntoView({block:"nearest"});
+}
+function qActivate(row){
+  if(!row) return;
+  var k = row.getAttribute("data-k");
+  if(row.getAttribute("data-go") === "course"){
+    gotoCourse(k);
+  }else{
+    gotoCourse(k);
+    openFile(row.getAttribute("data-f"));
+  }
+  $("q").value = "";
+  $("qres").classList.remove("on");
+  $("q").blur();
+}
+$("q").addEventListener("input", function(){ renderSearch(this.value); });
+$("q").addEventListener("focus", function(){ if(this.value.trim()) renderSearch(this.value); });
+$("q").addEventListener("keydown", function(e){
+  if(e.key === "ArrowDown"){ e.preventDefault(); qMove(1); }
+  else if(e.key === "ArrowUp"){ e.preventDefault(); qMove(-1); }
+  else if(e.key === "Enter"){
+    e.preventDefault();
+    var rows = qRows();
+    qActivate(qCursor >= 0 ? rows[qCursor] : rows[0]);
+  }
+  else if(e.key === "Escape"){ this.value = ""; $("qres").classList.remove("on"); this.blur(); }
+});
+$("qres").addEventListener("click", function(e){
+  var row = e.target.closest(".qrow");
+  if(row) qActivate(row);
+});
+document.addEventListener("keydown", function(e){
+  if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k"){
+    e.preventDefault(); $("q").focus(); $("q").select();
+  }
+});
+
+/* ============================ NEW COURSE ============================ */
+var ncPicked = [], ncCustom = [];
+
+function ncRender(){
+  var all = CAT_ORDER.concat(ncCustom);
+  $("ncCats").innerHTML = all.map(function(cat){
+    var on = ncPicked.indexOf(cat) >= 0;
+    var isCustom = CAT_ORDER.indexOf(cat) < 0;
+    return '<div class="ncc' + (on?" on":"") + '" data-nc="' + esc(cat) + '">' +
+           '<span class="cb">' + I.check + '</span>' +
+           '<span class="cn2">' + esc(cat) + '</span>' +
+           (isCustom ? '<span class="rm" data-ncrm="' + esc(cat) + '" title="Remove">' + I.trash + '</span>' : '') +
+           '</div>';
+  }).join("");
+  var n = ncPicked.length;
+  $("ncHint").textContent = n === 0
+    ? "Blank course — no folders. Uploaded files sit at the top level, sorted A–Z."
+    : n + (n===1 ? " folder" : " folders") + " selected · you can add or remove folders later from the explorer.";
+  var ok = $("ncCode").value.trim() && $("ncName").value.trim();
+  $("ncCreate").disabled = !ok;
+}
+function openNewCourse(){
+  ncPicked = CAT_ORDER.slice();
+  ncCustom = [];
+  $("ncCode").value = "";
+  $("ncName").value = "";
+  $("ncCustom").value = "";
+  $("ncCtx").textContent = S.year + " · " + S.sem + " — choose the folders you want, or start blank";
+  ncRender();
+  $("scrimNew").classList.add("on");
+  setTimeout(function(){ $("ncCode").focus(); }, 30);
+}
+function closeNewCourse(){ $("scrimNew").classList.remove("on"); }
+
+$("ncCats").addEventListener("click", function(e){
+  var rm = e.target.closest("[data-ncrm]");
+  if(rm){
+    e.stopPropagation();
+    var g = rm.getAttribute("data-ncrm");
+    ncCustom = ncCustom.filter(function(x){ return x !== g; });
+    ncPicked = ncPicked.filter(function(x){ return x !== g; });
+    ncRender(); return;
+  }
+  var row = e.target.closest("[data-nc]");
+  if(!row) return;
+  var cat = row.getAttribute("data-nc"), i = ncPicked.indexOf(cat);
+  if(i >= 0) ncPicked.splice(i,1); else ncPicked.push(cat);
+  ncRender();
+});
+document.querySelector(".nc-presets").addEventListener("click", function(e){
+  var b = e.target.closest("[data-preset]");
+  if(!b) return;
+  ncPicked = b.getAttribute("data-preset") === "all" ? CAT_ORDER.concat(ncCustom) : [];
+  ncRender();
+});
+function ncAddCustom(){
+  var v = $("ncCustom").value.trim();
+  if(!v) return;
+  if(CAT_ORDER.indexOf(v) < 0 && ncCustom.indexOf(v) < 0) ncCustom.push(v);
+  if(ncPicked.indexOf(v) < 0) ncPicked.push(v);
+  $("ncCustom").value = "";
+  ncRender();
+}
+$("ncAdd").addEventListener("click", ncAddCustom);
+$("ncCustom").addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); ncAddCustom(); } });
+$("ncCode").addEventListener("input", ncRender);
+$("ncName").addEventListener("input", ncRender);
+$("ncClose").addEventListener("click", closeNewCourse);
+$("ncCancel").addEventListener("click", closeNewCourse);
+$("scrimNew").addEventListener("click", function(e){ if(e.target === $("scrimNew")) closeNewCourse(); });
+
+$("ncCreate").addEventListener("click", function(){
+  var code = $("ncCode").value.trim().toUpperCase();
+  var name = $("ncName").value.trim();
+  if(!code || !name) return;
+  var key = code, n = 2;
+  while(COURSES[key]){ key = code + "-" + (n++); }
+
+  var cats = CAT_ORDER.filter(function(x){ return ncPicked.indexOf(x) >= 0; })
+                      .concat(ncCustom.filter(function(x){ return ncPicked.indexOf(x) >= 0; }).sort(sortNames));
+
+  COURSES[key] = {
+    code:code, name:name, year:S.year, sem:S.sem,
+    cats:cats, files:[], tabs:[], active:null, page:{},
+    week:1, weeks:14,
+    target:"upload the course outline so the roadmap can be filled in",
+    roadmap:[],
+    chat:[{r:"ai", x:"No files indexed for <b>" + esc(code) + "</b> yet. Upload the outline or a lecture deck and I will be able to answer from it — with citations."}]
+  };
+  QUICKS[key] = [];
+  closeNewCourse();
+  switchCourse(key);
+  toast('Created <b>' + esc(code) + '</b> with ' + (cats.length ? cats.length + (cats.length===1?" folder":" folders") : "no folders"));
+});
+
+/* drag-to-upload onto the explorer */
+(function(){
+  var ex = document.querySelector(".explorer"), depth = 0;
+  ex.addEventListener("dragenter", function(e){ e.preventDefault(); depth++; ex.classList.add("drag-over"); });
+  ex.addEventListener("dragover", function(e){ e.preventDefault(); });
+  ex.addEventListener("dragleave", function(){ depth = Math.max(0, depth-1); if(!depth) ex.classList.remove("drag-over"); });
+  ex.addEventListener("drop", function(e){
+    e.preventDefault(); depth = 0; ex.classList.remove("drag-over");
+    var c = cur();
+    /* dropped on a folder row → into that folder; otherwise top level */
+    var row = e.target.closest ? e.target.closest(".cat") : null;
+    simulateUpload(row ? row.getAttribute("data-cat") : (c.cats.length ? c.cats[0] : ""));
+  });
+})();
+$("btnHelp").addEventListener("click", function(){
+  toast("Try: search <b>tutorial</b> · click a citation · type <b>@</b> · open the roadmap");
+});
+
+/* ======================= PALETTE SWITCHER =======================
+   Every colour in the mockup resolves through a token on .app, so
+   swapping one data-pal attribute repaints the whole interface. */
+(function(){
+  var NOTES = {
+    "":       "Blue navigation, amber evidence — the original.",
+    "violet": "Purple-biased ground. Violet reads softer than blue at night; amber evidence still separates cleanly.",
+    "teal":   "Green-cyan ground. Progress is pushed yellow-green so it never gets confused with the teal navigation.",
+    "carbon": "Near-neutral grey. Navigation is deliberately desaturated so citations and progress are the only saturated colour on screen.",
+    "light":  "The light option. Every depth cue inverts — shadows soften, tints strengthen, and the amber goes darker to survive a white ground."
+  };
+  var opts = $("palOpts"), note = $("palNote"), app = $("app");
+  if(!opts || !app) return;
+  opts.addEventListener("click", function(e){
+    var b = e.target.closest(".pal");
+    if(!b) return;
+    var p = b.getAttribute("data-pal") || "";
+    if(p) app.setAttribute("data-pal", p); else app.removeAttribute("data-pal");
+    Array.prototype.forEach.call(opts.querySelectorAll(".pal"), function(x){
+      var on = x === b;
+      x.classList.toggle("on", on);
+      x.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    if(note) note.textContent = NOTES[p] || "";
+  });
+})();
+
+/* ============================ BOOT ============================ */
+renderTree(); renderTabs(); renderDoc(); renderChat(); renderProgress();
+setTimeout(function(){ toast("Switch course to see <b>tabs restore per course</b>"); }, 900);
+
+})();
+</script>
+
+</body>
+</html>

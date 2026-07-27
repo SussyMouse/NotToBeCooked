@@ -49,75 +49,155 @@
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
     --font-sans: 'Inter Variable', sans-serif;
+
+    /* Product-specific semantics, on top of the stock shadcn set.
+       `cite` is reserved for retrieved evidence and source citations —
+       it must never be reused for ordinary emphasis, or the interface
+       stops being able to say "this came from a document". */
+    --color-cite: var(--cite);
+    --color-cite-foreground: var(--cite-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
 }
 
+/* ============================================================
+   THEMES
+
+   Three themes on two axes, so the stock shadcn light/dark
+   contract keeps working untouched:
+
+     :root                       DAYLIGHT   (light)
+     .dark                       MIDNIGHT   (default dark)
+     .dark[data-theme="carbon"]  CARBON     (second dark)
+
+   Carbon layers on top of .dark, so anything it does not
+   redefine inherits Midnight rather than falling back to light.
+
+   Derived from the workspace UI concept:
+   https://claude.ai/code/artifact/67472991-e554-4a2f-966d-0cef4effe5dc
+   ============================================================ */
+
+/* ---------- DAYLIGHT — light ---------- */
 :root {
     --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
+    --foreground: oklch(0.26 0.025 251.2);
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
+    --card-foreground: oklch(0.26 0.025 251.2);
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
+    --popover-foreground: oklch(0.26 0.025 251.2);
+    --primary: oklch(0.528 0.126 248.1);
+    --primary-foreground: oklch(1 0 0);
+    --secondary: oklch(0.966 0.005 247.9);
+    --secondary-foreground: oklch(0.26 0.025 251.2);
+    --muted: oklch(0.975 0.003 247.9);
+    --muted-foreground: oklch(0.492 0.026 244.2);
+    --accent: oklch(0.938 0.01 252.8);
+    --accent-foreground: oklch(0.26 0.025 251.2);
+    --destructive: oklch(0.566 0.164 26.4);
+    --border: oklch(0.898 0.013 251.6);
+    --input: oklch(0.898 0.013 251.6);
+    --ring: oklch(0.528 0.126 248.1);
+    --chart-1: oklch(0.528 0.126 248.1);
+    --chart-2: oklch(0.561 0.113 76.3);
+    --chart-3: oklch(0.53 0.099 159.6);
+    --chart-4: oklch(0.524 0.157 300.5);
+    --chart-5: oklch(0.558 0.124 37);
     --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    --sidebar: oklch(0.975 0.003 247.9);
+    --sidebar-foreground: oklch(0.26 0.025 251.2);
+    --sidebar-primary: oklch(0.528 0.126 248.1);
+    --sidebar-primary-foreground: oklch(1 0 0);
+    --sidebar-accent: oklch(0.938 0.01 252.8);
+    --sidebar-accent-foreground: oklch(0.26 0.025 251.2);
+    --sidebar-border: oklch(0.941 0.009 247.9);
+    --sidebar-ring: oklch(0.528 0.126 248.1);
+    /* evidence + progress */
+    --cite: oklch(0.561 0.113 76.3);
+    --cite-foreground: oklch(1 0 0);
+    --success: oklch(0.53 0.099 159.6);
+    --success-foreground: oklch(1 0 0);
 }
 
+/* ---------- MIDNIGHT — default dark ---------- */
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    --background: oklch(0.235 0.023 251.5);
+    --foreground: oklch(0.913 0.012 248);
+    --card: oklch(0.214 0.021 251.8);
+    --card-foreground: oklch(0.913 0.012 248);
+    --popover: oklch(0.271 0.026 246.6);
+    --popover-foreground: oklch(0.913 0.012 248);
+    --primary: oklch(0.707 0.128 244.3);
+    --primary-foreground: oklch(0.181 0.025 244.2);
+    --secondary: oklch(0.271 0.026 246.6);
+    --secondary-foreground: oklch(0.913 0.012 248);
+    --muted: oklch(0.271 0.026 246.6);
+    --muted-foreground: oklch(0.674 0.027 252);
+    --accent: oklch(0.303 0.035 250.6);
+    --accent-foreground: oklch(0.913 0.012 248);
+    --destructive: oklch(0.652 0.159 25.2);
+    --border: oklch(0.308 0.029 250.8);
+    --input: oklch(0.308 0.029 250.8);
+    --ring: oklch(0.707 0.128 244.3);
+    --chart-1: oklch(0.707 0.128 244.3);
+    --chart-2: oklch(0.765 0.136 76.8);
+    --chart-3: oklch(0.685 0.121 157.5);
+    --chart-4: oklch(0.709 0.159 293.5);
+    --chart-5: oklch(0.652 0.159 25.2);
+    --sidebar: oklch(0.214 0.021 251.8);
+    --sidebar-foreground: oklch(0.913 0.012 248);
+    --sidebar-primary: oklch(0.707 0.128 244.3);
+    --sidebar-primary-foreground: oklch(0.181 0.025 244.2);
+    --sidebar-accent: oklch(0.303 0.035 250.6);
+    --sidebar-accent-foreground: oklch(0.913 0.012 248);
+    --sidebar-border: oklch(0.26 0.025 251.2);
+    --sidebar-ring: oklch(0.707 0.128 244.3);
+    /* evidence + progress */
+    --cite: oklch(0.765 0.136 76.8);
+    --cite-foreground: oklch(0.215 0.039 79.1);
+    --success: oklch(0.685 0.121 157.5);
+    --success-foreground: oklch(0.201 0.026 159.5);
+}
+
+/* ---------- CARBON — second dark.
+   Navigation is deliberately desaturated so that citations and
+   progress stay the only saturated colours on screen. ---------- */
+.dark[data-theme="carbon"] {
+    --background: oklch(0.237 0.007 248.1);
+    --foreground: oklch(0.914 0.005 247.9);
+    --card: oklch(0.213 0.007 258.4);
+    --card-foreground: oklch(0.914 0.005 247.9);
+    --popover: oklch(0.274 0.009 248.2);
+    --popover-foreground: oklch(0.914 0.005 247.9);
+    --primary: oklch(0.758 0.038 249.6);
+    --primary-foreground: oklch(0.207 0.01 248.3);
+    --secondary: oklch(0.274 0.009 248.2);
+    --secondary-foreground: oklch(0.914 0.005 247.9);
+    --muted: oklch(0.274 0.009 248.2);
+    --muted-foreground: oklch(0.687 0.009 248);
+    --accent: oklch(0.318 0.011 248.2);
+    --accent-foreground: oklch(0.914 0.005 247.9);
+    --destructive: oklch(0.655 0.152 25);
+    --border: oklch(0.33 0.011 248.2);
+    --input: oklch(0.33 0.011 248.2);
+    --ring: oklch(0.758 0.038 249.6);
+    --chart-1: oklch(0.758 0.038 249.6);
+    --chart-2: oklch(0.765 0.142 73.5);
+    --chart-3: oklch(0.706 0.111 157);
+    --chart-4: oklch(0.736 0.07 299.9);
+    --chart-5: oklch(0.655 0.152 25);
+    --sidebar: oklch(0.213 0.007 258.4);
+    --sidebar-foreground: oklch(0.914 0.005 247.9);
+    --sidebar-primary: oklch(0.758 0.038 249.6);
+    --sidebar-primary-foreground: oklch(0.207 0.01 248.3);
+    --sidebar-accent: oklch(0.318 0.011 248.2);
+    --sidebar-accent-foreground: oklch(0.914 0.005 247.9);
+    --sidebar-border: oklch(0.27 0.007 229.1);
+    --sidebar-ring: oklch(0.758 0.038 249.6);
+    /* evidence + progress */
+    --cite: oklch(0.765 0.142 73.5);
+    --cite-foreground: oklch(0.215 0.039 79.1);
+    --success: oklch(0.706 0.111 157);
+    --success-foreground: oklch(0.212 0.029 159.4);
 }
 
 @layer base {
