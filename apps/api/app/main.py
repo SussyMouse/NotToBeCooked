@@ -1,13 +1,16 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.schemas.user import UserRead, UserCreate, FileRequest
+
+from app.routers import auth_router
+
 
 app = FastAPI(
     title="NotToBeCooked API",
     description="Python FastAPI backend for NotToBeCooked monorepo",
     version="0.0.1"
 )
+app.include_router(auth_router, prefix="/auth", tags=["Auth"])
 
 # CORS configuration for Web, Tauri (Desktop & Android), and Production
 origins = [
@@ -43,20 +46,3 @@ def read_root():
 def health_check():
     return {"status": "ok"}
 
-@app.post("/users", response_model=UserRead)
-def create_user(user: UserCreate):
-    """Small demo route to create a user and return UserRead DTO."""
-    import uuid
-    from datetime import datetime
-    return UserRead(
-        id=uuid.uuid4(),
-        email=user.email,
-        created_at=datetime.utcnow()
-    )
-
-@app.post("/files", response_model=FileRequest)
-def create_file(file: FileRequest):
-    import uuid
-    return FileRequest(
-        id=uuid.uuid4()
-    )
