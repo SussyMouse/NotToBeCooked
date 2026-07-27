@@ -2,5 +2,9 @@
   "python.defaultInterpreterPath": "${workspaceFolder}/apps/api/.venv/bin/python",
   "python.analysis.extraPaths": [
     "${workspaceFolder}/apps/api/.venv/lib/python3.13/site-packages"
-  ]
+  ],
+  "css.lint.unknownAtRules": "ignore",
+  "editor.quickSuggestions": {
+    "strings": "on"
+  }
 }
