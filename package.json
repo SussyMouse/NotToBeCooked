@@ -12,7 +12,9 @@
     "dev:api": "turbo --filter api dev",
     "lint": "turbo lint",
     "format": "turbo format",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "schema:update": "cd apps/api && uv run python scripts/generate_openapi.py && pnpm --filter @workspace/contracts generate",
+    "codegen": "pnpm schema:update"
   },
   "devDependencies": {
     "prettier": "^3.8.3",

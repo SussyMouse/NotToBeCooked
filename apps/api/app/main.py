@@ -1,6 +1,7 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.schemas.user import UserRead, UserCreate, FileRequest
 
 app = FastAPI(
     title="NotToBeCooked API",
@@ -41,3 +42,21 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+@app.post("/users", response_model=UserRead)
+def create_user(user: UserCreate):
+    """Small demo route to create a user and return UserRead DTO."""
+    import uuid
+    from datetime import datetime
+    return UserRead(
+        id=uuid.uuid4(),
+        email=user.email,
+        created_at=datetime.utcnow()
+    )
+
+@app.post("/files", response_model=FileRequest)
+def create_file(file: FileRequest):
+    import uuid
+    return FileRequest(
+        id=uuid.uuid4()
+    )
