@@ -1,4 +1,4 @@
-import { schemas } from "@workspace/contracts"
+import { api, schemas, type ApiError } from "@workspace/contracts"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Controller, useForm } from "react-hook-form"
@@ -52,8 +52,37 @@ export function RegisterPage() {
     },
   })
 
-  const onSubmit = (data: z.infer<typeof registerFormSchema>) => {
-    devToast(data)
+  /*
+  1. Submit the form data
+  2. Receives the data. Upon succeeding save JWT token to local storage and redirects else
+  3. catch errors and set form error
+  4. Custom domain error handling  via ApiError, else FastAPI 422 validation error handling
+  */
+  const onSubmit = async (data: z.infer<typeof registerFormSchema>) => {
+    try {
+      const response = await api.auth.register({
+        email: data.email,
+        password: data.password
+      })
+
+      devToast(data)
+
+      localStorage.setItem("auth_token", response.access_token)
+      window.location.href = '/dashboard'
+    } catch (err: any) {
+      console.log(err)
+      if (err.code == "EMAIL_EXISTS") {
+        form.setError("email", { message: err.message })
+      } else if (err.detail && Array.isArray(err.detail)) {
+        err.detail.forEach((detailErr: any) => {
+          const fieldName = detailErr.loc[1] as "email" | "password"
+          form.setError(fieldName, { message: detailErr.msg })
+        });
+      } else {
+        form.setError("root", { message: err.message || "An unexpected error occured"})
+      }
+      devToast(err)
+    }
   }
 
   const rootError = form.formState.errors.root?.message
