@@ -4,8 +4,8 @@ import { z } from "zod";
 
 
 
-const UserCreate = z.object({ email: z.string().email(), password: z.string().min(8) }).passthrough();
-const UserRead = z.object({ id: z.string().uuid(), email: z.string().email(), created_at: z.string().datetime({ offset: true }) }).passthrough();
+const UserCreate = z.object({ email: z.string().email(), display_name: z.union([z.string(), z.null()]).optional(), password: z.string().min(8) }).passthrough();
+const UserRead = z.object({ email: z.string().email(), display_name: z.union([z.string(), z.null()]).optional(), id: z.string().uuid(), created_at: z.string().datetime({ offset: true }) }).passthrough();
 const ValidationError = z.object({ loc: z.array(z.union([z.string(), z.number()])), msg: z.string(), type: z.string(), input: z.unknown().optional(), ctx: z.object({}).partial().passthrough().optional() }).passthrough();
 const HTTPValidationError = z.object({ detail: z.array(ValidationError) }).partial().passthrough();
 const LoginRequest = z.object({ email: z.string().email(), password: z.string().min(8) }).passthrough();

@@ -1,5 +1,6 @@
-from pydantic import BaseModel
+from sqlmodel import SQLModel
 
-class ApiError(BaseModel):
+
+class ApiError(SQLModel):
     code: str
     message: str

@@ -289,6 +289,17 @@
             "format": "email",
             "title": "Email"
           },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
           "password": {
             "type": "string",
             "minLength": 8,
@@ -305,15 +316,26 @@
       },
       "UserRead": {
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
           "email": {
             "type": "string",
             "format": "email",
             "title": "Email"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
           },
           "created_at": {
             "type": "string",
@@ -323,8 +345,8 @@
         },
         "type": "object",
         "required": [
-          "id",
           "email",
+          "id",
           "created_at"
         ],
         "title": "UserRead"

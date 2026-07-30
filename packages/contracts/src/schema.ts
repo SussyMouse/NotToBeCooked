@@ -158,6 +158,8 @@ export interface components {
              * Format: email
              */
             email: string;
+            /** Display Name */
+            display_name?: string | null;
             /**
              * Password
              * @description Password must be at least 8 characters
@@ -167,15 +169,17 @@ export interface components {
         /** UserRead */
         UserRead: {
             /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /**
              * Email
              * Format: email
              */
             email: string;
+            /** Display Name */
+            display_name?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
             /**
              * Created At
              * Format: date-time

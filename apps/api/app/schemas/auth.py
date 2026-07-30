@@ -1,11 +1,13 @@
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import EmailStr, field_validator
 from app.schemas.user import UserRead
+from sqlmodel import Field, SQLModel
 
-class LoginRequest(BaseModel):
+
+class LoginRequest(SQLModel):
     email: EmailStr
     password: str = Field(..., min_length=8, description="Password must be at least 8 characters")
 
-class RegisterRequest(BaseModel):
+class RegisterRequest(SQLModel):
     email: EmailStr
     password: str = Field(..., min_length=8, description="Password must be at least 8 characters")
 
@@ -16,7 +18,7 @@ class RegisterRequest(BaseModel):
             raise ValueError("Password must contain at least 1 uppercase letter")
         return value.strip()
 
-class TokenResponse(BaseModel):
+class TokenResponse(SQLModel):
     access_token: str
     token_type: str = "bearer"
     user: UserRead
