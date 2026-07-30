@@ -1,7 +1,10 @@
+from fastapi import status
 import os
 from fastapi import FastAPI
+from uuid import UUID
 from fastapi.middleware.cors import CORSMiddleware
 from app.schemas.user import UserRead, UserCreate, FileRequest
+from app.schemas.file import IngestionResponse
 
 app = FastAPI(
     title="NotToBeCooked API",
@@ -60,3 +63,14 @@ def create_file(file: FileRequest):
     return FileRequest(
         id=uuid.uuid4()
     )
+
+@app.post("/files/{file_id}/ingest",response_model=IngestionResponse)
+def ingest_file(file_id:UUID):
+    return IngestionResponse(
+        file_id=file_id,
+        status="processing",
+        chunk_count=None,
+        error=None,
+    )
+#ingest_file          = 工作人员
+#IngestionResponse    = 工作人员必须填写的报告模板
