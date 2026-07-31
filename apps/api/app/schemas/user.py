@@ -12,7 +12,7 @@ class UserBase(SQLModel):
 
 
 class User(UserBase, table=True):
-    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     hashed_password: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

@@ -241,6 +241,10 @@
       },
       "RegisterRequest": {
         "properties": {
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
           "email": {
             "type": "string",
             "format": "email",
@@ -255,6 +259,7 @@
         },
         "type": "object",
         "required": [
+          "display_name",
           "email",
           "password"
         ],

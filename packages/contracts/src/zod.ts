@@ -11,7 +11,7 @@ const HTTPValidationError = z.object({ detail: z.array(ValidationError) }).parti
 const LoginRequest = z.object({ email: z.string().email(), password: z.string().min(8) }).passthrough();
 const TokenResponse = z.object({ access_token: z.string(), token_type: z.string().optional().default("bearer"), user: UserRead }).passthrough();
 const ApiError = z.object({ code: z.string(), message: z.string() }).passthrough();
-const RegisterRequest = z.object({ email: z.string().email(), password: z.string().min(8) }).passthrough();
+const RegisterRequest = z.object({ display_name: z.string(), email: z.string().email(), password: z.string().min(8) }).passthrough();
 
 export const schemas = {
 	UserCreate,

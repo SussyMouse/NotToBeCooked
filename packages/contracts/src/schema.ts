@@ -129,6 +129,8 @@ export interface components {
         };
         /** RegisterRequest */
         RegisterRequest: {
+            /** Display Name */
+            display_name: string;
             /**
              * Email
              * Format: email

@@ -61,6 +61,7 @@ export function RegisterPage() {
   const onSubmit = async (data: z.infer<typeof registerFormSchema>) => {
     try {
       const response = await api.auth.register({
+        display_name: data.display_name,
         email: data.email,
         password: data.password
       })
@@ -68,7 +69,7 @@ export function RegisterPage() {
       devToast(data)
 
       localStorage.setItem("auth_token", response.access_token)
-      window.location.href = '/dashboard'
+      // window.location.href = '/dashboard'
     } catch (err: any) {
       console.log(err)
       if (err.code == "EMAIL_EXISTS") {
@@ -116,6 +117,30 @@ export function RegisterPage() {
             className="space-y-4"
           >
             <FieldGroup>
+              {/* Display Name */}
+              <Controller
+                name="display_name"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor={field.name}>Display Name</FieldLabel>
+                    <div className="relative w-full">
+                      <Input
+                        {...field}
+                        id={field.name}
+                        type="text"
+                        aria-invalid={fieldState.invalid}
+                        placeholder="John Doe"
+                        autoComplete="name"
+                      />
+                    </div>
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+
               {/* Email Field */}
               <Controller
                 name="email"

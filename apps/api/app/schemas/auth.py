@@ -8,6 +8,7 @@ class LoginRequest(SQLModel):
     password: str = Field(..., min_length=8, description="Password must be at least 8 characters")
 
 class RegisterRequest(SQLModel):
+    display_name: str
     email: EmailStr
     password: str = Field(..., min_length=8, description="Password must be at least 8 characters")
 
