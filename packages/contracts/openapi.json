@@ -196,7 +196,7 @@
             "type": "string",
             "enum": [
               "processing",
-              "completed",
+              "ready",
               "failed"
             ],
             "title": "Status"

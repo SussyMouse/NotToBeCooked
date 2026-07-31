@@ -120,7 +120,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "processing" | "completed" | "failed";
+            status: "processing" | "ready" | "failed";
             /** Chunk Count */
             chunk_count?: number | null;
             /** Error */
