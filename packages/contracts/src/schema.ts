@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/auth/users": {
+    "/auth/refresh": {
         parameters: {
             query?: never;
             header?: never;
@@ -13,28 +13,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Create User
-         * @description Small demo route to create a user and return UserRead DTO.
-         */
-        post: operations["create_user_auth_users_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/posts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Posts */
-        get: operations["get_posts_auth_posts_get"];
-        put?: never;
-        post?: never;
+        /** Refresh Session */
+        post: operations["refresh_session_auth_refresh_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -170,21 +150,6 @@ export interface components {
             token_type: string;
             user: components["schemas"]["UserRead"];
         };
-        /** UserCreate */
-        UserCreate: {
-            /**
-             * Email
-             * Format: email
-             */
-            email: string;
-            /** Display Name */
-            display_name?: string | null;
-            /**
-             * Password
-             * @description Password must be at least 8 characters
-             */
-            password: string;
-        };
         /** UserRead */
         UserRead: {
             /**
@@ -227,40 +192,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    create_user_auth_users_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UserCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_posts_auth_posts_get: {
+    refresh_session_auth_refresh_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -275,7 +207,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["TokenResponse"];
                 };
             };
         };

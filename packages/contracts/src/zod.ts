@@ -4,23 +4,21 @@ import { z } from "zod";
 
 
 
-const UserCreate = z.object({ email: z.string().email(), display_name: z.union([z.string(), z.null()]).optional(), password: z.string().min(8) }).passthrough();
 const UserRead = z.object({ email: z.string().email(), display_name: z.union([z.string(), z.null()]).optional(), id: z.string().uuid(), created_at: z.string().datetime({ offset: true }) }).passthrough();
+const TokenResponse = z.object({ access_token: z.string(), token_type: z.string().optional().default("bearer"), user: UserRead }).passthrough();
+const LoginRequest = z.object({ email: z.string().email(), password: z.string().min(8) }).passthrough();
+const ApiError = z.object({ code: z.string(), message: z.string() }).passthrough();
 const ValidationError = z.object({ loc: z.array(z.union([z.string(), z.number()])), msg: z.string(), type: z.string(), input: z.unknown().optional(), ctx: z.object({}).partial().passthrough().optional() }).passthrough();
 const HTTPValidationError = z.object({ detail: z.array(ValidationError) }).partial().passthrough();
-const LoginRequest = z.object({ email: z.string().email(), password: z.string().min(8) }).passthrough();
-const TokenResponse = z.object({ access_token: z.string(), token_type: z.string().optional().default("bearer"), user: UserRead }).passthrough();
-const ApiError = z.object({ code: z.string(), message: z.string() }).passthrough();
 const RegisterRequest = z.object({ display_name: z.string(), email: z.string().email(), password: z.string().min(8) }).passthrough();
 
 export const schemas = {
-	UserCreate,
 	UserRead,
+	TokenResponse,
+	LoginRequest,
+	ApiError,
 	ValidationError,
 	HTTPValidationError,
-	LoginRequest,
-	TokenResponse,
-	ApiError,
 	RegisterRequest,
 };
 
@@ -60,11 +58,11 @@ const endpoints = makeApi([
 		]
 	},
 	{
-		method: "get",
-		path: "/auth/posts",
-		alias: "get_posts_auth_posts_get",
+		method: "post",
+		path: "/auth/refresh",
+		alias: "refresh_session_auth_refresh_post",
 		requestFormat: "json",
-		response: z.unknown(),
+		response: TokenResponse,
 	},
 	{
 		method: "post",
@@ -86,28 +84,6 @@ const endpoints = makeApi([
 				description: `Email already exists`,
 				schema: ApiError
 			},
-			{
-				status: 422,
-				description: `Validation Error`,
-				schema: HTTPValidationError
-			},
-		]
-	},
-	{
-		method: "post",
-		path: "/auth/users",
-		alias: "create_user_auth_users_post",
-		description: `Small demo route to create a user and return UserRead DTO.`,
-		requestFormat: "json",
-		parameters: [
-			{
-				name: "body",
-				type: "Body",
-				schema: UserCreate
-			},
-		],
-		response: UserRead,
-		errors: [
 			{
 				status: 422,
 				description: `Validation Error`,

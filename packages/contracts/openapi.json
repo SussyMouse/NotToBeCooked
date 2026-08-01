@@ -6,70 +6,25 @@
     "version": "0.0.1"
   },
   "paths": {
-    "/auth/users": {
+    "/auth/refresh": {
       "post": {
         "tags": [
           "Auth"
         ],
-        "summary": "Create User",
-        "description": "Small demo route to create a user and return UserRead DTO.",
-        "operationId": "create_user_auth_users_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserCreate"
-              }
-            }
-          },
-          "required": true
-        },
+        "summary": "Refresh Session",
+        "operationId": "refresh_session_auth_refresh_post",
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/TokenResponse"
                 }
               }
             }
           }
         }
-      }
-    },
-    "/auth/posts": {
-      "get": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Get Posts",
-        "operationId": "get_posts_auth_posts_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
       }
     },
     "/auth/login": {
@@ -311,38 +266,6 @@
         ],
         "title": "TokenResponse"
       },
-      "UserCreate": {
-        "properties": {
-          "email": {
-            "type": "string",
-            "format": "email",
-            "title": "Email"
-          },
-          "display_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Display Name"
-          },
-          "password": {
-            "type": "string",
-            "minLength": 8,
-            "title": "Password",
-            "description": "Password must be at least 8 characters"
-          }
-        },
-        "type": "object",
-        "required": [
-          "email",
-          "password"
-        ],
-        "title": "UserCreate"
-      },
       "UserRead": {
         "properties": {
           "email": {
@@ -419,12 +342,6 @@
           "type"
         ],
         "title": "ValidationError"
-      }
-    },
-    "securitySchemes": {
-      "HTTPBearer": {
-        "type": "http",
-        "scheme": "bearer"
       }
     }
   }

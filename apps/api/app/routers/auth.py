@@ -1,15 +1,14 @@
-import uuid
 import jwt
 
 from argon2 import PasswordHasher
 from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Response, Request
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, col
 
-from app.schemas.user import UserRead, UserCreate, User
+from app.schemas.user import UserRead, User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 from app.schemas.errors import ApiError
 from app.dependencies.auth import get_current_user
@@ -20,21 +19,73 @@ from app.core.config import settings
 ph = PasswordHasher()
 auth_router = APIRouter()
 
-posts = {"user@test.com": ["post1", "asdf posts"]}
+@auth_router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    responses={ 401: {"model": ApiError, "description": "Invalid or expired refresh token"} }
+)
+async def refresh_session(request: Request, response: Response, session: AsyncSession = Depends(get_session)):
+    """Refreshes an expired access token using HttpOnly refresh token cookie."""
+    
+    # get JWT encoded refresh token from cookie
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={ "code": "NO_REFRESH_TOKEN", "message": "Refresh token is missing from cookies" }
+        )
 
-@auth_router.post("/users", response_model=UserRead)
-def create_user(user: UserCreate):
-    """Small demo route to create a user and return UserRead DTO."""
-    return UserRead(
-        id=uuid.uuid4(),
-        email=user.email,
-        created_at=datetime.now(timezone.utc)
+    # decode jwt payload to get user ID
+    try:
+        payload = jwt.decode(refresh_token, settings.REFRESH_TOKEN_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        user_id = payload.get("sub")
+
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={ "code": "INVALID_REFRESH_TOKEN", "message": "Invalid or tampered refresh token"}
+            )
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={ "code": "REFRESH_TOKEN_EXPIRED", "message": "Refresh token has expired. Please log in again" }
+        )
+    except jwt.InvalidAlgorithmError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={ "code": "INVALID_REFRESH_TOKEN", "message": "Invalid or tampered refresh token" }
+        )
+
+    # ensure user ID exist in database
+    # this ensures user hasn't deleted their account, banned, disabled and user's data is up to date
+    statement = select(User).where(col(User.id) == user_id)
+    result = await session.execute(statement)
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={ "code": "USER_NOT_FOUND", "message": "User account no longer exists" }
+        )
+
+    # issue new access token and refresh token in cookie
+    new_access_token = create_access_token(user, settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    new_refresh_token = create_refresh_token(user, settings.REFRESH_TOKEN_EXPIRE_DAYS)
+
+    response.set_cookie(
+        key='refresh_token',
+        value=new_refresh_token,
+        httponly=True,  # JS cannot read cookie, prevents XSS attack
+        samesite='lax',  # CSRF protection
+        secure=True,  # Requires HTTPS in production
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
     )
 
-@auth_router.get("/posts")
-def get_posts(user: dict = Depends(get_current_user)):
-    return posts[user["email"]]
-    
+    return TokenResponse(
+        access_token=new_access_token,
+        token_type="bearer",
+        user=UserRead.model_validate(user)
+    )
 
 @auth_router.post(
     "/login",
@@ -43,9 +94,10 @@ def get_posts(user: dict = Depends(get_current_user)):
         401: {"model": ApiError, "description": "Invalid email or password"}
     }
 )
-async def login(body: LoginRequest, session: AsyncSession = Depends(get_session)):
+async def login(body: LoginRequest, response: Response, session: AsyncSession = Depends(get_session)):
     """Authenticates a user and returns a JWT access token."""
 
+    # authenticate user
     statement = select(User).where(col(User.email) == body.email)
     result = await session.execute(statement)
     user = result.scalar_one_or_none()
@@ -64,10 +116,21 @@ async def login(body: LoginRequest, session: AsyncSession = Depends(get_session)
             detail={"code": "INVALID_CREDENTIALS", "message": "Email or password incorrect"}
         )
 
-    token = create_access_token(user, settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-        
+    # issue access token and refersh token in cookie
+    access_token = create_access_token(user, settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    refresh_token = create_refresh_token(user, settings.REFRESH_TOKEN_EXPIRE_DAYS)
+
+    response.set_cookie(
+        key='refresh_token',
+        value=refresh_token,
+        httponly=True,  # JS cannot read cookie, prevents XSS attack
+        samesite='lax',  # CSRF protection
+        secure=True,  # Requires HTTPS in production
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
+    )
+
     return TokenResponse(
-        access_token=token,
+        access_token=access_token,
         token_type="bearer",
         user=UserRead.model_validate(user)
     )
@@ -79,7 +142,7 @@ async def login(body: LoginRequest, session: AsyncSession = Depends(get_session)
         400: {"model": ApiError, "description": "Email already exists"}
     }
 )
-async def register(body: RegisterRequest, session: AsyncSession = Depends(get_session)):
+async def register(body: RegisterRequest, response: Response, session: AsyncSession = Depends(get_session)):
     """Registers a new user account."""
 
     statement = select(User).where(col(User.email) == body.email)
@@ -106,17 +169,35 @@ async def register(body: RegisterRequest, session: AsyncSession = Depends(get_se
     await session.refresh(user)
     
     # create token
-    token = create_access_token(user, 1)
-        
+    token = create_access_token(user, settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    refresh_token = create_refresh_token(user, settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    
+    response.set_cookie(
+        key='refresh_token',
+        value=refresh_token,
+        httponly=True,  # JS cannot read cookie, prevents XSS attack
+        samesite='lax',  # CSRF protection
+        secure=True,  # Requires HTTPS in production
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
+    )
+
     return TokenResponse(
         access_token=token,
         token_type="bearer",
-        user=UserRead(
-            id=uuid.uuid4(),
-            email=body.email,
-            created_at=datetime.now(timezone.utc)
-        )
+        user=UserRead.model_validate(user)
     )
+
+def create_refresh_token(user: User, expires_in_days: int) -> str:
+    now = datetime.now(timezone.utc)
+
+    payload = {
+        "sub": str(user.id),
+        "iat": now,
+        "exp": now + timedelta(days=expires_in_days)
+    }
+
+    token = jwt.encode(payload, settings.REFRESH_TOKEN_SECRET, algorithm=settings.JWT_ALGORITHM)
+    return token
 
 def create_access_token(user: User, expires_in_minutes: int) -> str:
     now = datetime.now(timezone.utc)
