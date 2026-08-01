@@ -3,7 +3,8 @@ from typing import Optional
 from uuid import UUID, uuid4
 
 from pydantic import EmailStr
-from sqlmodel import Field, SQLModel
+from sqlalchemy import DateTime
+from sqlmodel import Column, Field, SQLModel
 
 
 class UserBase(SQLModel):
@@ -14,7 +15,10 @@ class UserBase(SQLModel):
 class User(UserBase, table=True):
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     hashed_password: str
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True)),
+    )
 
 
 class UserRead(UserBase):

@@ -6,10 +6,14 @@ from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, HTTPException, status, Depends
 
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select, col
+
 from app.schemas.user import UserRead, UserCreate, User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 from app.schemas.errors import ApiError
 from app.dependencies.auth import get_current_user
+from app.db.database import get_session
 from app.core.config import settings
 
 
@@ -39,23 +43,33 @@ def get_posts(user: dict = Depends(get_current_user)):
         401: {"model": ApiError, "description": "Invalid email or password"}
     }
 )
-def login(body: LoginRequest):
+async def login(body: LoginRequest, session: AsyncSession = Depends(get_session)):
     """Authenticates a user and returns a JWT access token."""
 
-    if body.email == "fail@test.com":
+    statement = select(User).where(col(User.email) == body.email)
+    result = await session.execute(statement)
+    user = result.scalar_one_or_none()
+
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": "INVALID_CREDENTIALS", "message": "Email or password incorrect"}
         )
+
+    try:
+        ph.verify(user.hashed_password, body.password.encode("utf-8"))
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "INVALID_CREDENTIALS", "message": "Email or password incorrect"}
+        )
+
+    token = create_access_token(user, settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         
     return TokenResponse(
-        access_token="mock_jwt_token_xyz123",
+        access_token=token,
         token_type="bearer",
-        user=UserRead(
-            id=uuid.uuid4(),
-            email=body.email,
-            created_at=datetime.now(timezone.utc)
-        )
+        user=UserRead.model_validate(user)
     )
 
 @auth_router.post(
@@ -65,10 +79,14 @@ def login(body: LoginRequest):
         400: {"model": ApiError, "description": "Email already exists"}
     }
 )
-def register(body: RegisterRequest):
+async def register(body: RegisterRequest, session: AsyncSession = Depends(get_session)):
     """Registers a new user account."""
 
-    if body.email == "existing@test.com":
+    statement = select(User).where(col(User.email) == body.email)
+    result = await session.execute(statement)
+    existing_user = result.scalar_one_or_none()
+
+    if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "EMAIL_EXISTS", "message": "A user with this email already exists"}
@@ -83,6 +101,9 @@ def register(body: RegisterRequest):
         email=body.email,
         display_name=body.display_name
     )
+    session.add(user)
+    await session.commit()
+    await session.refresh(user)
     
     # create token
     token = create_access_token(user, 1)
