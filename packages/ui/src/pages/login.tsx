@@ -1,8 +1,9 @@
-import { schemas } from "@workspace/contracts";
+import React from "react";
+import z from "zod";
 
+import { api, schemas } from "@workspace/contracts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
-import z from "zod";
 import { Link } from "react-router";
 
 import {
@@ -21,10 +22,15 @@ import {
 } from "@workspace/ui/components/field";
 import { Input } from "@workspace/ui/components/input";
 import { Button } from "@workspace/ui/components/button";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "../components/input-group";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
+import devToast from "../lib/alerts";
 
 const loginFormSchema = schemas.LoginRequest;
 
 export function LoginPage() {
+  const [showPassword, setShowPassword] = React.useState(false)
+
   const form = useForm<z.infer<typeof loginFormSchema>>({
     resolver: zodResolver(loginFormSchema),
     mode: "onSubmit",
@@ -34,8 +40,30 @@ export function LoginPage() {
     },
   });
 
-  const onSubmit = (data: z.infer<typeof loginFormSchema>) => {
-    window.alert(`Submitted Login: ${JSON.stringify(data, null, 2)}`);
+  const onSubmit = async (data: z.infer<typeof loginFormSchema>) => {
+    try {
+      const response = await api.auth.login(data)
+      console.log(response)
+      localStorage.setItem("auth_token", response.access_token)
+      window.location.href = '/dashboard'
+    } catch (err: any) {
+      const errorObj = err.detail || err
+      const errorCode = errorObj?.code || err.code
+      const errorMsg = errorObj?.message || err.message || "An unexpected error occurred"
+
+      if (errorCode === "INVALID_CREDENTIALS") {
+        form.setError("email", { message: errorMsg })
+        form.setError("password", { message: errorMsg })
+      } else if (Array.isArray(err.detail)) {
+        err.detail.forEach((detailErr: any) => {
+          const fieldName = detailErr.loc[1] as "email" | "password"
+          form.setError(fieldName, { message: detailErr.msg })
+        });
+      } else {
+        form.setError("root", { message: errorMsg })
+      }
+      devToast(err)
+    }
   };
 
   const rootError = form.formState.errors.root?.message;
@@ -87,14 +115,24 @@ export function LoginPage() {
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel htmlFor={field.name}>Password</FieldLabel>
-                    <Input
-                      {...field}
-                      id={field.name}
-                      type="password"
-                      aria-invalid={fieldState.invalid}
-                      placeholder="••••••••"
-                      autoComplete="current-password"
-                    />
+                    <InputGroup>
+                      <InputGroupInput
+                        {...field}
+                        id={field.name}
+                        type={ showPassword ? "text" : "password" }
+                        aria-invalid={fieldState.invalid}
+                        placeholder="••••••••"
+                        autoComplete="current-password"
+                       />
+                      <InputGroupAddon align="inline-end">
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                        </button>
+                      </InputGroupAddon>
+                    </InputGroup>
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>
                 )}

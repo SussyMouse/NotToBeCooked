@@ -60,6 +60,13 @@ const endpoints = makeApi([
 		]
 	},
 	{
+		method: "get",
+		path: "/auth/posts",
+		alias: "get_posts_auth_posts_get",
+		requestFormat: "json",
+		response: z.unknown(),
+	},
+	{
 		method: "post",
 		path: "/auth/register",
 		alias: "register_auth_register_post",

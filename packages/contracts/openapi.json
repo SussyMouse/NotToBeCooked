@@ -48,6 +48,30 @@
         }
       }
     },
+    "/auth/posts": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Get Posts",
+        "operationId": "get_posts_auth_posts_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/auth/login": {
       "post": {
         "tags": [
@@ -395,6 +419,12 @@
           "type"
         ],
         "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
       }
     }
   }

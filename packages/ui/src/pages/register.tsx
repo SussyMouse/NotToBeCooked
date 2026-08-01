@@ -41,7 +41,6 @@ const registerFormSchema = schemas.RegisterRequest.extend({
 export function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
 
-  const DOMAINS = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com"]
   const form = useForm<z.infer<typeof registerFormSchema>>({
     resolver: zodResolver(registerFormSchema),
     mode: "onBlur",
@@ -69,9 +68,8 @@ export function RegisterPage() {
       devToast(data)
 
       localStorage.setItem("auth_token", response.access_token)
-      // window.location.href = '/dashboard'
+      window.location.href = '/dashboard'
     } catch (err: any) {
-      console.log(err)
       if (err.code == "EMAIL_EXISTS") {
         form.setError("email", { message: err.message })
       } else if (err.detail && Array.isArray(err.detail)) {
