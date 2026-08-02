@@ -59,6 +59,14 @@ const endpoints = makeApi([
 	},
 	{
 		method: "post",
+		path: "/auth/logout",
+		alias: "logout_auth_logout_post",
+		description: `Logs out the user by clearing the HttpOnly refresh token cookie.`,
+		requestFormat: "json",
+		response: z.unknown(),
+	},
+	{
+		method: "post",
 		path: "/auth/refresh",
 		alias: "refresh_session_auth_refresh_post",
 		description: `Refreshes an expired access token using HttpOnly refresh token cookie.`,
