@@ -6,8 +6,8 @@ import { z } from "zod";
 
 const UserRead = z.object({ email: z.string().email(), display_name: z.union([z.string(), z.null()]).optional(), id: z.string().uuid(), created_at: z.string().datetime({ offset: true }) }).passthrough();
 const TokenResponse = z.object({ access_token: z.string(), token_type: z.string().optional().default("bearer"), user: UserRead }).passthrough();
-const LoginRequest = z.object({ email: z.string().email(), password: z.string().min(8) }).passthrough();
 const ApiError = z.object({ code: z.string(), message: z.string() }).passthrough();
+const LoginRequest = z.object({ email: z.string().email(), password: z.string().min(8) }).passthrough();
 const ValidationError = z.object({ loc: z.array(z.union([z.string(), z.number()])), msg: z.string(), type: z.string(), input: z.unknown().optional(), ctx: z.object({}).partial().passthrough().optional() }).passthrough();
 const HTTPValidationError = z.object({ detail: z.array(ValidationError) }).partial().passthrough();
 const RegisterRequest = z.object({ display_name: z.string(), email: z.string().email(), password: z.string().min(8) }).passthrough();
@@ -15,8 +15,8 @@ const RegisterRequest = z.object({ display_name: z.string(), email: z.string().e
 export const schemas = {
 	UserRead,
 	TokenResponse,
-	LoginRequest,
 	ApiError,
+	LoginRequest,
 	ValidationError,
 	HTTPValidationError,
 	RegisterRequest,
@@ -61,8 +61,16 @@ const endpoints = makeApi([
 		method: "post",
 		path: "/auth/refresh",
 		alias: "refresh_session_auth_refresh_post",
+		description: `Refreshes an expired access token using HttpOnly refresh token cookie.`,
 		requestFormat: "json",
 		response: TokenResponse,
+		errors: [
+			{
+				status: 401,
+				description: `Invalid or expired refresh token`,
+				schema: ApiError
+			},
+		]
 	},
 	{
 		method: "post",

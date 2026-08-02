@@ -10,12 +10,20 @@ export interface ApiClientConfig {
     baseUrl?: string
     getToken?: () => string | null
     onUnauthorized?: () => void
+    onTokenRefreshed?: (newToken: string, user: UserRead) => void
 }
+
+type RefreshSubscribers = (newToken: string) => void;
 
 export class ApiClient {
     private baseUrl: string
     private getToken: () => string | null
     private onUnauthorized?: () => void
+    private onTokenRefreshed?: (newToken: string, user: UserRead) => void
+    
+    // Race-condition control variables
+    private isRefreshing: boolean = false;
+    private refreshSubscribers: RefreshSubscribers[] = [];
 
     constructor(config: ApiClientConfig = {}) {
         this.baseUrl = config.baseUrl || this.resolveBaseUrl()
@@ -26,6 +34,28 @@ export class ApiClient {
                     ? localStorage.getItem("auth_token")
                     : null)
         this.onUnauthorized = config.onUnauthorized
+        this.onTokenRefreshed = config.onTokenRefreshed
+    }
+
+    public setTokenGetter(fn: () => string | null) {
+        this.getToken = fn
+    }
+
+    public setOnUnauthorized(fn: () => void) {
+        this.onUnauthorized = fn
+    }
+
+    public setOnTokenRefreshed(fn: (newToken: string, user: UserRead) => void) {
+        this.onTokenRefreshed = fn
+    }
+
+    private subscribeRefresh(cb: RefreshSubscribers) {
+        this.refreshSubscribers.push(cb)
+    }
+
+    private onRefreshSubscribers(newToken: string) {
+        this.refreshSubscribers.forEach((cb) => cb(newToken))
+        this.refreshSubscribers = []
     }
 
     private resolveBaseUrl(): string {
@@ -52,12 +82,38 @@ export class ApiClient {
 
         const response = await fetch(`${this.baseUrl}${endpoint}`, {
             ...options,
+            credentials: "include",
             headers,
         })
 
-        if (response.status === 401 && this.onUnauthorized) {
-            this.onUnauthorized()
+        if (response.status === 401 && endpoint !== "/auth/login" && endpoint !== "/auth/refresh") {
+            if (!this.isRefreshing) {
+                this.isRefreshing = true
+
+                try {
+                    const refreshResult = await this.auth.refresh()
+                    this.isRefreshing = false
+                    this.onTokenRefreshed?.(refreshResult.access_token, refreshResult.user)
+                    this.onRefreshSubscribers(refreshResult.access_token)
+                    return this.request<T>(endpoint, options)
+                } catch (refreshErr: any) {
+                    this.isRefreshing = false
+                    this.refreshSubscribers = []
+                    this.onUnauthorized?.()
+                    throw refreshErr
+                }
+                
+            }
+
+            return new Promise<T>((resolve, reject) => {
+                this.subscribeRefresh(() => {
+                    this.request<T>(endpoint, options)
+                        .then(resolve)
+                        .catch(reject)
+                })
+            })
         }
+
 
         if (!response.ok) {
             let errorData: ApiError
@@ -88,9 +144,17 @@ export class ApiClient {
             })
         },
 
-        getMe: (): Promise<UserRead> => {
-            return this.request<UserRead>("/auth/me")
+        refresh: (): Promise<TokenResponse> => {
+            return this.request<TokenResponse>("/auth/refresh", {
+                method: "POST"
+            })
         },
+
+        logout: (): Promise<{ status: string }> => {
+            return this.request<{ status: string }>("/auth/logout", {
+                method: "POST"
+            })
+        }
     }
 }
 

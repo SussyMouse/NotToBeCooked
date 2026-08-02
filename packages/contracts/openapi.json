@@ -12,6 +12,7 @@
           "Auth"
         ],
         "summary": "Refresh Session",
+        "description": "Refreshes an expired access token using HttpOnly refresh token cookie.",
         "operationId": "refresh_session_auth_refresh_post",
         "responses": {
           "200": {
@@ -20,6 +21,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or expired refresh token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }

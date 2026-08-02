@@ -13,7 +13,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Refresh Session */
+        /**
+         * Refresh Session
+         * @description Refreshes an expired access token using HttpOnly refresh token cookie.
+         */
         post: operations["refresh_session_auth_refresh_post"];
         delete?: never;
         options?: never;
@@ -208,6 +211,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+            /** @description Invalid or expired refresh token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
         };

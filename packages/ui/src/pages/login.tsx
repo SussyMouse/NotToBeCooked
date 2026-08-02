@@ -43,7 +43,7 @@ export function LoginPage() {
   const onSubmit = async (data: z.infer<typeof loginFormSchema>) => {
     try {
       const response = await api.auth.login(data)
-      console.log(response)
+
       localStorage.setItem("auth_token", response.access_token)
       window.location.href = '/dashboard'
     } catch (err: any) {
