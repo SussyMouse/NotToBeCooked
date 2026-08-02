@@ -19,6 +19,17 @@ from app.core.config import settings
 ph = PasswordHasher()
 auth_router = APIRouter()
 
+@auth_router.post("/logout")
+async def logout(response: Response):
+    """Logs out the user by clearing the HttpOnly refresh token cookie."""
+    response.delete_cookie(
+        key="refresh_token",
+        httponly=True,
+        samesite="lax",
+        secure=True,
+    )
+    return {"status": "ok"}
+
 @auth_router.post(
     "/refresh",
     response_model=TokenResponse,
