@@ -1,20 +1,57 @@
-import { Button } from "@base-ui/react"
 
-export function SharedMainApp({ platform }: { platform: "web" | "tauri" }) {
+
+import RegisterPage from "./pages/register";
+import LoginPage from "./pages/login";
+import { AuthProvider } from "./context/AuthContext";
+import ProtectedLayout from "./components/ProtectedLayout";
+import {
+  BrowserRouter,
+  MemoryRouter,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router";
+
+import { useAuth } from "./context/AuthContext";
+
+function DashboardPage({ platform }: { platform: "web" | "tauri" }) {
+  const { logout, user } = useAuth();
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-foreground">
-      <h1 className="text-3xl font-bold tracking-tight md:text-5xl">
-        NotToBeCooked
-      </h1>
-      <p className="mt-2 max-w-md text-center text-muted-foreground">
-        Running seamlessly on{" "}
-        <span className="font-semibold text-primary">{platform}</span>!
-      </p>
-      <div className="mt-6 flex gap-4">
-        <Button onClick={() => alert(`Hello from ${platform}!`)}>
-          Shared Action Button
-        </Button>
-      </div>
+      <h1 className="text-4xl font-bold">Dashboard</h1>
+      <p className="mt-2 text-muted-foreground">Platform: {platform}</p>
+      {user && <p className="text-sm text-muted-foreground mt-1">Logged in as: {user.email}</p>}
+      <button
+        onClick={logout}
+        className="mt-4 text-primary underline hover:text-primary/80 transition-colors"
+      >
+        Log Out
+      </button>
     </div>
-  )
+  );
+}
+
+/**
+ * Shared Multi-Page Application Container.
+ * Automatically selects MemoryRouter for Tauri desktop and BrowserRouter for Web.
+ */
+export function SharedMainApp({ platform }: { platform: "web" | "tauri" }) {
+  const Router = platform === "tauri" ? MemoryRouter : BrowserRouter;
+
+  return (
+    <Router>
+      <AuthProvider>
+        <Routes>
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/login" element={<LoginPage />} />
+
+          <Route element={<ProtectedLayout />}>
+            <Route path="/dashboard" element={<DashboardPage platform={platform} />} />
+            <Route path="*" element={<Navigate to="/register" replace />} />
+          </Route>
+        </Routes>
+      </AuthProvider>
+    </Router>
+  );
 }
