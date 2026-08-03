@@ -9,8 +9,11 @@
     "strict": true,
     "noEmit": true,
     "paths": {
-      "@workspace/ui/*": ["./src/*"]
+      "@workspace/ui/*": ["./src/*"],
+      "@lib/*": ["./src/lib/*"],
+      "@components/*": ["./src/components/*"]
     }
+
   },
   "include": ["."],
   "exclude": ["node_modules", "dist"]
