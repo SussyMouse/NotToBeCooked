@@ -1,3 +1,4 @@
+from pydantic import SecretStr, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +19,15 @@ class Settings(BaseSettings):
     # Database Settings
     DATABASE_URL: str = "postgresql+asyncpg://postgres:password@localhost:5432/not_to_be_cooked"
 
+    # Gemini Settings
+    GEMINI_API_KEY: SecretStr
+    GEMINI_MODEL_NAME: str = "gemini-3.5-flash-lite"
+    GEMINI_API_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta"
+    GEMINI_API_TIMEOUT_SECONDS: float = 30.0
+
+    # LLM Calls Settings
+    LLM_FAKE_MODE: bool = Field(default=True)
+
     # Load from .env file automatically
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -26,4 +36,4 @@ class Settings(BaseSettings):
     )
 
 
-settings = Settings()
+settings = Settings()  # pyright: ignore[reportCallIssue]
