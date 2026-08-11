@@ -1,4 +1,4 @@
-import { api, schemas, type ApiError } from "@workspace/contracts"
+import { api, schemas } from "@workspace/contracts"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Controller, useForm } from "react-hook-form"
@@ -78,7 +78,7 @@ export function RegisterPage() {
           form.setError(fieldName, { message: detailErr.msg })
         });
       } else {
-        form.setError("root", { message: err.message || "An unexpected error occured"})
+        form.setError("root", { message: err.message || "An unexpected error occured" })
       }
       devToast(err)
     }

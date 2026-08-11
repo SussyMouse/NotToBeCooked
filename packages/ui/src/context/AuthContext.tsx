@@ -72,7 +72,7 @@ export const AuthProvider = ({children}: {children: ReactNode}) => {
             setUser(null)
         }
     }
-    
+
     return (
         <AuthContext.Provider
             value={{

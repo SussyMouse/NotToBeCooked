@@ -1,10 +1,16 @@
-import { BrowserRouter, MemoryRouter, Routes, Route, Navigate, Link } from "react-router";
+
 
 import RegisterPage from "./pages/register";
 import LoginPage from "./pages/login";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedLayout from "./components/ProtectedLayout";
-
+import {
+  BrowserRouter,
+  MemoryRouter,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router";
 
 import { useAuth } from "./context/AuthContext";
 
@@ -16,8 +22,8 @@ function DashboardPage({ platform }: { platform: "web" | "tauri" }) {
       <h1 className="text-4xl font-bold">Dashboard</h1>
       <p className="mt-2 text-muted-foreground">Platform: {platform}</p>
       {user && <p className="text-sm text-muted-foreground mt-1">Logged in as: {user.email}</p>}
-      <button 
-        onClick={logout} 
+      <button
+        onClick={logout}
         className="mt-4 text-primary underline hover:text-primary/80 transition-colors"
       >
         Log Out
@@ -41,7 +47,7 @@ export function SharedMainApp({ platform }: { platform: "web" | "tauri" }) {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
 
-          <Route element={ <ProtectedLayout /> }>
+          <Route element={<ProtectedLayout />}>
             <Route path="/dashboard" element={<DashboardPage platform={platform} />} />
           </Route>
         </Routes>
