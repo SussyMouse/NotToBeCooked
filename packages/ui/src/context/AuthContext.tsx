@@ -1,5 +1,5 @@
-import { api, UserRead } from "@workspace/contracts";
-import { useState, useContext, createContext, ReactNode, useEffect, useRef } from "react";
+import { api, type UserRead } from "@workspace/contracts";
+import { useState, useContext, createContext, type ReactNode, useEffect, useRef } from "react";
 
 interface AuthContextType {
     isAuthenticated: boolean
