@@ -13,6 +13,8 @@ dependencies = [
     "argon2-cffi>=25.1.0",
     "pyjwt[crypto]>=2.13.0",
     "pydantic-settings>=2.14.2",
+    "sentence-transformers>=5.7.0",
+    "kernels>=0.16.0",
 ]
 
 [build-system]
