@@ -1,5 +1,5 @@
 import { api, UserRead } from "@workspace/contracts";
-import { useState, useContext, createContext, ReactNode, useEffect } from "react";
+import { useState, useContext, createContext, ReactNode, useEffect, useRef } from "react";
 
 interface AuthContextType {
     isAuthenticated: boolean
@@ -12,18 +12,20 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export const AuthProvider = ({children}: {children: ReactNode}) => {
+    const accessTokenRef = useRef<string | null>(null)
     const [accessToken, setAccessToken] = useState<string | null>(null)
     const [user, setUser] = useState<UserRead | null>(null)
     const [isLoading, setIsLoading] = useState<boolean>(true)
 
     useEffect(() => {
         // Dynamic getter allows ApiClient to fetch current in-memory accessToken on every HTTP request
-        api.setTokenGetter(() => accessToken)
+        api.setTokenGetter(() => accessTokenRef.current)
     }, [accessToken])
 
     useEffect(() => {
         // Register token refresh callback listener
         api.setOnTokenRefreshed((accessToken: string, user: UserRead) => {
+            accessTokenRef.current = accessToken
             setAccessToken(accessToken)
             setUser(user)
             setIsLoading(false)
