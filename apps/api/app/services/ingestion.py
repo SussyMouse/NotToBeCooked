@@ -94,7 +94,7 @@ def main()->None:
         if too_large or title_change:
             chunk_content=" ".join(current_parts)
             chunk={
-                "index":len(chunks),
+                "chunk_index":len(chunks),
                 "heading":current_chunk_heading,
                 "page_number":min(current_pages),
                 "page_end":max(current_pages),
@@ -108,7 +108,7 @@ def main()->None:
             current_pages=[]
             current_word_count=0
             current_chunk_heading=None
-            
+
         if not current_parts:
             current_chunk_heading=item_heading
 
@@ -120,7 +120,7 @@ def main()->None:
     if current_parts:
         chunk_content=" ".join(current_parts)
         chunk={
-                "index":len(chunks),
+                "chunk_index":len(chunks),
                 "heading":current_chunk_heading,
                 "page_number":min(current_pages),
                 "page_end":max(current_pages),
@@ -129,8 +129,14 @@ def main()->None:
             }
         chunks.append(chunk)
         
-    print("First Chunk Page Number:",chunks[0]["page_number"])
+    print("Number of Chunks:",len(chunks))
+    print("First Chunk Index:",chunks[0]["chunk_index"])
+    print("First Chunk heading:",chunks[0]["heading"])
+    print("First Chunk Page Number",chunks[0]["page_number"])
     print("First Chunk Page End:",chunks[0]["page_end"])
+    print("First Chunk Word Count:",chunks[0]["word_count"])
+    print("First Chunk Content:",chunks[0]["content"])
+    
        
 
 if __name__=="__main__":
