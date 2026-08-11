@@ -1,9 +1,10 @@
-import type {
-    LoginRequest,
-    RegisterRequest,
-    TokenResponse,
-    UserRead,
-    ApiError,
+import {
+    type LoginRequest,
+    type RegisterRequest,
+    type TokenResponse,
+    type UserRead,
+    type ApiError,
+    schemas,
 } from "./index.js"
 
 export interface ApiClientConfig {
@@ -13,7 +14,7 @@ export interface ApiClientConfig {
     onTokenRefreshed?: (newToken: string, user: UserRead) => void
 }
 
-type RefreshSubscribers = (newToken: string) => void;
+type RefreshSubscriber = (err?: any) => void;
 
 export class ApiClient {
     private baseUrl: string
@@ -23,7 +24,7 @@ export class ApiClient {
     
     // Race-condition control variables
     private isRefreshing: boolean = false;
-    private refreshSubscribers: RefreshSubscribers[] = [];
+    private refreshSubscribers: RefreshSubscriber[] = [];
 
     constructor(config: ApiClientConfig = {}) {
         this.baseUrl = config.baseUrl || this.resolveBaseUrl()
@@ -49,12 +50,12 @@ export class ApiClient {
         this.onTokenRefreshed = fn
     }
 
-    private subscribeRefresh(cb: RefreshSubscribers) {
+    private subscribeRefresh(cb: RefreshSubscriber) {
         this.refreshSubscribers.push(cb)
     }
 
-    private onRefreshSubscribers(newToken: string) {
-        this.refreshSubscribers.forEach((cb) => cb(newToken))
+    private onRefreshSubscribers(err?: any) {
+        this.refreshSubscribers.forEach((cb) => cb(err))
         this.refreshSubscribers = []
     }
 
@@ -94,19 +95,22 @@ export class ApiClient {
                     const refreshResult = await this.auth.refresh()
                     this.isRefreshing = false
                     this.onTokenRefreshed?.(refreshResult.access_token, refreshResult.user)
-                    this.onRefreshSubscribers(refreshResult.access_token)
+                    this.onRefreshSubscribers()
                     return this.request<T>(endpoint, options)
                 } catch (refreshErr: any) {
                     this.isRefreshing = false
-                    this.refreshSubscribers = []
+                    this.onRefreshSubscribers(refreshErr)
                     this.onUnauthorized?.()
                     throw refreshErr
                 }
-                
             }
 
             return new Promise<T>((resolve, reject) => {
-                this.subscribeRefresh(() => {
+                this.subscribeRefresh((err) => {
+                    if (err) {
+                        reject(err)
+                        return
+                    }
                     this.request<T>(endpoint, options)
                         .then(resolve)
                         .catch(reject)
@@ -118,7 +122,13 @@ export class ApiClient {
         if (!response.ok) {
             let errorData: ApiError
             try {
-                errorData = await response.json()
+                const rawJson = await response.json()
+                const parsed = schemas.ApiError.safeParse(rawJson)
+                if (!parsed.success) {
+                    errorData = { code: "HTTP_ERROR", message: rawJson.detail?.message || rawJson.detail || response.statusText }
+                } else {
+                    errorData = parsed.data
+                }
             } catch {
                 errorData = { code: "UNKNOWN_ERROR", message: response.statusText }
             }

@@ -20,7 +20,7 @@ ph = PasswordHasher()
 auth_router = APIRouter()
 
 @auth_router.post("/logout")
-async def logout(response: Response):
+async def logout(response: Response, _ = Depends(get_current_user)):
     """Logs out the user by clearing the HttpOnly refresh token cookie."""
     response.delete_cookie(
         key="refresh_token",
@@ -65,6 +65,11 @@ async def refresh_session(request: Request, response: Response, session: AsyncSe
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={ "code": "INVALID_REFRESH_TOKEN", "message": "Invalid or tampered refresh token" }
+        )
+    except jwt.InvalidSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={ "code": "INVALID_REFRESH_TOKEN", "message": "Invalid of tampered refresh token" }
         )
 
     # ensure user ID exist in database
