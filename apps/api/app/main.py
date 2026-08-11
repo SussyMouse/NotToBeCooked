@@ -1,3 +1,6 @@
+from app.routers import rag_router
+from fastapi import Depends
+from app.dependencies.auth import get_current_user
 import os
 import httpx
 
@@ -28,7 +31,8 @@ app = FastAPI(
     lifespan=lifespan
 )
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
-app.include_router(files_router, prefix="/files", tags=["Files"])
+app.include_router(files_router, prefix="/files", tags=["Files"], dependencies=[Depends(get_current_user)])
+app.include_router(rag_router, prefix="/rag", tags=["RAG"], dependencies=[Depends(get_current_user)])
 
 # CORS configuration for Web (any local port), Tauri (Desktop & Android), and Production
 origins = [
