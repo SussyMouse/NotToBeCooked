@@ -19,9 +19,37 @@ from app.core.config import settings
 ph = PasswordHasher()
 auth_router = APIRouter()
 
-@auth_router.get("/me", response_model=UserRead)
-async def get_me(user: User = Depends(get_current_user)):
+@auth_router.get(
+    "/me",
+    response_model=UserRead,
+    responses={ 401: {"model": ApiError, "description": "Missing, invalid or expired access token"} }
+)
+async def get_me(
+    payload: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
     """Returns the current logged-in user's profile"""
+
+    # get_current_user returns the decoded JWT payload, not a User row: the token
+    # carries sub/name/email but neither id nor created_at, so UserRead cannot be
+    # built from it. Look the user up the same way refresh_session does.
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={ "code": "INVALID_TOKEN", "message": "Invalid or tampered token" }
+        )
+
+    statement = select(User).where(col(User.id) == user_id)
+    result = await session.execute(statement)
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={ "code": "USER_NOT_FOUND", "message": "User account no longer exists" }
+        )
+
     return user
 
 @auth_router.post("/logout")
@@ -67,16 +95,6 @@ async def refresh_session(request: Request, response: Response, session: AsyncSe
             detail={ "code": "REFRESH_TOKEN_EXPIRED", "message": "Refresh token has expired. Please log in again" }
         )
     except jwt.InvalidTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={ "code": "INVALID_REFRESH_TOKEN", "message": "Invalid or tampered refresh token" }
-        )
-    except jwt.InvalidAlgorithmError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={ "code": "INVALID_REFRESH_TOKEN", "message": "Invalid or tampered refresh token" }
-        )
-    except jwt.InvalidSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={ "code": "INVALID_REFRESH_TOKEN", "message": "Invalid or tampered refresh token" }

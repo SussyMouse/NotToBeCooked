@@ -5,8 +5,8 @@ import { z } from "zod";
 
 
 const UserRead = z.object({ email: z.string().email(), display_name: z.union([z.string(), z.null()]).optional(), id: z.string().uuid(), created_at: z.string().datetime({ offset: true }) }).passthrough();
-const TokenResponse = z.object({ access_token: z.string(), token_type: z.string().optional().default("bearer"), user: UserRead }).passthrough();
 const ApiError = z.object({ code: z.string(), message: z.string() }).passthrough();
+const TokenResponse = z.object({ access_token: z.string(), token_type: z.string().optional().default("bearer"), user: UserRead }).passthrough();
 const LoginRequest = z.object({ email: z.string().email(), password: z.string().min(8) }).passthrough();
 const ValidationError = z.object({ loc: z.array(z.union([z.string(), z.number()])), msg: z.string(), type: z.string(), input: z.unknown().optional(), ctx: z.object({}).partial().passthrough().optional() }).passthrough();
 const HTTPValidationError = z.object({ detail: z.array(ValidationError) }).partial().passthrough();
@@ -15,8 +15,8 @@ const IngestionResponse = z.object({ file_id: z.string().uuid(), status: z.enum(
 
 export const schemas = {
 	UserRead,
-	TokenResponse,
 	ApiError,
+	TokenResponse,
 	LoginRequest,
 	ValidationError,
 	HTTPValidationError,
@@ -66,6 +66,21 @@ const endpoints = makeApi([
 		description: `Logs out the user by clearing the HttpOnly refresh token cookie.`,
 		requestFormat: "json",
 		response: z.unknown(),
+	},
+	{
+		method: "get",
+		path: "/auth/me",
+		alias: "get_me_auth_me_get",
+		description: `Returns the current logged-in user&#x27;s profile`,
+		requestFormat: "json",
+		response: UserRead,
+		errors: [
+			{
+				status: 401,
+				description: `Missing, invalid or expired access token`,
+				schema: ApiError
+			},
+		]
 	},
 	{
 		method: "post",
