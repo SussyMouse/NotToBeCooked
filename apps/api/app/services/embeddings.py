@@ -11,7 +11,7 @@ _active_model: SentenceTransformer | None = None
 
 def _load_model():
     is_cuda = torch.cuda.is_available()
-    device = torch.device("cuda" if is_cuda else "cpu")
+    device = "cuda" if is_cuda else "cpu"
 
     model_kwargs = {}
     config_kwargs = {}
