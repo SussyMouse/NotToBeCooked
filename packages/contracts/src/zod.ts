@@ -11,6 +11,7 @@ const LoginRequest = z.object({ email: z.string().email(), password: z.string().
 const ValidationError = z.object({ loc: z.array(z.union([z.string(), z.number()])), msg: z.string(), type: z.string(), input: z.unknown().optional(), ctx: z.object({}).partial().passthrough().optional() }).passthrough();
 const HTTPValidationError = z.object({ detail: z.array(ValidationError) }).partial().passthrough();
 const RegisterRequest = z.object({ display_name: z.string(), email: z.string().email(), password: z.string().min(8) }).passthrough();
+const IngestionResponse = z.object({ file_id: z.string().uuid(), status: z.enum(["processing", "ready", "failed"]), chunk_count: z.union([z.number(), z.null()]).optional(), error: z.union([z.string(), z.null()]).optional() }).passthrough();
 
 export const schemas = {
 	UserRead,
@@ -20,6 +21,7 @@ export const schemas = {
 	ValidationError,
 	HTTPValidationError,
 	RegisterRequest,
+	IngestionResponse,
 };
 
 const endpoints = makeApi([
@@ -100,6 +102,27 @@ const endpoints = makeApi([
 				description: `Email already exists`,
 				schema: ApiError
 			},
+			{
+				status: 422,
+				description: `Validation Error`,
+				schema: HTTPValidationError
+			},
+		]
+	},
+	{
+		method: "post",
+		path: "/files/:file_id/ingest",
+		alias: "ingest_file_files__file_id__ingest_post",
+		requestFormat: "json",
+		parameters: [
+			{
+				name: "file_id",
+				type: "Path",
+				schema: z.string().uuid()
+			},
+		],
+		response: IngestionResponse,
+		errors: [
 			{
 				status: 422,
 				description: `Validation Error`,

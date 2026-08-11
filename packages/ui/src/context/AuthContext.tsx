@@ -1,5 +1,11 @@
-import { api, UserRead } from "@workspace/contracts";
-import { useState, useContext, createContext, ReactNode, useEffect } from "react";
+import { api, type UserRead } from "@workspace/contracts";
+import {
+    useState,
+    useContext,
+    createContext,
+    useEffect,
+    type ReactNode,
+} from "react";
 
 interface AuthContextType {
     isAuthenticated: boolean
@@ -11,7 +17,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export const AuthProvider = ({children}: {children: ReactNode}) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [accessToken, setAccessToken] = useState<string | null>(null)
     const [user, setUser] = useState<UserRead | null>(null)
     const [isLoading, setIsLoading] = useState<boolean>(true)
@@ -66,7 +72,7 @@ export const AuthProvider = ({children}: {children: ReactNode}) => {
             setUser(null)
         }
     }
-    
+
     return (
         <AuthContext.Provider
             value={{

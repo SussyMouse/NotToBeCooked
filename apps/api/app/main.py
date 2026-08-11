@@ -3,13 +3,13 @@ import httpx
 
 from contextlib import asynccontextmanager
 
-from fastapi import Depends
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.database import init_db
-from app.routers import auth_router
-from app.dependencies.auth import get_current_user
+from app.routers import auth_router, files_router
+
 
 
 @asynccontextmanager
@@ -28,6 +28,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
+app.include_router(files_router, prefix="/files", tags=["Files"])
 
 # CORS configuration for Web (any local port), Tauri (Desktop & Android), and Production
 origins = [

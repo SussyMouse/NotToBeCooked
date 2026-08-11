@@ -5,7 +5,6 @@ export { ApiClient, api } from "./api_client.js";
 
 // Helper type exports for clean imports in frontend apps
 export type UserRead = components["schemas"]["UserRead"];
-export type UserCreate = components["schemas"]["UserCreate"];
 
 export type LoginRequest = components["schemas"]["LoginRequest"];
 export type RegisterRequest = components["schemas"]["RegisterRequest"];

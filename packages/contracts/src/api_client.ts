@@ -21,7 +21,7 @@ export class ApiClient {
     private getToken: () => string | null
     private onUnauthorized?: () => void
     private onTokenRefreshed?: (newToken: string, user: UserRead) => void
-    
+
     // Race-condition control variables
     private isRefreshing: boolean = false;
     private refreshSubscribers: RefreshSubscriber[] = [];
@@ -60,10 +60,13 @@ export class ApiClient {
     }
 
     private resolveBaseUrl(): string {
-        if (typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__) {
-            return import.meta.env?.VITE_API_URL || "http://localhost:8000"
-        }
-        return import.meta.env?.VITE_API_URL || "http://localhost:8000"
+        const env = (
+            import.meta as ImportMeta & {
+                env?: { VITE_API_URL?: string }
+            }
+        ).env
+
+        return env?.VITE_API_URL || "http://localhost:8000"
     }
 
     private async request<T>(

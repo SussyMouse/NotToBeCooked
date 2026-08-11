@@ -5,7 +5,13 @@ import Swal from "sweetalert2";
  * Automatically disabled in production builds.
  */
 export const devToast = (data: unknown) => {
-  const isDev = Boolean(import.meta.env?.DEV ?? true);
+  const env = (
+    import.meta as ImportMeta & {
+      env?: { DEV?: boolean };
+    }
+  ).env;
+
+  const isDev = Boolean(env?.DEV ?? true);
 
   if (isDev) {
     const textContent =
