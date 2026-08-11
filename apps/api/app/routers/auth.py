@@ -19,6 +19,11 @@ from app.core.config import settings
 ph = PasswordHasher()
 auth_router = APIRouter()
 
+@auth_router.get("/me", response_model=UserRead)
+async def get_me(user: User = Depends(get_current_user)):
+    """Returns the current logged-in user's profile"""
+    return user
+
 @auth_router.post("/logout")
 async def logout(response: Response, _ = Depends(get_current_user)):
     """Logs out the user by clearing the HttpOnly refresh token cookie."""

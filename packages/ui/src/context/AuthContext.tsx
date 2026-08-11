@@ -25,16 +25,14 @@ export const AuthProvider = ({children}: {children: ReactNode}) => {
     useEffect(() => {
         // Register token refresh callback listener
         api.setOnTokenRefreshed((accessToken: string, user: UserRead) => {
-            accessTokenRef.current = accessToken
-            setAccessToken(accessToken)
+            applyAccessToken(accessToken)
             setUser(user)
             setIsLoading(false)
         })
 
         // Register unauthorized logout callback listener
         api.setOnUnauthorized(() => {
-            setAccessToken(null)
-            accessTokenRef.current = null
+            applyAccessToken(null)
             setUser(null)
             setIsLoading(false)
         })
@@ -43,12 +41,10 @@ export const AuthProvider = ({children}: {children: ReactNode}) => {
         async function initAuth() {
             try {
                 const response = await api.auth.refresh()
-                accessTokenRef.current = response.access_token
-                setAccessToken(response.access_token)
+                applyAccessToken(response.access_token)
                 setUser(response.user)
             } catch {
-                setAccessToken(null)
-                accessTokenRef.current = null
+                applyAccessToken(null)
                 setUser(null)
             } finally {
                 setIsLoading(false)
@@ -58,9 +54,13 @@ export const AuthProvider = ({children}: {children: ReactNode}) => {
         initAuth()
     }, [])
 
-    const login = (token: string, user: UserRead) => {
+    const applyAccessToken = (token: string | null) => {
         setAccessToken(token)
         accessTokenRef.current = token
+    }
+
+    const login = (token: string, user: UserRead) => {
+        applyAccessToken(token)
         setUser(user)
     }
 
@@ -68,8 +68,7 @@ export const AuthProvider = ({children}: {children: ReactNode}) => {
         try {
             await api.auth.logout()
         } finally {
-            setAccessToken(null)
-            accessTokenRef.current = null
+            applyAccessToken(null)
             setUser(null)
         }
     }
