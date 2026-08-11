@@ -34,6 +34,7 @@ export const AuthProvider = ({children}: {children: ReactNode}) => {
         // Register unauthorized logout callback listener
         api.setOnUnauthorized(() => {
             setAccessToken(null)
+            accessTokenRef.current = null
             setUser(null)
             setIsLoading(false)
         })
@@ -42,10 +43,12 @@ export const AuthProvider = ({children}: {children: ReactNode}) => {
         async function initAuth() {
             try {
                 const response = await api.auth.refresh()
+                accessTokenRef.current = response.access_token
                 setAccessToken(response.access_token)
                 setUser(response.user)
             } catch {
                 setAccessToken(null)
+                accessTokenRef.current = null
                 setUser(null)
             } finally {
                 setIsLoading(false)
@@ -57,6 +60,7 @@ export const AuthProvider = ({children}: {children: ReactNode}) => {
 
     const login = (token: string, user: UserRead) => {
         setAccessToken(token)
+        accessTokenRef.current = token
         setUser(user)
     }
 
@@ -65,6 +69,7 @@ export const AuthProvider = ({children}: {children: ReactNode}) => {
             await api.auth.logout()
         } finally {
             setAccessToken(null)
+            accessTokenRef.current = null
             setUser(null)
         }
     }
