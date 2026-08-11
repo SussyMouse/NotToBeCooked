@@ -37,12 +37,12 @@ export function SharedMainApp({ platform }: { platform: "web" | "tauri" }) {
     <Router>
       <AuthProvider>
         <Routes>
+          <Route path="*" element={<Navigate to="/register" replace />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
 
           <Route element={ <ProtectedLayout /> }>
             <Route path="/dashboard" element={<DashboardPage platform={platform} />} />
-            <Route path="*" element={<Navigate to="/register" replace />} />
           </Route>
         </Routes>
       </AuthProvider>

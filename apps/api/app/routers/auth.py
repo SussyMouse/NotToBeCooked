@@ -61,6 +61,11 @@ async def refresh_session(request: Request, response: Response, session: AsyncSe
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={ "code": "REFRESH_TOKEN_EXPIRED", "message": "Refresh token has expired. Please log in again" }
         )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={ "code": "INVALID_REFRESH_TOKEN", "message": "Invalid or tampered refresh token" }
+        )
     except jwt.InvalidAlgorithmError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -69,7 +74,7 @@ async def refresh_session(request: Request, response: Response, session: AsyncSe
     except jwt.InvalidSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={ "code": "INVALID_REFRESH_TOKEN", "message": "Invalid of tampered refresh token" }
+            detail={ "code": "INVALID_REFRESH_TOKEN", "message": "Invalid or tampered refresh token" }
         )
 
     # ensure user ID exist in database
