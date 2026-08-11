@@ -70,32 +70,68 @@ def main()->None:
 
    
     chunks=[]
+    current_pages=[]
     current_parts=[]
+    current_chunk_heading=None
     current_word_count=0
     max_word=350
 
     for item in extracted_texts:
         content=item["content"]
+        item_heading=item["heading"]
+
         words=content.split()
         item_word_count=len(words)
 
-        if current_parts and current_word_count+item_word_count>max_word:
+        too_large=(
+             current_parts and current_word_count+item_word_count>max_word
+        )
+        
+        title_change=(
+            current_parts and item_heading!=current_chunk_heading
+        )
+
+        if too_large or title_change:
             chunk_content=" ".join(current_parts)
-            chunks.append(chunk_content)
+            chunk={
+                "index":len(chunks),
+                "heading":current_chunk_heading,
+                "page_number":min(current_pages),
+                "page_end":max(current_pages),
+                "content":chunk_content,
+                "word_count":len(chunk_content.split()),
+                
+            }
+            chunks.append(chunk)
 
             current_parts=[]
+            current_pages=[]
             current_word_count=0
+            current_chunk_heading=None
+            
+        if not current_parts:
+            current_chunk_heading=item_heading
 
         current_parts.append(content)
+        current_pages.append(item["page_number"])
+        current_pages.append(item["page_end"])
         current_word_count=current_word_count+item_word_count
-
 
     if current_parts:
         chunk_content=" ".join(current_parts)
-        chunks.append(chunk_content)
-        print("Number of chunks:", len(chunks))
-        print("First chunk word count:", len(chunks[0].split()))
-        print("First chunk:", chunks[0])
+        chunk={
+                "index":len(chunks),
+                "heading":current_chunk_heading,
+                "page_number":min(current_pages),
+                "page_end":max(current_pages),
+                "content":chunk_content,
+                "word_count":len(chunk_content.split()),
+            }
+        chunks.append(chunk)
+        
+    print("First Chunk Page Number:",chunks[0]["page_number"])
+    print("First Chunk Page End:",chunks[0]["page_end"])
+       
 
 if __name__=="__main__":
     main()
