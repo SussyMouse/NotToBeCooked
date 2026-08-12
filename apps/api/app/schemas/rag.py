@@ -4,6 +4,7 @@ Owned by AI-3. Retrieval must produce `RetrievedChunk` exactly as defined here;
 any change to that shape needs agreement from AI-1.
 """
 
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from app.core.config import settings
 
 from datetime import datetime, timezone
@@ -20,7 +21,10 @@ class TSVector(TypeDecorator):
     impl = TSVECTOR
     cache_ok = True
 
-class Chunk(SQLModel, table=True):
+class Base(DeclarativeBase):
+    metadata = SQLModel.metadata
+
+class Chunk(Base, table=True):
     __table_args__ = (
         Index(
             "chunk_embedding_idx",
@@ -43,10 +47,7 @@ class Chunk(SQLModel, table=True):
     heading: str | None
     content: str
     token_count: int
-    embedding: list[float] = Field(
-        sa_column=Column(Vector(settings.EMBEDDINGS_DIM),
-        nullable=True)
-    )
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(settings.EMBEDDINGS_DIM), nullable=True)
     content_tsv: str | None = Field(
         default=False,
         sa_column=Column(

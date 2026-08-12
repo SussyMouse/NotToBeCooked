@@ -6,6 +6,16 @@ from datetime import datetime
 
 class File(SQLModel, table=True):
     id: Optional[UUID] = Field(primary_key=True, default_factory=uuid4)
+    course_id: UUID = Field(default=None, foreign_key="course.id")
+    filename: str
+    category: Optional[str]
+    storage_path: str
+    mime_type: str
+    size_bytes: int
+    page_count: Optional[int]
+    status: Literal["processing", "ready", "failed"]
+    error_message: Optional[str]
+    uploaded_at: datetime
 
 class FileRead(SQLModel): #描述 backend 把一份文件资料“返回给其他模块或前端”时，数据长什么样。
     id:UUID
