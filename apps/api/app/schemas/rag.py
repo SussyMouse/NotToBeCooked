@@ -4,8 +4,60 @@ Owned by AI-3. Retrieval must produce `RetrievedChunk` exactly as defined here;
 any change to that shape needs agreement from AI-1.
 """
 
+from app.core.config import settings
+
+from datetime import datetime, timezone
+from uuid import UUID, uuid4
+
 from sqlmodel import Field, SQLModel
-from uuid import UUID
+from sqlalchemy import Index, Column, Computed, DateTime
+from sqlalchemy.types import TypeDecorator
+from sqlalchemy.dialects.postgresql import TSVECTOR
+from pgvector.sqlalchemy import Vector
+
+
+class TSVector(TypeDecorator):
+    impl = TSVECTOR
+    cache_ok = True
+
+class Chunk(SQLModel, table=True):
+    __table_args__ = (
+        Index(
+            "chunk_embedding_idx",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+        Index(
+            "chunk_content_tsv_idx",
+            "content_tsv",
+            postgresql_using="gin"
+        )
+    )
+
+    id: UUID = Field(primary_key=True, default_factory=uuid4)
+    file_id: UUID = Field(default=None, foreign_key="file.id")
+    chunk_index: int
+    page_number: int
+    page_end: int | None
+    heading: str | None
+    content: str
+    token_count: int
+    embedding: list[float] = Field(
+        sa_column=Column(Vector(settings.EMBEDDINGS_DIM),
+        nullable=True)
+    )
+    content_tsv: str | None = Field(
+        default=False,
+        sa_column=Column(
+            TSVector(),
+            Computed("to_tsvector('english', content)", persisted=True)
+        )
+    )
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True)),
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
 
 class RagQueryRequest(SQLModel):
     """Inbound: frontend -> generation layer. A single question from the user."""
@@ -16,7 +68,7 @@ class RagQueryRequest(SQLModel):
     course_id: UUID | None = None
     file_ids: list[UUID] | None = None
     top_k: int = Field(default=5, ge=1, le=20)
-
+    
 class RetrievedChunk(SQLModel):
     """C4 internal: retrieval (AI-1) -> generation (AI-3).
 

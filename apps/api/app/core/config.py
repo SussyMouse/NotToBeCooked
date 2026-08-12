@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     # Database Settings
     DATABASE_URL: str = "postgresql+asyncpg://postgres:password@localhost:5432/not_to_be_cooked"
 
+    # Embedding Settings
+    BATCH_SIZE: int = 32
+    EMBEDDINGS_DIM: int = 1024
+    MODEL_TYPE: str = "jinaai/jina-embeddings-v5-text-small"
+
     # Gemini Settings
     GEMINI_API_KEY: SecretStr
     GEMINI_MODEL_NAME: str = "gemini-3.5-flash-lite"

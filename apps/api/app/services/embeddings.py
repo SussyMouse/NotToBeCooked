@@ -1,13 +1,9 @@
 from sentence_transformers import SentenceTransformer
+from app.core.config import settings
 import torch
 
 
-_BATCH_SIZE = 32
-_EMBEDDINGS_DIM = 1024
-_MODEL_TYPE = "jinaai/jina-embeddings-v5-text-small"
-
 _active_model: SentenceTransformer | None = None
-
 
 def _load_model():
     is_cuda = torch.cuda.is_available()
@@ -25,7 +21,7 @@ def _load_model():
             pass
 
     return SentenceTransformer(
-        _MODEL_TYPE,
+        settings.MODEL_TYPE,
         trust_remote_code=True,
         device=device,
         model_kwargs=model_kwargs,
@@ -39,11 +35,6 @@ def _get_model():
     if _active_model is None:
         _active_model = _load_model()
     return _active_model
-
-
-# Public functions
-def get_embeddings_dim():
-    return _EMBEDDINGS_DIM
 
 def embed_query(query: str) -> list[float]:
     """Used to vectorise a user's query"""
@@ -59,7 +50,7 @@ def embed_text(texts: list[str]) -> list[list[float]]:
     """Used to build vector db with batch embeddings"""
     return _get_model().encode(
         texts,
-        batch_size=_BATCH_SIZE,
+        batch_size=settings.BATCH_SIZE,
         show_progress_bar=True,
         normalize_embeddings=True,
         task="retrieval",
@@ -69,6 +60,5 @@ def embed_text(texts: list[str]) -> list[list[float]]:
 
 if __name__ == "__main__":
     """Try running this file directly to ensure embeddings work locally"""
-    print("Embeddings dimensions:", get_embeddings_dim())
     print("Query Embedding:", embed_query("Hello world"))
     print("Text Embedding:", embed_text(["First document text", "Second document text"]))
