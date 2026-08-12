@@ -1,10 +1,16 @@
+from enum import Enum
 from sqlmodel import SQLModel, Field
 from uuid import UUID, uuid4
 from typing import Literal, Optional
 from datetime import datetime
 
 
-class File(SQLModel, table=True):
+class FileStatus(str, Enum):
+    PROCESSING = "processing"
+    READY = "ready"
+    FAILED = "failed"
+
+class File(SQLModel):
     id: Optional[UUID] = Field(primary_key=True, default_factory=uuid4)
     course_id: UUID = Field(default=None, foreign_key="course.id")
     filename: str
@@ -13,7 +19,7 @@ class File(SQLModel, table=True):
     mime_type: str
     size_bytes: int
     page_count: Optional[int]
-    status: Literal["processing", "ready", "failed"]
+    status: FileStatus = Field(default=FileStatus.PROCESSING)
     error_message: Optional[str]
     uploaded_at: datetime
 

@@ -1,6 +1,11 @@
 from pydantic import SecretStr, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from pathlib import Path
+
+# Dynamic path resolution to prevent searching .env at repository root
+_ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
+
 
 # Duplicate value of a variable follows a priority system where
 # system variable (e.g. Docker) > values in .env > values in config.py
@@ -25,7 +30,7 @@ class Settings(BaseSettings):
     MODEL_TYPE: str = "jinaai/jina-embeddings-v5-text-small"
 
     # Gemini Settings
-    GEMINI_API_KEY: SecretStr
+    GEMINI_API_KEY: SecretStr = SecretStr("")
     GEMINI_MODEL_NAME: str = "gemini-3.5-flash-lite"
     GEMINI_API_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta"
     GEMINI_API_TIMEOUT_SECONDS: float = 30.0
@@ -35,7 +40,7 @@ class Settings(BaseSettings):
 
     # Load from .env file automatically
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(_ENV_FILE, ".env"),
         env_file_encoding="utf-8",
         extra="ignore"
     )
