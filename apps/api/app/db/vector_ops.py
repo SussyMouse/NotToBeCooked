@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from sqlalchemy import func
-from sqlmodel import select, col
+from sqlmodel import select, col, delete
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 
@@ -25,12 +25,23 @@ class SearchConfig:
 
 
 # Document ingestions
-async def add_chunks(chunks: list[Chunk], session: AsyncSession):
-    pass
+async def add_chunks(chunks: list[Chunk], session: AsyncSession) -> None:
+    """Adds a list of chunks to the session and flushes."""
+    session.add_all(chunks)
+    await session.flush()
 
-async def delete_chunk_by_file_id(file_id: UUID,  session: AsyncSession):
-    pass
-
+async def delete_chunks_by_file_id(file_id: UUID, session: AsyncSession) -> int:
+    """Deletes all chunks associated with a file ID.
+    Args:
+        file_id: File ID whose chunks should be deleted.
+        session: An async SQLAlchemy session.
+    Returns:
+        The number of deleted chunks.
+    """
+    statement = delete(Chunk).where(Chunk.file_id == file_id)
+    result = await session.exec(statement)
+    await session.flush()
+    return result.rowcount if result.rowcount is not None else 0
 
 # Retrieval and search operations
 async def _vector_similarity_search(
