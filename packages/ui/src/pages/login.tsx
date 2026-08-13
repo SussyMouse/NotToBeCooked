@@ -71,11 +71,14 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4 text-foreground">
       <Card className="w-full max-w-md shadow-xl border border-border">
-        <CardHeader className="text-center space-y-1">
-          <CardTitle className="text-2xl font-bold tracking-tight">Welcome Back</CardTitle>
-          <CardDescription>
-            Sign in to access your RAG study workspace
-          </CardDescription>
+        <CardHeader className="text-center space-y-2 flex flex-col items-center">
+          <img src="/ntbc-logo.png" alt="NotToBeCooked Logo" className="w-12 h-12 object-contain rounded-xl shadow-md" />
+          <div>
+            <CardTitle className="text-2xl font-bold tracking-tight">Welcome Back</CardTitle>
+            <CardDescription>
+              Sign in to access your RAG study workspace
+            </CardDescription>
+          </div>
         </CardHeader>
 
         <CardContent className="space-y-4">

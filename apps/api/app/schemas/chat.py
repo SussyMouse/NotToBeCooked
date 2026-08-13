@@ -39,3 +39,15 @@ class Message(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True)),
         default_factory=lambda: datetime.now(timezone.utc)
     )
+
+class ConversationRead(SQLModel):
+    pass
+
+class ConversationWrite(SQLModel):
+    pass
+
+class MessageRead(SQLModel):
+    pass
+
+class MessageWrite(SQLModel):
+    pass

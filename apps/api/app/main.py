@@ -1,16 +1,14 @@
-from app.routers import rag_router
-from fastapi import Depends
-from app.dependencies.auth import get_current_user
 import os
 import httpx
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.database import init_db
-from app.routers import auth_router, files_router
+from app.dependencies.auth import get_current_user
+from app.routers import auth_router, files_router, rag_router, chat_router
 
 
 
@@ -32,6 +30,7 @@ app = FastAPI(
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
 app.include_router(files_router, prefix="/files", tags=["Files"], dependencies=[Depends(get_current_user)])
 app.include_router(rag_router, prefix="/rag", tags=["RAG"], dependencies=[Depends(get_current_user)])
+app.include_router(chat_router, prefix="/chat", tags=["Chat"], dependencies=[Depends(get_current_user)])
 
 # CORS configuration for Web (any local port), Tauri (Desktop & Android), and Production
 origins = [
