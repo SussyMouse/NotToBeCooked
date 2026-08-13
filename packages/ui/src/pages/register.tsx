@@ -62,13 +62,13 @@ export function RegisterPage() {
       const response = await api.auth.register({
         display_name: data.display_name,
         email: data.email,
-        password: data.password
+        password: data.password,
       })
 
       devToast(data)
 
       localStorage.setItem("auth_token", response.access_token)
-      window.location.href = '/dashboard'
+      window.location.href = "/dashboard"
     } catch (err: any) {
       if (err.code == "EMAIL_EXISTS") {
         form.setError("email", { message: err.message })
@@ -76,9 +76,11 @@ export function RegisterPage() {
         err.detail.forEach((detailErr: any) => {
           const fieldName = detailErr.loc[1] as "email" | "password"
           form.setError(fieldName, { message: detailErr.msg })
-        });
+        })
       } else {
-        form.setError("root", { message: err.message || "An unexpected error occured" })
+        form.setError("root", {
+          message: err.message || "An unexpected error occured",
+        })
       }
       devToast(err)
     }
@@ -89,8 +91,12 @@ export function RegisterPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4 text-foreground">
       <Card className="w-full max-w-md border border-border shadow-xl">
-        <CardHeader className="space-y-2 text-center flex flex-col items-center">
-          <img src="/ntbc-logo.png" alt="NotToBeCooked Logo" className="w-12 h-12 object-contain rounded-xl shadow-md" />
+        <CardHeader className="flex flex-col items-center space-y-2 text-center">
+          <img
+            src="/ntbc-logo.png"
+            alt="NotToBeCooked Logo"
+            className="h-12 w-12 rounded-xl object-contain shadow-md"
+          />
           <div>
             <CardTitle className="text-2xl font-bold tracking-tight">
               Create an Account
@@ -166,7 +172,6 @@ export function RegisterPage() {
                   </Field>
                 )}
               />
-
 
               {/* Password Field */}
               <Controller

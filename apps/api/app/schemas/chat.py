@@ -1,6 +1,6 @@
 from enum import Enum
 from datetime import datetime, timezone
-from typing import Any, Literal
+from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import Column, DateTime
@@ -20,7 +20,6 @@ class Conversation(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True)),
         default_factory=lambda: datetime.now(timezone.utc)
     )
-
 
 class Message(SQLModel, table=True):
     id: UUID | None = Field(default_factory=uuid4, primary_key=True)

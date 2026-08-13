@@ -21,18 +21,20 @@ export function SharedMainApp({ platform }: { platform: "web" | "tauri" }) {
   const Router = platform === "tauri" ? MemoryRouter : BrowserRouter;
 
   return (
-    <Router>
-      <AuthProvider>
-        <Routes>
-          <Route path="*" element={<Navigate to="/register" replace />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/login" element={<LoginPage />} />
+    <div className="dark min-h-screen bg-background text-foreground font-sans">
+      <Router>
+        <AuthProvider>
+          <Routes>
+            <Route path="*" element={<Navigate to="/register" replace />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/login" element={<LoginPage />} />
 
-          <Route element={<ProtectedLayout />}>
-            <Route path="/dashboard" element={<DashboardPage platform={platform} />} />
-          </Route>
-        </Routes>
-      </AuthProvider>
-    </Router>
+            <Route element={<ProtectedLayout />}>
+              <Route path="/dashboard" element={<DashboardPage platform={platform} />} />
+            </Route>
+          </Routes>
+        </AuthProvider>
+      </Router>
+    </div>
   );
 }
