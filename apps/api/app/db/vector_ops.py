@@ -208,7 +208,7 @@ async def hybrid_search(
     )
 
     # 4: filter by threshold, shorten to final_limits and map to RetrievedChunk
-    max_possible_scores = (config.vector_limit + config.keyword_limit) / (config.rrf_k + 1)
+    max_possible_scores = (config.vector_weight + config.keyword_weight) / (config.rrf_k + 1)
 
     retrieved_chunks: list[RetrievedChunk] = []
     for id, score in sorted_candidates:
