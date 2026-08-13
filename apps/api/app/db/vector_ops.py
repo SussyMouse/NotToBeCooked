@@ -1,11 +1,12 @@
 import asyncio
 
 from app.schemas.file import File
-from app.schemas.rag import Chunk, RetrievedChunk
+from app.schemas.chunk import Chunk
+from app.schemas.rag import RetrievedChunk
 
-from collections.abc import Sequence
-from dataclasses import dataclass
 from uuid import UUID
+from dataclasses import dataclass
+from collections.abc import Sequence
 
 from sqlalchemy import func
 from sqlmodel import select, col, delete
@@ -21,7 +22,7 @@ class SearchConfig:
     keyword_limit: int = 50        # Max results from keyword search
     vector_limit: int = 50         # Max results from vector search
     final_limit: int = 20          # Max results to return
-    min_score_threshold: float = 0.0  # Minimum RRF score to include
+    min_score_threshold: float = 0.0  # Minimum RRF score to include candidates range [0.0,1.0]
 
 
 # Document ingestions
@@ -77,7 +78,7 @@ async def _full_text_search(
     session: AsyncSession,
     file_ids: list[UUID] | None = None,
     top_k: int = 5
-) -> Sequence[tuple[Chunk, float]]:
+) -> Sequence[tuple[Chunk, File, float]]:
     """Performs
     SELECT chunk.*, ts_rank(chunk.content_tsv, plainto_tsquery('english', term)) AS rank
     FROM chunk
@@ -88,7 +89,7 @@ async def _full_text_search(
     """
     ts_query = func.plainto_tsquery("english", term)
     rank_col = func.ts_rank(Chunk.content_tsv, ts_query).label("rank")
-    statement = select(Chunk, rank_col)
+    statement = select(Chunk, File, rank_col).join(File).where(File.id == Chunk.file_id)
     if file_ids:
         statement = statement.where(col(Chunk.file_id).in_(file_ids))
     statement = (statement
@@ -105,7 +106,7 @@ async def keyword_search(
     session: AsyncSession,
     file_ids: list[UUID] | None = None,
     top_k: int = 5
-) -> Sequence[tuple[Chunk, float]]:
+) -> Sequence[tuple[Chunk, File, float]]:
     return await _full_text_search(
         keyword,
         session,
@@ -189,14 +190,15 @@ async def hybrid_search(
     chunk_map: dict[UUID, tuple[Chunk, File]] = {}
     for rank, (chunk, file, distance) in enumerate(vector_row, start=1):
         chunk_id = chunk.id
-        scores = config.vector_weight * (1 / config.rrf_k + rank)
+        scores = config.vector_weight * (1 / (config.rrf_k + rank))
         rrf_scores[chunk_id] = rrf_scores.get(chunk_id, 0) + scores
         chunk_map[chunk_id] = (chunk, file)
 
-    for rank, (chunk, rank) in enumerate(keyword_row, start=1):
+    for rank, (chunk, file, ts_rank) in enumerate(keyword_row, start=1):
         chunk_id = chunk.id
-        scores = config.keyword_weight * (1 / config.rrf_k + rank)
+        scores = config.keyword_weight * (1 / (config.rrf_k + rank))
         rrf_scores[chunk_id] = rrf_scores.get(chunk_id, 0) + scores
+        chunk_map[chunk_id] = (chunk, file)
 
     # 3: sort in descending order
     sorted_candidates = sorted(
@@ -206,11 +208,14 @@ async def hybrid_search(
     )
 
     # 4: filter by threshold, shorten to final_limits and map to RetrievedChunk
+    max_possible_scores = (config.vector_limit + config.keyword_limit) / (config.rrf_k + 1)
+
     retrieved_chunks: list[RetrievedChunk] = []
     for id, score in sorted_candidates:
+        normalised_score = score / max_possible_scores
         if len(retrieved_chunks) >= config.final_limit:
             break
-        elif score < config.min_score_threshold:
+        elif normalised_score < config.min_score_threshold:
             continue
 
         file = chunk_map[id][1]
