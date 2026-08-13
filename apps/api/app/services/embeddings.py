@@ -5,6 +5,17 @@ import torch
 
 _active_model: SentenceTransformer | None = None
 
+"""Design decision of embeddings
+Jina embeddings only support text. The project may explore Image and Audio
+embeddings as see fit in the future. It may implement flash attention for
+faster embeds.
+
+Jina model at 32k embedding window allows:
+1. see big picture via document-level embedding, that is embed entire document
+at once to see document-level similarity
+2. late chunking by feeding 10k tokens at once, forward pass once, then slice
+it into 500 tokens
+"""
 def _load_model():
     is_cuda = torch.cuda.is_available()
     device = "cuda" if is_cuda else "cpu"
