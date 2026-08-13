@@ -1,5 +1,5 @@
 from docling.document_converter import DocumentConverter
-
+from uuid import uuid4
 
 
 
@@ -41,9 +41,79 @@ def extract_text(document):
     return extracted_items
             
 
-        
+def create_chunk(extracted_items,file_id,max_word=350):
+
+    chunks=[]
+    heading=None #是旧箱子的 Introduction
+    page=[]
+    content=[]
+    word_count=0
+    
+    for item in extracted_items:
+        current_heading=item["heading"] #是刚读到的 Methods
+        current_content=item["content"]
+        words=len(current_content.split())
+
+        if((content and words+word_count>max_word) or (content and current_heading!=heading)):
+            join_content=" ".join(content)
+
+            chunk={
+                "chunk_index":len(chunks),
+                "heading":heading,
+                "page_number":min(page),
+                "page_end":max(page),
+                "content":join_content,
+                "word_count":word_count,
+                "file_id":file_id,
+                "token_count":count_tokens(join_content)
+
+            }
+              
+            heading=None
+            page=[]
+            content=[]
+            word_count=0
+
+            chunks.append(chunk)
+
+        if not content:
+            heading=current_heading
+
+        content.append(current_content)
+        page.append(item["page_number"])
+        page.append(item["page_end"])
+        word_count+=words
 
 
+    if content:
+        join_content=" ".join(content)
+
+        chunk={
+                "chunk_index":len(chunks),
+                "heading":heading,
+                "page_number":min(page),
+                "page_end":max(page),
+                "content":join_content,
+                "word_count":word_count,
+                "file_id":file_id,
+                "token_count":count_tokens(join_content)
+        }
+                
+
+        chunks.append(chunk)
+
+
+    return chunks
+
+
+def count_tokens(text):
+    model=_get_model()
+    tokenizer=model.tokenizer
+    token_ids=tokenizer.encode(
+        text,
+        add_special_tokens=False,
+    )
+    return len(token_ids)
 
 
 
@@ -68,80 +138,16 @@ def main()->None:
     print("Combine content: ",chunk_content)
     print("Combined word count: ",len(chunk_content.split()))
 
-   
-    chunks=[]
-    current_pages=[]
-    current_parts=[]
-    current_chunk_heading=None
-    current_word_count=0
-    max_word=350
-
-    for item in extracted_texts:
-        content=item["content"]
-        item_heading=item["heading"]
-
-        words=content.split()
-        item_word_count=len(words)
-
-        too_large=(
-             current_parts and current_word_count+item_word_count>max_word
-        )
-        
-        title_change=(
-            current_parts and item_heading!=current_chunk_heading
-        )
-
-        if too_large or title_change:
-            chunk_content=" ".join(current_parts)
-            chunk={
-                "chunk_index":len(chunks),
-                "heading":current_chunk_heading,
-                "page_number":min(current_pages),
-                "page_end":max(current_pages),
-                "content":chunk_content,
-                "word_count":len(chunk_content.split()),
-                
-            }
-            chunks.append(chunk)
-
-            current_parts=[]
-            current_pages=[]
-            current_word_count=0
-            current_chunk_heading=None
-
-        if not current_parts:
-            current_chunk_heading=item_heading
-
-        current_parts.append(content)
-        current_pages.append(item["page_number"])
-        current_pages.append(item["page_end"])
-        current_word_count=current_word_count+item_word_count
-
-    if current_parts:
-        chunk_content=" ".join(current_parts)
-        chunk={
-                "chunk_index":len(chunks),
-                "heading":current_chunk_heading,
-                "page_number":min(current_pages),
-                "page_end":max(current_pages),
-                "content":chunk_content,
-                "word_count":len(chunk_content.split()),
-            }
-        chunks.append(chunk)
-        
+    file_id=uuid4()
+    chunks=create_chunk(extracted_texts,file_id,max_word=350)
     print("Number of Chunks:",len(chunks))
-    print("First Chunk Index:",chunks[0]["chunk_index"])
-    print("First Chunk heading:",chunks[0]["heading"])
-    print("First Chunk Page Number",chunks[0]["page_number"])
-    print("First Chunk Page End:",chunks[0]["page_end"])
-    print("First Chunk Word Count:",chunks[0]["word_count"])
-    print("First Chunk Content:",chunks[0]["content"])
-    
-       
+    print("First chunk:", chunks[0])
+    print("Second chunk:", chunks[1])
+
 
 if __name__=="__main__":
     main()
 
 
-
+#$env:DOCLING_INFERENCE_COMPILE_TORCH_MODELS="false"
 #uv run --directory apps/api python -m app.services.ingestion
