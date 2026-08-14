@@ -84,8 +84,6 @@ class RagAnswer(SQLModel):
     answer: str = Field(..., min_length=1)
     citations: list[Citation] = Field(default_factory=list)
     grounded: bool
-    used_chunks: int = Field(
-        ..., ge=0,
-        description="How many chunks were actually retrieved. 0 means there was no material "
-                    "and the layer should have refused to answer.",
-    )
+    used_chunks: int = Field(..., ge=0,
+        description="How many chunks were actually put into the prompt, after selection. "
+                    "0 means there was no material and the layer should have refused to answer.")

@@ -13,6 +13,8 @@ import {
   Navigate,
 } from "react-router";
 
+import { useAuth } from "./context/auth-context";
+
 /**
  * Shared Multi-Page Application Container.
  * Automatically selects MemoryRouter for Tauri desktop and BrowserRouter for Web.
