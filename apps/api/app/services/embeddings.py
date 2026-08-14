@@ -66,6 +66,11 @@ def embed_text(texts: list[str]) -> list[list[float]]:
         prompt_name="document"
     ).tolist()
         
+def count_token(text):
+    model=_get_model()
+    tokenizer=model.tokenizer
+    token_ids=tokenizer.encode(text,add_special_tokens=False)
+    return len(token_ids)
 
 if __name__ == "__main__":
     """Try running this file directly to ensure embeddings work locally"""

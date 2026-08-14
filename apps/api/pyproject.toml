@@ -19,6 +19,7 @@ dependencies = [
     "sentence-transformers>=5.7.0",
     "kernels>=0.16.0",
     "httpx>=0.28.1",
+    "peft>=0.20.0",
 ]
 
 [build-system]

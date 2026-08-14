@@ -1,5 +1,6 @@
 from docling.document_converter import DocumentConverter
 from uuid import uuid4
+from app.services.embeddings import count_token
 
 
 
@@ -65,7 +66,7 @@ def create_chunk(extracted_items,file_id,max_word=350):
                 "content":join_content,
                 "word_count":word_count,
                 "file_id":file_id,
-                "token_count":count_tokens(join_content)
+                "token_count":count_token(join_content)
 
             }
               
@@ -96,7 +97,7 @@ def create_chunk(extracted_items,file_id,max_word=350):
                 "content":join_content,
                 "word_count":word_count,
                 "file_id":file_id,
-                "token_count":count_tokens(join_content)
+                "token_count":count_token(join_content)
         }
                 
 
@@ -106,14 +107,7 @@ def create_chunk(extracted_items,file_id,max_word=350):
     return chunks
 
 
-def count_tokens(text):
-    model=_get_model()
-    tokenizer=model.tokenizer
-    token_ids=tokenizer.encode(
-        text,
-        add_special_tokens=False,
-    )
-    return len(token_ids)
+
 
 
 
