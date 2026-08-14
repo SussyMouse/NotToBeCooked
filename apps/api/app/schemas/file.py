@@ -10,7 +10,7 @@ class FileStatus(str, Enum):
     READY = "ready"
     FAILED = "failed"
 
-class File(SQLModel):
+class File(SQLModel, table=True):
     id: Optional[UUID] = Field(primary_key=True, default_factory=uuid4)
     course_id: UUID = Field(default=None, foreign_key="course.id")
     filename: str

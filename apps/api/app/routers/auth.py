@@ -265,3 +265,4 @@ def verify_token(token: str) -> dict:
         raise Exception("Token has expired. Please log in again.")
     except jwt.InvalidTokenError:
         raise Exception("Invalid or tampered token.")
+        

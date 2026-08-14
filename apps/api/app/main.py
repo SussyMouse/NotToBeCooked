@@ -1,3 +1,4 @@
+from app.db.database import engine
 import os
 import httpx
 
@@ -19,6 +20,7 @@ async def lifespan(app: FastAPI):
         timeout=httpx.Timeout(connect=5.0, read=60.0, write=10.0, pool=5.0)
     )
     yield
+    await engine.dispose()
     await app.state.llm_client.aclose()
 
 app = FastAPI(

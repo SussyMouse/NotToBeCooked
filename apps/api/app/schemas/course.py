@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 class Course(SQLModel, table=True):
     id: Optional[UUID] = Field(primary_key=True, default_factory=uuid4)
-    user: UUID = Field(default=None, foreign_key="user.id")
+    user_id: UUID = Field(default=None, foreign_key="user.id")
     code: str
     name: str
     year: int

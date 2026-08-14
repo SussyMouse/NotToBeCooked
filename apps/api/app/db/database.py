@@ -27,6 +27,7 @@ async def init_db() -> None:
         # Ensure pgvector extension is enabled in PostgreSQL
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
         # Create tables if not using Alembic migrations initially
+        # Updating existing tables with new column requires Alembic
         await conn.run_sync(SQLModel.metadata.create_all)
 
 # 4. Dependency for FastAPI Router Endpoints
