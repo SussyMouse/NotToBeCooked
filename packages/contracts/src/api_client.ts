@@ -4,8 +4,28 @@ import {
     type TokenResponse,
     type UserRead,
     type ApiError,
+    type HTTPValidationError,
+    type ValidationIssue,
     schemas,
 } from "./index.js"
+
+/**
+ * What `ApiClient` throws. Always an `ApiError`; `detail` is present only when
+ * the backend rejected the request shape (FastAPI 422), so a form can map each
+ * issue back onto the input that caused it.
+ */
+export interface ApiClientError extends ApiError {
+    detail?: ValidationIssue[]
+}
+
+/** Narrow an unknown caught value to what this client throws. */
+export function isApiClientError(e: unknown): e is ApiClientError {
+    return (
+        typeof e === "object" && e !== null &&
+        typeof (e as ApiError).code === "string" &&
+        typeof (e as ApiError).message === "string"
+    )
+}
 
 export interface ApiClientConfig {
     baseUrl?: string
@@ -14,7 +34,7 @@ export interface ApiClientConfig {
     onTokenRefreshed?: (newToken: string, user: UserRead) => void
 }
 
-type RefreshSubscriber = (err?: any) => void;
+type RefreshSubscriber = (err?: unknown) => void;
 
 export class ApiClient {
     private baseUrl: string
@@ -28,12 +48,11 @@ export class ApiClient {
 
     constructor(config: ApiClientConfig = {}) {
         this.baseUrl = config.baseUrl || this.resolveBaseUrl()
-        this.getToken =
-            config.getToken ||
-            (() =>
-                typeof window !== "undefined"
-                    ? localStorage.getItem("auth_token")
-                    : null)
+        // No storage fallback on purpose. The access token lives in memory only
+        // (AuthContext holds it and calls setTokenGetter); the HttpOnly refresh
+        // cookie is what survives a reload. Reading it back from localStorage
+        // would put it somewhere any injected script can reach.
+        this.getToken = config.getToken || (() => null)
         this.onUnauthorized = config.onUnauthorized
         this.onTokenRefreshed = config.onTokenRefreshed
     }
@@ -123,14 +142,25 @@ export class ApiClient {
 
 
         if (!response.ok) {
-            let errorData: ApiError
+            let errorData: ApiClientError
             try {
                 const rawJson = await response.json()
                 const parsed = schemas.ApiError.safeParse(rawJson)
-                if (!parsed.success) {
-                    errorData = { code: "HTTP_ERROR", message: rawJson.detail?.message || rawJson.detail || response.statusText }
-                } else {
+                if (parsed.success) {
                     errorData = parsed.data
+                } else {
+                    // FastAPI's 422 body is {detail: [{loc, msg, type}, ...]}. Keeping the
+                    // issues in their own field is what lets a form map them back onto
+                    // individual inputs; folding them into `message` stringifies an array.
+                    const detail: unknown = (rawJson as HTTPValidationError | undefined)?.detail
+                    if (Array.isArray(detail)) {
+                        errorData = { code: "VALIDATION_ERROR", message: "Some fields are invalid", detail }
+                    } else if (typeof detail === "string") {
+                        errorData = { code: "HTTP_ERROR", message: detail }
+                    } else {
+                        const nested = (detail as ApiError | undefined)?.message
+                        errorData = { code: "HTTP_ERROR", message: nested ?? response.statusText }
+                    }
                 }
             } catch {
                 errorData = { code: "UNKNOWN_ERROR", message: response.statusText }
