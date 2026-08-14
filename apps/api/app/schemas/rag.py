@@ -8,13 +8,31 @@ from sqlmodel import Field, SQLModel
 from uuid import UUID
 
 class RagQueryRequest(SQLModel):
-    """Inbound: frontend -> generation layer. A single question from the user."""
+    """Inbound: frontend -> generation layer. A single question from the user.
+
+    Scope precedence, because the two scope fields can legitimately disagree:
+
+    - `file_ids` present -> it *is* the scope. Search exactly those files and
+      ignore `course_id`, which is only the turn's home course.
+    - `file_ids` null -> search the whole of `course_id`.
+    - both null -> the whole corpus.
+
+    They must not be ANDed. US-12 (MVP, MUST) lets the @-picker mention files
+    from any course, so `course_id AND file_id IN (...)` returns nothing at all
+    whenever the user mentions a file from outside the course they are sitting
+    in -- silently, with no error to trace.
+    """
 
     model_config = {"extra": "forbid"}
 
     question: str = Field(..., min_length=1, max_length=2000)
-    course_id: UUID | None = None
-    file_ids: list[UUID] | None = None
+    course_id: UUID | None = Field(
+        default=None, description="The turn's home course. Ignored when file_ids is set."
+    )
+    file_ids: list[UUID] | None = Field(
+        default=None,
+        description="Explicit @-mention scope. May cross courses. When set, overrides course_id.",
+    )
     top_k: int = Field(default=5, ge=1, le=20)
 
 class RetrievedChunk(SQLModel):
