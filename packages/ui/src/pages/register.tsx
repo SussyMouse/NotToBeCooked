@@ -1,9 +1,10 @@
-import { api, schemas } from "@workspace/contracts"
+import { api, schemas, isApiClientError } from "@workspace/contracts"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Controller, useForm } from "react-hook-form"
 import z from "zod"
-import { Link } from "react-router"
+import { Link, useNavigate } from "react-router"
+import { useAuth } from "../context/auth-context"
 import devToast from "@workspace/ui/lib/alerts"
 
 import {
@@ -40,6 +41,8 @@ const registerFormSchema = schemas.RegisterRequest.extend({
 
 export function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
+  const { login } = useAuth()
+  const navigate = useNavigate()
 
   const form = useForm<z.infer<typeof registerFormSchema>>({
     resolver: zodResolver(registerFormSchema),
@@ -53,7 +56,7 @@ export function RegisterPage() {
 
   /*
   1. Submit the form data
-  2. Receives the data. Upon succeeding save JWT token to local storage and redirects else
+  2. Receives the data. On success hand the token to AuthContext (memory only) and redirect, else
   3. catch errors and set form error
   4. Custom domain error handling  via ApiError, else FastAPI 422 validation error handling
   */
@@ -65,20 +68,28 @@ export function RegisterPage() {
         password: data.password
       })
 
-      devToast(data)
+      // No devToast(data) here: `data` holds the plaintext password and
+      // confirmPassword, and devToast renders whatever it is given.
 
-      localStorage.setItem("auth_token", response.access_token)
-      window.location.href = '/dashboard'
-    } catch (err: any) {
-      if (err.code == "EMAIL_EXISTS") {
+      // See login.tsx: the access token stays in memory, never in storage.
+      login(response.access_token, response.user)
+      navigate("/dashboard", { replace: true })
+    } catch (err: unknown) {
+      if (!isApiClientError(err)) {
+        form.setError("root", { message: "An unexpected error occurred" })
+        devToast(err)
+        return
+      }
+
+      if (err.code === "EMAIL_EXISTS") {
         form.setError("email", { message: err.message })
-      } else if (err.detail && Array.isArray(err.detail)) {
-        err.detail.forEach((detailErr: any) => {
-          const fieldName = detailErr.loc[1] as "email" | "password"
-          form.setError(fieldName, { message: detailErr.msg })
+      } else if (err.detail) {
+        err.detail.forEach((issue) => {
+          const fieldName = issue.loc[1] as "email" | "password"
+          form.setError(fieldName, { message: issue.msg })
         });
       } else {
-        form.setError("root", { message: err.message || "An unexpected error occured" })
+        form.setError("root", { message: err.message })
       }
       devToast(err)
     }
