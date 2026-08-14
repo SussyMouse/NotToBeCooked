@@ -1,21 +1,20 @@
 import { api, type UserRead } from "@workspace/contracts";
-import { useState, useContext, createContext, type ReactNode, useEffect, useRef } from "react";
-
-interface AuthContextType {
-    isAuthenticated: boolean
-    isLoading: boolean
-    user: UserRead | null
-    login: (token: string, user: UserRead) => void
-    logout: () => Promise<void>
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+import { useState, type ReactNode, useEffect, useRef } from "react";
+import { AuthContext } from "./auth-context";
 
 export const AuthProvider = ({children}: {children: ReactNode}) => {
     const accessTokenRef = useRef<string | null>(null)
     const [accessToken, setAccessToken] = useState<string | null>(null)
     const [user, setUser] = useState<UserRead | null>(null)
     const [isLoading, setIsLoading] = useState<boolean>(true)
+
+    // Declared before the effects that call it: as a `const` it is in the
+    // temporal dead zone until this line runs, and an effect is only safe
+    // because it fires after render. Keeping it above removes the trap.
+    const applyAccessToken = (token: string | null) => {
+        setAccessToken(token)
+        accessTokenRef.current = token
+    }
 
     useEffect(() => {
         // Dynamic getter allows ApiClient to fetch current in-memory accessToken on every HTTP request
@@ -54,11 +53,6 @@ export const AuthProvider = ({children}: {children: ReactNode}) => {
         initAuth()
     }, [])
 
-    const applyAccessToken = (token: string | null) => {
-        setAccessToken(token)
-        accessTokenRef.current = token
-    }
-
     const login = (token: string, user: UserRead) => {
         applyAccessToken(token)
         setUser(user)
@@ -87,5 +81,3 @@ export const AuthProvider = ({children}: {children: ReactNode}) => {
         </AuthContext.Provider>
     )
 }
-
-export const useAuth = () => useContext(AuthContext)!
