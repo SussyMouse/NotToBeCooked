@@ -67,10 +67,14 @@ def embed_text(texts: list[str]) -> list[list[float]]:
     ).tolist()
         
 def count_token(text):
-    model=_get_model()
-    tokenizer=model.tokenizer
+    tokenizer=get_tokenizer()
     token_ids=tokenizer.encode(text,add_special_tokens=False)
     return len(token_ids)
+
+def get_tokenizer():
+    model=_get_model()
+    tokenizer=model.tokenizer
+    return tokenizer
 
 if __name__ == "__main__":
     """Try running this file directly to ensure embeddings work locally"""

@@ -1,6 +1,7 @@
 from docling.document_converter import DocumentConverter
 from uuid import uuid4
-from app.services.embeddings import count_token
+from app.services.embeddings import count_token,get_tokenizer
+
 
 
 
@@ -41,6 +42,11 @@ def extract_text(document):
             extracted_items.append(item)
     return extracted_items
             
+def split_long_text(text,max_token=500):
+    token_count=count_token(text)
+
+    if token_count<=max_token:
+        return [text]
 
 def create_chunk(extracted_items,file_id,max_word=350):
 
@@ -138,6 +144,7 @@ def main()->None:
     print("First chunk:", chunks[0])
     print("Second chunk:", chunks[1])
 
+    
 
 if __name__=="__main__":
     main()
