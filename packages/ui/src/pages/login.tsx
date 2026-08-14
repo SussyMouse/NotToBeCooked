@@ -1,10 +1,11 @@
 import React from "react";
 import z from "zod";
 
-import { api, schemas } from "@workspace/contracts";
+import { api, schemas, isApiClientError } from "@workspace/contracts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { useAuth } from "../context/auth-context";
 
 import {
   Card,
@@ -30,6 +31,8 @@ const loginFormSchema = schemas.LoginRequest;
 
 export function LoginPage() {
   const [showPassword, setShowPassword] = React.useState(false)
+  const { login } = useAuth()
+  const navigate = useNavigate()
 
   const form = useForm<z.infer<typeof loginFormSchema>>({
     resolver: zodResolver(loginFormSchema),
@@ -44,23 +47,28 @@ export function LoginPage() {
     try {
       const response = await api.auth.login(data)
 
-      localStorage.setItem("auth_token", response.access_token)
-      window.location.href = '/dashboard'
-    } catch (err: any) {
-      const errorObj = err.detail || err
-      const errorCode = errorObj?.code || err.code
-      const errorMsg = errorObj?.message || err.message || "An unexpected error occurred"
+      // The access token is deliberately never persisted: it lives in memory only,
+      // and the HttpOnly refresh cookie is what survives a reload. Navigating with
+      // the router (not window.location) keeps that in-memory token alive.
+      login(response.access_token, response.user)
+      navigate("/dashboard", { replace: true })
+    } catch (err: unknown) {
+      if (!isApiClientError(err)) {
+        form.setError("root", { message: "An unexpected error occurred" })
+        devToast(err)
+        return
+      }
 
-      if (errorCode === "INVALID_CREDENTIALS") {
-        form.setError("email", { message: errorMsg })
-        form.setError("password", { message: errorMsg })
-      } else if (Array.isArray(err.detail)) {
-        err.detail.forEach((detailErr: any) => {
-          const fieldName = detailErr.loc[1] as "email" | "password"
-          form.setError(fieldName, { message: detailErr.msg })
+      if (err.code === "INVALID_CREDENTIALS") {
+        form.setError("email", { message: err.message })
+        form.setError("password", { message: err.message })
+      } else if (err.detail) {
+        err.detail.forEach((issue) => {
+          const fieldName = issue.loc[1] as "email" | "password"
+          form.setError(fieldName, { message: issue.msg })
         });
       } else {
-        form.setError("root", { message: errorMsg })
+        form.setError("root", { message: err.message })
       }
       devToast(err)
     }
