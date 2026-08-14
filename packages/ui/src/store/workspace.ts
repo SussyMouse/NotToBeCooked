@@ -55,7 +55,12 @@ interface WorkspaceState {
     byCourse: Record<CourseId, CourseWorkspace>;
 
     // ---- assistant scope, written by the chat pane (F3) ----
-    /** Files the user @-mentioned. Narrows retrieval below the whole course. */
+    /**
+     * Files the user @-mentioned. Narrows retrieval below the whole course, and
+     * deliberately not keyed by course: US-12 (MVP, MUST) lets the @-picker
+     * surface files from any course, not only the active one. The ratified ERD
+     * annotates `mentioned_file_ids` "may cross courses" for the same reason.
+     */
     mentionedFileIds: FileId[];
 
     // ---- actions ----
@@ -96,10 +101,14 @@ export const useWorkspace = create<WorkspaceState>((set) => ({
 
     // No tab bookkeeping here on purpose: the outgoing course's tabs are
     // already stored under its own key, so switching is just a pointer move.
+    //
+    // Mentions deliberately survive the switch. Clearing them here would make
+    // "@-mention a CS202 file, then ask inside CS301" impossible, which is
+    // exactly the case US-12 requires and the team ratified on 2026-07-27.
+    // Use clearMentions() when the user actually sends or dismisses.
     switchCourse: (courseId) =>
         set((s) => ({
             activeCourseId: courseId,
-            mentionedFileIds: [],
             byCourse: s.byCourse[courseId] ? s.byCourse : { ...s.byCourse, [courseId]: emptyCourse() },
         })),
 
@@ -165,6 +174,12 @@ export const useWorkspace = create<WorkspaceState>((set) => ({
  * `file_ids` is null rather than [] when nothing is mentioned, because the
  * contract treats null as "no restriction" and an empty list would otherwise
  * read as "restrict to no files at all".
+ *
+ * `course_id` and `file_ids` can legitimately disagree: the course is the turn's
+ * home course, while the mentions may point outside it (US-12). Retrieval must
+ * therefore treat `file_ids`, when present, as the scope rather than as a filter
+ * applied within `course_id` — otherwise a cross-course mention silently
+ * retrieves nothing.
  */
 export function ragScope(s: WorkspaceState): {
     course_id: CourseId | null;
