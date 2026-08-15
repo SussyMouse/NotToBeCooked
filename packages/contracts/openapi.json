@@ -252,12 +252,59 @@
         }
       }
     },
+    "/rag/query": {
+      "post": {
+        "tags": [
+          "RAG"
+        ],
+        "summary": "Query",
+        "operationId": "query_rag_query_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RagQueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RagAnswer"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/chat/sessions": {
       "get": {
         "tags": [
           "Chat"
         ],
         "summary": "Get Sessions",
+        "description": "Get any latest sessions or by course ID",
         "operationId": "get_sessions_chat_sessions_get",
         "security": [
           {
@@ -374,6 +421,7 @@
           "Chat"
         ],
         "summary": "Get Session By Id",
+        "description": "Get session messages",
         "operationId": "get_session_by_id_chat_sessions__session_id__get",
         "security": [
           {
@@ -541,6 +589,71 @@
         ],
         "title": "ChatRole"
       },
+      "Citation": {
+        "properties": {
+          "marker": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Marker"
+          },
+          "file_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "File Id"
+          },
+          "course_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Course Id"
+          },
+          "filename": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Filename"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "page_end": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page End"
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Quote",
+            "description": "Verbatim excerpt the model relied on. Must be findable in the source chunk; this is what makes a citation machine-checkable."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "marker",
+          "file_id",
+          "course_id",
+          "filename",
+          "quote"
+        ],
+        "title": "Citation",
+        "description": "Outbound: generation -> frontend, and persisted into MESSAGE.citations.\n\nDeliberately anchored to file_id + page + quote and never to chunk_id:\nchunks are a regenerable intermediate product, while the file, the page and\nthe quoted text survive re-ingestion."
+      },
       "Conversation": {
         "properties": {
           "id": {
@@ -568,6 +681,11 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
           }
         },
         "type": "object",
@@ -597,6 +715,11 @@
             "format": "date-time",
             "title": "Created At"
           },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
           "messages": {
             "items": {
               "$ref": "#/components/schemas/MessageRead"
@@ -611,7 +734,8 @@
           "id",
           "user_id",
           "title",
-          "created_at"
+          "created_at",
+          "updated_at"
         ],
         "title": "ConversationDetail"
       },
@@ -761,6 +885,94 @@
           "created_at"
         ],
         "title": "MessageRead"
+      },
+      "RagAnswer": {
+        "properties": {
+          "answer": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Answer"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "type": "array",
+            "title": "Citations"
+          },
+          "grounded": {
+            "type": "boolean",
+            "title": "Grounded"
+          },
+          "used_chunks": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Used Chunks",
+            "description": "How many chunks were actually put into the prompt, after selection. 0 means there was no material and the layer should have refused to answer."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "answer",
+          "grounded",
+          "used_chunks"
+        ],
+        "title": "RagAnswer",
+        "description": "Outbound: generation -> frontend. Response model of POST /rag/query."
+      },
+      "RagQueryRequest": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Question"
+          },
+          "course_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Id",
+            "description": "The turn's home course. Ignored when file_ids is set."
+          },
+          "file_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Ids",
+            "description": "Explicit @-mention scope. May cross courses. When set, overrides course_id."
+          },
+          "top_k": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Top K",
+            "default": 5
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question"
+        ],
+        "title": "RagQueryRequest",
+        "description": "Inbound: frontend -> generation layer. A single question from the user.\n\nScope precedence, because the two scope fields can legitimately disagree:\n\n- `file_ids` present -> it *is* the scope. Search exactly those files and\n  ignore `course_id`, which is only the turn's home course.\n- `file_ids` null -> search the whole of `course_id`.\n- both null -> the whole corpus.\n\nThey must not be ANDed. US-12 (MVP, MUST) lets the @-picker mention files\nfrom any course, so `course_id AND file_id IN (...)` returns nothing at all\nwhenever the user mentions a file from outside the course they are sitting\nin -- silently, with no error to trace."
       },
       "RegisterRequest": {
         "properties": {
