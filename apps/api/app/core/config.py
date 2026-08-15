@@ -1,5 +1,10 @@
-from pydantic import SecretStr, Field
+from pathlib import Path
+
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Dynamic path resolution to prevent searching .env at repository root
+_ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
 
 
 # Duplicate value of a variable follows a priority system where
@@ -19,8 +24,13 @@ class Settings(BaseSettings):
     # Database Settings
     DATABASE_URL: str = "postgresql+asyncpg://postgres:password@localhost:5432/not_to_be_cooked"
 
+    # Embedding Settings
+    BATCH_SIZE: int = 32
+    EMBEDDINGS_DIM: int = 1024
+    MODEL_TYPE: str = "jinaai/jina-embeddings-v5-text-small"
+
     # Gemini Settings
-    GEMINI_API_KEY: SecretStr
+    GEMINI_API_KEY: SecretStr = SecretStr("")
     GEMINI_MODEL_NAME: str = "gemini-3.5-flash-lite"
     GEMINI_API_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta"
     GEMINI_API_TIMEOUT_SECONDS: float = 30.0
@@ -30,9 +40,7 @@ class Settings(BaseSettings):
 
     # Load from .env file automatically
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
+        env_file=(_ENV_FILE, ".env"), env_file_encoding="utf-8", extra="ignore"
     )
 
 

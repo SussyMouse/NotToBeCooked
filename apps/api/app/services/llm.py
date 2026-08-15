@@ -2,6 +2,7 @@ import httpx
 
 from app.core.config import settings
 
+
 async def generate(client: httpx.AsyncClient, prompt: str) -> str:
     if settings.LLM_FAKE_MODE:
         return "[FAKE MODE] This message is fake, for testing purposes only"
@@ -13,7 +14,7 @@ async def generate(client: httpx.AsyncClient, prompt: str) -> str:
         headers={"x-goog-api-key": settings.GEMINI_API_KEY.get_secret_value()},
         json={"contents": [{"parts": [{"text": prompt}]}]},
     )
-    
+
     if r.status_code != 200:
         raise RuntimeError(f"Gemini {r.status_code}: {r.text}")
 

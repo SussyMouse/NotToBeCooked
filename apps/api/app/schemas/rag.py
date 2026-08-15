@@ -4,18 +4,39 @@ Owned by AI-3. Retrieval must produce `RetrievedChunk` exactly as defined here;
 any change to that shape needs agreement from AI-1.
 """
 
-from sqlmodel import Field, SQLModel
 from uuid import UUID
 
+from sqlmodel import Field, SQLModel
+
+
 class RagQueryRequest(SQLModel):
-    """Inbound: frontend -> generation layer. A single question from the user."""
+    """Inbound: frontend -> generation layer. A single question from the user.
+
+    Scope precedence, because the two scope fields can legitimately disagree:
+
+    - `file_ids` present -> it *is* the scope. Search exactly those files and
+      ignore `course_id`, which is only the turn's home course.
+    - `file_ids` null -> search the whole of `course_id`.
+    - both null -> the whole corpus.
+
+    They must not be ANDed. US-12 (MVP, MUST) lets the @-picker mention files
+    from any course, so `course_id AND file_id IN (...)` returns nothing at all
+    whenever the user mentions a file from outside the course they are sitting
+    in -- silently, with no error to trace.
+    """
 
     model_config = {"extra": "forbid"}
 
     question: str = Field(..., min_length=1, max_length=2000)
-    course_id: UUID | None = None
-    file_ids: list[UUID] | None = None
+    course_id: UUID | None = Field(
+        default=None, description="The turn's home course. Ignored when file_ids is set."
+    )
+    file_ids: list[UUID] | None = Field(
+        default=None,
+        description="Explicit @-mention scope. May cross courses. When set, overrides course_id.",
+    )
     top_k: int = Field(default=5, ge=1, le=20)
+
 
 class RetrievedChunk(SQLModel):
     """C4 internal: retrieval (AI-1) -> generation (AI-3).
@@ -25,33 +46,35 @@ class RetrievedChunk(SQLModel):
     """
 
     model_config = {"extra": "forbid"}
-    
+
     chunk_id: UUID = Field(
         ...,
         description="Request-scoped only, for de-duplication and debug logging. "
-                    "MUST NOT be persisted in a Citation: chunk ids change whenever "
-                    "the chunking strategy is re-run.",
+        "MUST NOT be persisted in a Citation: chunk ids change whenever "
+        "the chunking strategy is re-run.",
     )
     file_id: UUID
     course_id: UUID
     filename: str = Field(..., min_length=1)
     page_number: int | None = Field(
-        default=None, ge=1,
+        default=None,
+        ge=1,
         description="First page of this chunk, 1-based, matching what the user and PDF "
-                    "viewers see. Required for PDF sources; None for formats without pages.",
+        "viewers see. Required for PDF sources; None for formats without pages.",
     )
     page_end: int | None = Field(default=None, ge=1)
     heading: str | None = Field(
         default=None,
         description="Section heading from the source document. None when the chunk has no "
-                    "heading; do not substitute the filename here, that is a rendering decision.",
+        "heading; do not substitute the filename here, that is a rendering decision.",
     )
     content: str = Field(..., min_length=1)
     score: float = Field(
         ...,
         description="Retrieval similarity score. Used by the grounding check to decide "
-                    "whether anything relevant was found at all.",
+        "whether anything relevant was found at all.",
     )
+
 
 class Citation(SQLModel):
     """Outbound: generation -> frontend, and persisted into MESSAGE.citations.
@@ -70,11 +93,13 @@ class Citation(SQLModel):
     page: int | None = Field(default=None, ge=1)
     page_end: int | None = Field(default=None, ge=1)
     quote: str = Field(
-        ..., min_length=1,
+        ...,
+        min_length=1,
         description="Verbatim excerpt the model relied on. Must be findable in the source "
-                    "chunk; this is what makes a citation machine-checkable.",
+        "chunk; this is what makes a citation machine-checkable.",
     )
-    
+
+
 class RagAnswer(SQLModel):
     """Outbound: generation -> frontend. Response model of POST /rag/query."""
 
@@ -83,6 +108,9 @@ class RagAnswer(SQLModel):
     answer: str = Field(..., min_length=1)
     citations: list[Citation] = Field(default_factory=list)
     grounded: bool
-    used_chunks: int = Field(..., ge=0,
+    used_chunks: int = Field(
+        ...,
+        ge=0,
         description="How many chunks were actually put into the prompt, after selection. "
-                    "0 means there was no material and the layer should have refused to answer.")
+        "0 means there was no material and the layer should have refused to answer.",
+    )

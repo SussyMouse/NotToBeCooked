@@ -121,6 +121,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/rag/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Query */
+        post: operations["query_rag_query_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Sessions
+         * @description Get any latest sessions or by course ID
+         */
+        get: operations["get_sessions_chat_sessions_get"];
+        put?: never;
+        /** Create Session */
+        post: operations["create_session_chat_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Session By Id
+         * @description Get session messages
+         */
+        get: operations["get_session_by_id_chat_sessions__session_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Session */
+        delete: operations["delete_session_chat_sessions__session_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -166,6 +225,96 @@ export interface components {
             /** Message */
             message: string;
         };
+        /**
+         * ChatRole
+         * @enum {string}
+         */
+        ChatRole: "user" | "assistant";
+        /**
+         * Citation
+         * @description Outbound: generation -> frontend, and persisted into MESSAGE.citations.
+         *
+         *     Deliberately anchored to file_id + page + quote and never to chunk_id:
+         *     chunks are a regenerable intermediate product, while the file, the page and
+         *     the quoted text survive re-ingestion.
+         */
+        Citation: {
+            /** Marker */
+            marker: number;
+            /**
+             * File Id
+             * Format: uuid
+             */
+            file_id: string;
+            /**
+             * Course Id
+             * Format: uuid
+             */
+            course_id: string;
+            /** Filename */
+            filename: string;
+            /** Page */
+            page?: number | null;
+            /** Page End */
+            page_end?: number | null;
+            /**
+             * Quote
+             * @description Verbatim excerpt the model relied on. Must be findable in the source chunk; this is what makes a citation machine-checkable.
+             */
+            quote: string;
+        };
+        /** Conversation */
+        Conversation: {
+            /** Id */
+            id?: string | null;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id?: string;
+            /** Title */
+            title: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at?: string;
+        };
+        /** ConversationDetail */
+        ConversationDetail: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** Title */
+            title: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Messages
+             * @default []
+             */
+            messages: components["schemas"]["MessageRead"][];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -200,6 +349,85 @@ export interface components {
              * @description Password must be at least 8 characters
              */
             password: string;
+        };
+        /** MessageRead */
+        MessageRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Conversation Id
+             * Format: uuid
+             */
+            conversation_id: string;
+            role: components["schemas"]["ChatRole"];
+            /** Content */
+            content: string;
+            /** Citations */
+            citations: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Mentioned File Ids */
+            mentioned_file_ids: string[] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * RagAnswer
+         * @description Outbound: generation -> frontend. Response model of POST /rag/query.
+         */
+        RagAnswer: {
+            /** Answer */
+            answer: string;
+            /** Citations */
+            citations?: components["schemas"]["Citation"][];
+            /** Grounded */
+            grounded: boolean;
+            /**
+             * Used Chunks
+             * @description How many chunks were actually put into the prompt, after selection. 0 means there was no material and the layer should have refused to answer.
+             */
+            used_chunks: number;
+        };
+        /**
+         * RagQueryRequest
+         * @description Inbound: frontend -> generation layer. A single question from the user.
+         *
+         *     Scope precedence, because the two scope fields can legitimately disagree:
+         *
+         *     - `file_ids` present -> it *is* the scope. Search exactly those files and
+         *       ignore `course_id`, which is only the turn's home course.
+         *     - `file_ids` null -> search the whole of `course_id`.
+         *     - both null -> the whole corpus.
+         *
+         *     They must not be ANDed. US-12 (MVP, MUST) lets the @-picker mention files
+         *     from any course, so `course_id AND file_id IN (...)` returns nothing at all
+         *     whenever the user mentions a file from outside the course they are sitting
+         *     in -- silently, with no error to trace.
+         */
+        RagQueryRequest: {
+            /** Question */
+            question: string;
+            /**
+             * Course Id
+             * @description The turn's home course. Ignored when file_ids is set.
+             */
+            course_id?: string | null;
+            /**
+             * File Ids
+             * @description Explicit @-mention scope. May cross courses. When set, overrides course_id.
+             */
+            file_ids?: string[] | null;
+            /**
+             * Top K
+             * @default 5
+             */
+            top_k: number;
         };
         /** RegisterRequest */
         RegisterRequest: {
@@ -449,6 +677,182 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IngestionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    query_rag_query_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RagQueryRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RagAnswer"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_sessions_chat_sessions_get: {
+        parameters: {
+            query?: {
+                /** @description Filter sessions by course ID */
+                course_id?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Conversation"][];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_session_chat_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_session_by_id_chat_sessions__session_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Session not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_session_chat_sessions__session_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

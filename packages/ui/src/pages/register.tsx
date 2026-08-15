@@ -65,7 +65,7 @@ export function RegisterPage() {
       const response = await api.auth.register({
         display_name: data.display_name,
         email: data.email,
-        password: data.password
+        password: data.password,
       })
 
       // No devToast(data) here: `data` holds the plaintext password and
@@ -100,13 +100,20 @@ export function RegisterPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4 text-foreground">
       <Card className="w-full max-w-md border border-border shadow-xl">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold tracking-tight">
-            Create an Account
-          </CardTitle>
-          <CardDescription>
-            Register your RAG study account to get started
-          </CardDescription>
+        <CardHeader className="flex flex-col items-center space-y-2 text-center">
+          <img
+            src="/ntbc-logo.png"
+            alt="NotToBeCooked Logo"
+            className="h-12 w-12 rounded-xl object-contain shadow-md"
+          />
+          <div>
+            <CardTitle className="text-2xl font-bold tracking-tight">
+              Create an Account
+            </CardTitle>
+            <CardDescription>
+              Register your RAG study account to get started
+            </CardDescription>
+          </div>
         </CardHeader>
 
         <CardContent className="space-y-4">
@@ -174,7 +181,6 @@ export function RegisterPage() {
                   </Field>
                 )}
               />
-
 
               {/* Password Field */}
               <Controller

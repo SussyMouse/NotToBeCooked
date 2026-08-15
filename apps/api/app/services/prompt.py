@@ -67,6 +67,7 @@ support the claim.
 # already bounds what retrieval returns. This only bites when top_k is large.
 _MAX_SOURCES = 8
 
+
 def build_context(chunks: list[RetrievedChunk]) -> tuple[str, list[RetrievedChunk]]:
     """Render retrieved chunks as a numbered, citable source list.
 
