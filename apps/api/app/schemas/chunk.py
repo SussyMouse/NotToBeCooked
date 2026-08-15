@@ -1,6 +1,7 @@
-from pydantic import BaseModel,Field
 from uuid import UUID
-from typing import Any,Literal
+
+from pydantic import BaseModel
+
 
 class ChunkCreate(BaseModel): #描述 AI-2 切出来的“一块内容”应该包含哪些资料。
     file_id:UUID

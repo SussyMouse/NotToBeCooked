@@ -1,7 +1,10 @@
-from pydantic import BaseModel
-from uuid import UUID
-from typing import Literal
 from datetime import datetime
+from typing import Literal
+from uuid import UUID
+
+from pydantic import BaseModel
+
+
 class FileRead(BaseModel): #描述 backend 把一份文件资料“返回给其他模块或前端”时，数据长什么样。
     id:UUID
     course_id:UUID

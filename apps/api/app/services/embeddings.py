@@ -1,6 +1,5 @@
-from sentence_transformers import SentenceTransformer
 import torch
-
+from sentence_transformers import SentenceTransformer
 
 _BATCH_SIZE = 32
 _EMBEDDINGS_DIM = 1024

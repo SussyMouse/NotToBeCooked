@@ -2,6 +2,7 @@ import httpx
 
 from app.core.config import settings
 
+
 async def generate(client: httpx.AsyncClient, prompt: str) -> str:
     if settings.LLM_FAKE_MODE:
         return "[FAKE MODE] This message is fake, for testing purposes only"

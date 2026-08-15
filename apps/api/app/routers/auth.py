@@ -1,20 +1,17 @@
+from datetime import UTC, datetime, timedelta
+
 import jwt
-
 from argon2 import PasswordHasher
-from datetime import datetime, timezone, timedelta
-
-from fastapi import APIRouter, HTTPException, status, Depends, Response, Request
-
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select, col
+from sqlmodel import col, select
 
-from app.schemas.user import UserRead, User
+from app.core.config import settings
+from app.db.database import get_session
+from app.dependencies.auth import get_current_user
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 from app.schemas.errors import ApiError
-from app.dependencies.auth import get_current_user
-from app.db.database import get_session
-from app.core.config import settings
-
+from app.schemas.user import User, UserRead
 
 ph = PasswordHasher()
 auth_router = APIRouter()
@@ -232,7 +229,7 @@ async def register(body: RegisterRequest, response: Response, session: AsyncSess
     )
 
 def create_refresh_token(user: User, expires_in_days: int) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     payload = {
         "sub": str(user.id),
@@ -244,7 +241,7 @@ def create_refresh_token(user: User, expires_in_days: int) -> str:
     return token
 
 def create_access_token(user: User, expires_in_minutes: int) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     payload = {
         "sub": str(user.id),
@@ -256,12 +253,3 @@ def create_access_token(user: User, expires_in_minutes: int) -> str:
 
     token = jwt.encode(payload, settings.ACCESS_TOKEN_SECRET, algorithm=settings.JWT_ALGORITHM)
     return token
-
-def verify_token(token: str) -> dict:
-    try:
-        data = jwt.decode(token, settings.ACCESS_TOKEN_SECRET, algorithms=[settings.JWT_ALGORITHM])
-        return data
-    except jwt.ExpiredSignatureError:
-        raise Exception("Token has expired. Please log in again.")
-    except jwt.InvalidTokenError:
-        raise Exception("Invalid or tampered token.")
