@@ -1,0 +1,178 @@
+%% NotToBeCooked — Entity Relationship Diagram
+%% Source of record. Ratified 27 Jul 2026, amended 4 Aug (CR-23) and 15 Aug 2026
+%% (CR-24, CR-25, CR-26, CR-27).
+%% ---
+%% 9 entities. Declaration order below is deliberate: it controls how dagre ranks
+%% the nodes, and reordering will reintroduce edge crossings.
+%% ---
+%% Changes on 15 Aug 2026:
+%%   CR-24  MESSAGE gains scope_course_id (NOT NULL, ON DELETE RESTRICT) +
+%%          scope_snapshot
+%%   CR-25  FOLDER added; CHUNK gains course_id + content_tsv; INGESTION_RUN added
+%%          and parented to FILE; FILE_VERSION rejected; flashcard entities rejected
+%%   Item 02 confirmed 1:N between COURSE and CONVERSATION — ConversationCourseLink
+%%          is withdrawn, it was never ratified
+%% ---
+%% CR-27, post-meeting review. Six corrections:
+%%   R2  MESSAGE.course_id renamed scope_course_id — it never meant the same thing
+%%       as CONVERSATION.course_id, and the shared name invited the confusion
+%%   R3  ON DELETE CASCADE downgraded to RESTRICT — CASCADE deleted turns out of
+%%       the middle of unrelated conversations. REOPENS sub-decision 1 of item 03
+%%   R7  FILE.sha256 UNIQUE removed — it was global, so the second user to upload
+%%       the same PDF would have been rejected
+%%   R9  FOLDER gains parent_folder_id — the column is free now and a migration
+%%       later. The UI still ships flat; nothing has to read this column yet.
+%%       The FOLDER-to-FOLDER edge is deliberately NOT drawn: dagre routes a
+%%       self-reference as a long tail that pushes FOLDER-to-FILE across
+%%       CONVERSATION. The column carries the meaning; the edge only cost clarity
+%%   R11 COURSE gains name — code alone ("CPC251") is not a readable course title
+%%   R12 CHUNK.page_number renamed page_start — it sits next to page_end and the
+%%       old pair did not read as a range
+%% ---
+%% FIELD RESTORATION, 15 Aug 2026 evening. This diagram was rewritten from the
+%% meeting minutes rather than edited on top of the ratified 27 Jul / CR-23 ERD,
+%% and silently dropped eight ratified fields on the way. Restored here:
+%%   MILESTONE  position, description, status, file_ids, created_at, updated_at
+%%              — CR-23 ratified all of them, and US-16 (completion %) and US-17
+%%              (milestone -> files) cannot be built without status and file_ids
+%%   CHUNK      token_count, created_at
+%%   COURSE     status
+%%   FILE       filename — restores the Project Lead call of 3 Aug 2026, which
+%%              chose `filename` over `name`. The interim `display_name` was a
+%%              third spelling that no decision ever authorised
+%% Removed, because it was never ratified and this diagram introduced it:
+%%   CONVERSATION.user_id — the 27 Jul ERD reached the owner through COURSE. Both
+%%              post-meeting reviews flagged the redundancy; it was mine, so this
+%%              is a restoration, not a new decision. Closes finding R1
+%% ---
+%% Superseded rather than dropped, recorded so the absence is not read as an
+%% oversight:
+%%   FILE.category    -> FOLDER (CR-25). A free-text label became a real entity
+%%   FILE.course_id   -> folder_id (CR-25). Course is derived through the folder
+%%   FILE.storage_path-> storage_key. Object-store key, not a filesystem path
+%%   USER.password_hash -> hashed_password. Project Lead call: the code already
+%%                       uses hashed_password (schemas/user.py, routers/auth.py),
+%%                       same reasoning as the `filename` call on 3 Aug
+%%   datetime -> timestamptz throughout. Naive timestamps are not storable for a
+%%                       system whose citations must survive a re-index
+%% ---
+%% A bare "%%" line breaks mermaid's ER parser. Every comment line needs content.
+
+erDiagram
+
+    USER ||--o{ COURSE : "owns"
+    COURSE ||--o{ FOLDER : "organises"
+    COURSE ||--o{ MILESTONE : "planned as"
+    COURSE ||--o{ CONVERSATION : "is home course of"
+    FOLDER ||--o{ FILE : "contains"
+    FILE ||--o{ INGESTION_RUN : "was processed by"
+    INGESTION_RUN ||--o{ CHUNK : "produced"
+    CONVERSATION ||--o{ MESSAGE : "contains"
+    COURSE ||--o{ MESSAGE : "scopes retrieval for"
+
+    USER {
+        uuid id PK
+        string email UK
+        string hashed_password
+        timestamptz created_at
+    }
+
+    COURSE {
+        uuid id PK
+        uuid user_id FK
+        string code "CPC251"
+        string name "Artificial Intelligence — the code alone is not readable"
+        int year
+        int sem
+        string status "ratified 27 Jul; the value set has never been defined"
+        timestamptz created_at
+    }
+
+    FOLDER {
+        uuid id PK
+        uuid course_id FK
+        uuid parent_folder_id FK "null at the root; UI ships flat, the column is for later"
+        string name
+        bool is_root "one hidden root per course, so every file has a folder"
+        int sort_order
+        timestamptz created_at
+    }
+
+    MILESTONE {
+        uuid id PK
+        uuid course_id FK
+        int position "display order within the course"
+        string title "Week 3 - Recursion"
+        string description
+        int week "teaching week, nullable"
+        string status "not_started, in_progress, completed — US-16 counts these"
+        date due_date
+        jsonb file_ids "US-17, attached materials. Deliberately not a join table"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    FILE {
+        uuid id PK
+        uuid folder_id FK "course is derived through the folder, not stored again"
+        string filename "renameable, shown in the UI. Lead call 3 Aug: filename wins"
+        string storage_key UK
+        string sha256 "checksum, NOT globally unique — two users may upload one PDF"
+        string mime_type
+        bigint size_bytes
+        int page_count "null for formats without pages"
+        enum status "uploaded, processing, ready, failed"
+        text error_message
+        timestamptz uploaded_at
+        timestamptz indexed_at
+    }
+
+    INGESTION_RUN {
+        uuid id PK
+        uuid file_id FK
+        enum status "queued, processing, ready, failed"
+        string chunker_version "reproducibility, so a chunk can be traced to how it was cut"
+        string embedding_model
+        smallint embedding_dim "was CHUNK.embedding 1536-dim; the run now owns the dimension"
+        bool is_active "exactly one active run per file is visible to retrieval"
+        timestamptz started_at
+        timestamptz completed_at
+        text error_message
+    }
+
+    CHUNK {
+        uuid id PK
+        uuid ingestion_run_id FK "provenance, which run produced this chunk"
+        uuid file_id FK "denormalised, a Citation needs it without a join"
+        uuid course_id FK "denormalised, this is the filter in front of the HNSW scan"
+        int chunk_index
+        text content
+        int token_count
+        int page_start "1-based, matches what the reader sees"
+        int page_end "a chunk may straddle a page break"
+        string heading "nullable, no filename fallback"
+        vector embedding
+        tsvector content_tsv "keyword half of hybrid_search"
+        timestamptz created_at
+    }
+
+    CONVERSATION {
+        uuid id PK
+        uuid course_id FK "home course, not unique — one course has many conversations"
+        string title "Lecture 3 - Recursion"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    MESSAGE {
+        uuid id PK
+        uuid conversation_id FK
+        uuid scope_course_id FK "NOT NULL, ON DELETE RESTRICT — the scope of THIS turn"
+        enum role "user, assistant"
+        text content
+        bool grounded "every claim is backed by a cited source"
+        jsonb citations "file_id, course_id, page, quote — frozen at write time"
+        jsonb mentioned_file_ids "the @-scope, may cross courses, beats scope_course_id"
+        jsonb scope_snapshot "what retrieval was allowed to see, frozen at write time"
+        timestamptz created_at
+    }
