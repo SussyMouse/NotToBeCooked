@@ -1,5 +1,7 @@
-from docling.document_converter import DocumentConverter
 from uuid import uuid4
+
+from docling.document_converter import DocumentConverter
+
 from app.services.embeddings import count_token
 
 
