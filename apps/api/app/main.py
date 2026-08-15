@@ -1,15 +1,12 @@
 import os
-import httpx
-
 from contextlib import asynccontextmanager
 
-
+import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.database import init_db
-from app.routers import auth_router, files_router
-
+from app.routers import auth_router, files_router, rag_router
 
 
 @asynccontextmanager
@@ -29,6 +26,7 @@ app = FastAPI(
 )
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
 app.include_router(files_router, prefix="/files", tags=["Files"])
+app.include_router(rag_router, prefix="/rag", tags=["RAG"])
 
 # CORS configuration for Web (any local port), Tauri (Desktop & Android), and Production
 origins = [
