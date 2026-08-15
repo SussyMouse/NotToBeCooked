@@ -1,23 +1,25 @@
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
-from pydantic import BaseModel
-from datetime import datetime, timezone
 
-from sqlmodel import SQLModel
+from pgvector.sqlalchemy import Vector
+from pydantic import BaseModel
 from sqlalchemy import Computed, DateTime, ForeignKey, Index
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import TypeDecorator
-from sqlalchemy.dialects.postgresql import TSVECTOR
-from pgvector.sqlalchemy import Vector
+from sqlmodel import SQLModel
 
-    
 EMBEDDINGS_DIM = 1024
+
 
 class TSVector(TypeDecorator):
     impl = TSVECTOR
     cache_ok = True
 
+
 class Base(DeclarativeBase):
     metadata = SQLModel.metadata
+
 
 # Must use SQL Alchemy here to pass pyright and prevent runtime error
 class Chunk(Base):
@@ -52,14 +54,15 @@ class Chunk(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
     )
 
-class ChunkCreate(BaseModel): #描述 AI-2 切出来的“一块内容”应该包含哪些资料。
-    file_id:UUID
-    chunk_index:int #它在文件中的顺序
-    page_number:int |None=None
-    page_end:int |None=None
-    heading:str |None=None
-    content:str
-    token_count:int
+
+class ChunkCreate(BaseModel):  # 描述 AI-2 切出来的“一块内容”应该包含哪些资料。
+    file_id: UUID
+    chunk_index: int  # 它在文件中的顺序
+    page_number: int | None = None
+    page_end: int | None = None
+    heading: str | None = None
+    content: str
+    token_count: int

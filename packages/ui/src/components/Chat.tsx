@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 
 export interface CitationItem {
   f: string; // file id
@@ -169,7 +169,10 @@ export const Chat: React.FC<ChatProps> = ({
   const editorRef = useRef<HTMLDivElement>(null);
 
   // Get active messages for current course (defaults to initialMessages or empty [])
-  const currentMessages = courseMessagesMap[courseCode] ?? initialMessages ?? [];
+  const currentMessages = useMemo(
+    () => courseMessagesMap[courseCode] ?? initialMessages ?? [],
+    [courseMessagesMap, courseCode, initialMessages]
+  );
 
   const updateCurrentCourseMessages = (updater: (prev: ChatMessage[]) => ChatMessage[]) => {
     setCourseMessagesMap((prev) => {

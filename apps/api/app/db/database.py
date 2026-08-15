@@ -12,15 +12,12 @@ from app.core.config import settings
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=True,  # Set to False in production
-    future=True
+    future=True,
 )
 
 # 2. Define async session
-async_session_maker = async_sessionmaker(
-    bind=engine,
-    class_=AsyncSession,
-    expire_on_commit=False
-)
+async_session_maker = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+
 
 # 3. Initialize DB and pgvector extension
 async def init_db() -> None:
@@ -30,6 +27,7 @@ async def init_db() -> None:
         # Create tables if not using Alembic migrations initially
         # Updating existing tables with new column requires Alembic
         await conn.run_sync(SQLModel.metadata.create_all)
+
 
 # 4. Dependency for FastAPI Router Endpoints
 async def get_session() -> AsyncGenerator[AsyncSession, None]:

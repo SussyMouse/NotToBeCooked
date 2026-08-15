@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { useAuth } from "../context/AuthContext";
-import Chat, { CitationItem } from "../components/Chat";
+import { useState } from "react";
+import { useAuth } from "../context/auth-context";
+import Chat, { type CitationItem } from "../components/Chat";
 
 export interface DashboardPageProps {
   platform?: "web" | "tauri";

@@ -22,21 +22,21 @@ chat_router = APIRouter()
 @chat_router.get(
     "/sessions",
     response_model=Sequence[Conversation],
-    responses={ 401: { "model": ApiError, "description": "Missing, invalid or expired access token" } }
+    responses={401: {"model": ApiError, "description": "Missing, invalid or expired access token"}},
 )
 async def get_sessions(
     session: AsyncSession = Depends(get_session),
     user: dict = Depends(get_current_user),
     course_id: UUID | None = Query(default=None, description="Filter sessions by course ID"),
     limit: int = Query(default=10, ge=1, le=100),
-    offset: int = Query(default=0, ge=0)
+    offset: int = Query(default=0, ge=0),
 ):
     """Get any latest sessions or by course ID"""
     user_id = user.get("sub")
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={ "code": "INVALID_TOKEN", "message": "Invalid or tampered token" }
+            detail={"code": "INVALID_TOKEN", "message": "Invalid or tampered token"},
         )
 
     statement = select(Conversation).where(col(Conversation.user_id) == user_id)
@@ -46,12 +46,7 @@ async def get_sessions(
             col(ConversationCourseLink.course_id) == course_id
         )
 
-    statement = (
-        statement
-        .order_by(col(Conversation.updated_at).desc())
-        .offset(offset)
-        .limit(limit)
-    )
+    statement = statement.order_by(col(Conversation.updated_at).desc()).offset(offset).limit(limit)
     result = await session.execute(statement)
     conversations = result.scalars().all()
 
@@ -62,26 +57,25 @@ async def get_sessions(
     "/sessions/{session_id}",
     response_model=ConversationDetail,
     responses={
-        401: { "model": ApiError, "description": "Missing, invalid or expired access token" },
-        404: { "model": ApiError, "description": "Session not found" }
-    }
+        401: {"model": ApiError, "description": "Missing, invalid or expired access token"},
+        404: {"model": ApiError, "description": "Session not found"},
+    },
 )
 async def get_session_by_id(
     session_id: UUID,
     session: AsyncSession = Depends(get_session),
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(get_current_user),
 ):
     """Get session messages"""
     user_id = user.get("sub")
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={ "code": "INVALID_TOKEN", "message": "Invalid or tampered token" }
+            detail={"code": "INVALID_TOKEN", "message": "Invalid or tampered token"},
         )
 
     statement = select(Conversation).where(
-        col(Conversation.id) == session_id,
-        col(Conversation.user_id) == user_id
+        col(Conversation.id) == session_id, col(Conversation.user_id) == user_id
     )
     result = await session.execute(statement)
     conversation = result.scalar_one_or_none()
@@ -89,7 +83,7 @@ async def get_session_by_id(
     if conversation is None or conversation.id is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={ "code": "SESSION_NOT_FOUND", "message": "No session found" }
+            detail={"code": "SESSION_NOT_FOUND", "message": "No session found"},
         )
 
     msg_statement = (
@@ -106,20 +100,19 @@ async def get_session_by_id(
         title=conversation.title,
         created_at=conversation.created_at,
         updated_at=conversation.updated_at,
-        messages=[MessageRead.model_validate(m) for m in messages]
+        messages=[MessageRead.model_validate(m) for m in messages],
     )
 
 
 @chat_router.post("/sessions")
 async def create_session(
-    session: AsyncSession = Depends(get_session),
-    user: dict = Depends(get_current_user)
+    session: AsyncSession = Depends(get_session), user: dict = Depends(get_current_user)
 ):
     user_id = user.get("sub")
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={ "code": "INVALID_TOKEN", "message": "Invalid or tampered token" }
+            detail={"code": "INVALID_TOKEN", "message": "Invalid or tampered token"},
         )
 
 
@@ -127,11 +120,11 @@ async def create_session(
 async def delete_session(
     session_id: UUID,
     session: AsyncSession = Depends(get_session),
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(get_current_user),
 ):
     user_id = user.get("sub")
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={ "code": "INVALID_TOKEN", "message": "Invalid or tampered token" }
+            detail={"code": "INVALID_TOKEN", "message": "Invalid or tampered token"},
         )

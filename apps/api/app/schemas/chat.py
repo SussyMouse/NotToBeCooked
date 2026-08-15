@@ -1,22 +1,24 @@
-from app.schemas.course import Course
-
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
-from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlmodel import Field, SQLModel, Relationship
+from sqlmodel import Field, Relationship, SQLModel
+
+from app.schemas.course import Course
 
 
-class ChatRole(str, Enum):
+class ChatRole(Enum):
     USER = "user"
     ASSISTANT = "assistant"
+
 
 class ConversationCourseLink(SQLModel, table=True):
     conversation_id: UUID = Field(default=None, foreign_key="conversation.id", primary_key=True)
     course_id: UUID = Field(default=None, foreign_key="course.id", primary_key=True)
+
 
 class Conversation(SQLModel, table=True):
     id: UUID | None = Field(default_factory=uuid4, primary_key=True)
@@ -24,13 +26,12 @@ class Conversation(SQLModel, table=True):
     title: str
     courses: list["Course"] = Relationship(link_model=ConversationCourseLink)
     created_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True)),
-        default_factory=lambda: datetime.now(timezone.utc)
+        sa_column=Column(DateTime(timezone=True)), default_factory=lambda: datetime.now(UTC)
     )
     updated_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True)),
-        default_factory=lambda: datetime.now(timezone.utc)
+        sa_column=Column(DateTime(timezone=True)), default_factory=lambda: datetime.now(UTC)
     )
+
 
 class Message(SQLModel, table=True):
     id: UUID | None = Field(default_factory=uuid4, primary_key=True)
@@ -38,17 +39,15 @@ class Message(SQLModel, table=True):
     role: ChatRole
     content: str
     citations: list[dict[str, Any]] | None = Field(
-        default=None,
-        sa_column=Column(JSONB, nullable=True)
+        default=None, sa_column=Column(JSONB, nullable=True)
     )
     mentioned_file_ids: list[UUID] | None = Field(
-        default=None,
-        sa_column=Column(JSONB, nullable=True)
+        default=None, sa_column=Column(JSONB, nullable=True)
     )
     created_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True)),
-        default_factory=lambda: datetime.now(timezone.utc)
+        sa_column=Column(DateTime(timezone=True)), default_factory=lambda: datetime.now(UTC)
     )
+
 
 class MessageRead(SQLModel):
     id: UUID
@@ -59,6 +58,7 @@ class MessageRead(SQLModel):
     mentioned_file_ids: list[UUID] | None
     created_at: datetime
 
+
 class ConversationDetail(SQLModel):
     id: UUID
     user_id: UUID
@@ -66,4 +66,3 @@ class ConversationDetail(SQLModel):
     created_at: datetime
     updated_at: datetime
     messages: list[MessageRead] = []
-

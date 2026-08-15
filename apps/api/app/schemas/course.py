@@ -1,13 +1,12 @@
-from uuid import uuid4, UUID
-from typing import Optional
+from datetime import UTC, datetime
+from uuid import UUID, uuid4
 
 from sqlalchemy import Column
-from sqlmodel import SQLModel, Field, DateTime
-from datetime import datetime, timezone
+from sqlmodel import DateTime, Field, SQLModel
 
 
 class Course(SQLModel, table=True):
-    id: Optional[UUID] = Field(primary_key=True, default_factory=uuid4)
+    id: UUID | None = Field(primary_key=True, default_factory=uuid4)
     user_id: UUID = Field(default=None, foreign_key="user.id")
     code: str
     name: str
@@ -15,6 +14,5 @@ class Course(SQLModel, table=True):
     sem: int
     status: str
     created_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True)),
-        default_factory=lambda: datetime.now(timezone.utc)
+        sa_column=Column(DateTime(timezone=True)), default_factory=lambda: datetime.now(UTC)
     )
