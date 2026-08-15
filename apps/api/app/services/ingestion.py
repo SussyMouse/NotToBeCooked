@@ -2,45 +2,44 @@ from uuid import uuid4
 
 from docling.document_converter import DocumentConverter
 
-from app.services.embeddings import count_token
+from app.services.embeddings import count_token, get_tokenizer
 
 
 def ingest_document(file_path):
-    converter = DocumentConverter()
-    result = converter.convert(file_path)
-    document = result.document
-    return document
-
+   converter=DocumentConverter()
+   result=converter.convert(file_path)
+   document=result.document
+   return document
 
 def extract_text(document):
-    current_heading = None
-    extracted_items = []
+    current_heading=None
+    extracted_items=[]
+    
 
     for document_item in document.texts:
-        if document_item.label.value == "section_header":
-            current_heading = document_item.text
+        if document_item.label.value=="section_header":
+            current_heading=document_item.text
 
-        elif document_item.label.value == "text":
+        elif document_item.label.value=="text":
             if not document_item.prov:
                 continue
-
-            pages = []
+            
+            pages=[]
             for provenance in document_item.prov:
                 pages.append(provenance.page_no)
 
-            page_number = min(pages)
-            page_end = max(pages)
+            page_number=min(pages)
+            page_end=max(pages)
 
-            item = {
-                "heading": current_heading,
-                "page_number": page_number,
-                "page_end": page_end,
-                "content": document_item.text,
+            item={
+                "heading":current_heading,
+                "page_number":page_number,
+                "page_end":page_end,
+                "content":document_item.text
             }
-
+            
             extracted_items.append(item)
     return extracted_items
-
             
 def split_long_text(text,max_token=500):
     token_count=count_token(text)
@@ -115,46 +114,71 @@ def create_chunk(extracted_items,file_id,max_word=350):
 
 
 
-def main() -> None:
-    file_path = "https://arxiv.org/pdf/2408.09869"
-    document = ingest_document(file_path)
-    extracted_texts = extract_text(document)
+
+
+def main()->None:
+    file_path="https://arxiv.org/pdf/2408.09869"
+    document=ingest_document(file_path)
+    extracted_texts=extract_text(document)
     print("Number of extracted items:", len(extracted_texts))
     print("First extracted item:", extracted_texts[0])
 
-    first_content = extracted_texts[0]["content"]
-    words = first_content.split()
-    print("Words", words)
-    print("Words count", len(words))
+    first_content=extracted_texts[0]["content"]
+    words=first_content.split()
+    print("Words",words)
+    print("Words count",len(words))
 
-    chunk_parts = []
+    chunk_parts=[]
     for item in extracted_texts[:3]:
         chunk_parts.append(item["content"])
 
-    chunk_content = " ".join(chunk_parts)
+    chunk_content=" ".join(chunk_parts)
 
-    print("Combine content: ", chunk_content)
-    print("Combined word count: ", len(chunk_content.split()))
-
+    print("Combine content: ",chunk_content)
+    print("Combined word count: ",len(chunk_content.split()))
 
     file_id=uuid4()
     chunks=create_chunk(extracted_texts,file_id,max_word=350)
-    
+    print("Number of Chunks:",len(chunks))
+    print("First chunk:", chunks[0])
+    print("Second chunk:", chunks[1])
 
-    
+    text="I love Python"
+    tokenizer=get_tokenizer()
+    encoded=tokenizer(text,add_special_tokens=False,return_offsets_mapping=True)
+    print(encoded["input_ids"])
+    print(encoded["offset_mapping"])
+
+    for start,end in encoded["offset_mapping"]:
+        print(text[start:end])
 
 
-    print("Number of Chunks:", len(chunks))
-    print("First Chunk Index:", chunks[0]["chunk_index"])
-    print("First Chunk heading:", chunks[0]["heading"])
-    print("First Chunk Page Number", chunks[0]["page_number"])
-    print("First Chunk Page End:", chunks[0]["page_end"])
-    print("First Chunk Word Count:", chunks[0]["word_count"])
-    print("First Chunk Content:", chunks[0]["content"])
+    max_tokens = 2
+    offsets = encoded["offset_mapping"]
+
+    last_allocated_offset=offsets[max_tokens-1]
+    cut_position=last_allocated_offset[1]
+    first_part=text[:cut_position]
+    second_part=text[cut_position:]
+
+    print("First part:",first_part)
+    print("Second part: ",second_part)
 
 
-if __name__ == "__main__":
+if __name__=="__main__":
     main()
 
 
-# uv run --directory apps/api python -m app.services.ingestion
+#$env:DOCLING_INFERENCE_COMPILE_TORCH_MODELS="false"
+#uv run --directory apps/api python -m app.services.ingestion
+'''
+encoded             → 你的变量名，可以更换
+"input_ids"         → Hugging Face 规定的 key= 代表每个 token 在 tokenizer 字典里的编号。
+"attention_mask"    → Hugging Face 规定的 key=告诉模型哪些位置是真实内容，哪些位置只是为了对齐而补上的空位
+"offset_mapping"    → Hugging Face 规定的 key=代表每个 token 对应原文的字符范围
+里面的数字和位置     → tokenizer 根据输入动态生成
+
+input_ids       → token 是谁
+attention_mask  → token 要不要看
+offset_mapping  → token 在原文哪里
+'''
