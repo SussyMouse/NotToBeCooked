@@ -1,6 +1,7 @@
 from pydantic import EmailStr, field_validator
-from app.schemas.user import UserRead
 from sqlmodel import Field, SQLModel
+
+from app.schemas.user import UserRead
 
 
 class LoginRequest(SQLModel):

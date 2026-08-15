@@ -4,8 +4,10 @@ Owned by AI-3. Retrieval must produce `RetrievedChunk` exactly as defined here;
 any change to that shape needs agreement from AI-1.
 """
 
-from sqlmodel import Field, SQLModel
 from uuid import UUID
+
+from sqlmodel import Field, SQLModel
+
 
 class RagQueryRequest(SQLModel):
     """Inbound: frontend -> generation layer. A single question from the user.
