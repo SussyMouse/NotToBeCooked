@@ -253,12 +253,3 @@ def create_access_token(user: User, expires_in_minutes: int) -> str:
 
     token = jwt.encode(payload, settings.ACCESS_TOKEN_SECRET, algorithm=settings.JWT_ALGORITHM)
     return token
-
-def verify_token(token: str) -> dict:
-    try:
-        data = jwt.decode(token, settings.ACCESS_TOKEN_SECRET, algorithms=[settings.JWT_ALGORITHM])
-        return data
-    except jwt.ExpiredSignatureError:
-        raise Exception("Token has expired. Please log in again.")
-    except jwt.InvalidTokenError:
-        raise Exception("Invalid or tampered token.")
