@@ -12,11 +12,14 @@ const ValidationError = z.object({ loc: z.array(z.union([z.string(), z.number()]
 const HTTPValidationError = z.object({ detail: z.array(ValidationError) }).partial().passthrough();
 const RegisterRequest = z.object({ display_name: z.string(), email: z.string().email(), password: z.string().min(8) }).passthrough();
 const IngestionResponse = z.object({ file_id: z.string().uuid(), status: z.enum(["processing", "ready", "failed"]), chunk_count: z.union([z.number(), z.null()]).optional(), error: z.union([z.string(), z.null()]).optional() }).passthrough();
+const RagQueryRequest = z.object({ question: z.string().min(1).max(2000), course_id: z.union([z.string(), z.null()]).optional(), file_ids: z.union([z.array(z.string().uuid()), z.null()]).optional(), top_k: z.number().int().gte(1).lte(20).optional().default(5) });
+const Citation = z.object({ marker: z.number().int().gte(1), file_id: z.string().uuid(), course_id: z.string().uuid(), filename: z.string().min(1), page: z.union([z.number(), z.null()]).optional(), page_end: z.union([z.number(), z.null()]).optional(), quote: z.string().min(1) });
+const RagAnswer = z.object({ answer: z.string().min(1), citations: z.array(Citation).optional(), grounded: z.boolean(), used_chunks: z.number().int().gte(0) });
 const course_id = z.union([z.string(), z.null()]).optional();
-const Conversation = z.object({ id: z.union([z.string(), z.null()]).optional(), user_id: z.string().uuid().optional(), title: z.string(), created_at: z.string().datetime({ offset: true }).optional() }).passthrough();
+const Conversation = z.object({ id: z.union([z.string(), z.null()]).optional(), user_id: z.string().uuid().optional(), title: z.string(), created_at: z.string().datetime({ offset: true }).optional(), updated_at: z.string().datetime({ offset: true }).optional() }).passthrough();
 const ChatRole = z.enum(["user", "assistant"]);
 const MessageRead = z.object({ id: z.string().uuid(), conversation_id: z.string().uuid(), role: ChatRole, content: z.string(), citations: z.union([z.array(z.object({}).partial().passthrough()), z.null()]), mentioned_file_ids: z.union([z.array(z.string().uuid()), z.null()]), created_at: z.string().datetime({ offset: true }) }).passthrough();
-const ConversationDetail = z.object({ id: z.string().uuid(), user_id: z.string().uuid(), title: z.string(), created_at: z.string().datetime({ offset: true }), messages: z.array(MessageRead).optional().default([]) }).passthrough();
+const ConversationDetail = z.object({ id: z.string().uuid(), user_id: z.string().uuid(), title: z.string(), created_at: z.string().datetime({ offset: true }), updated_at: z.string().datetime({ offset: true }), messages: z.array(MessageRead).optional().default([]) }).passthrough();
 
 export const schemas = {
 	UserRead,
@@ -27,6 +30,9 @@ export const schemas = {
 	HTTPValidationError,
 	RegisterRequest,
 	IngestionResponse,
+	RagQueryRequest,
+	Citation,
+	RagAnswer,
 	course_id,
 	Conversation,
 	ChatRole,
@@ -138,6 +144,7 @@ const endpoints = makeApi([
 		method: "get",
 		path: "/chat/sessions",
 		alias: "get_sessions_chat_sessions_get",
+		description: `Get any latest sessions or by course ID`,
 		requestFormat: "json",
 		parameters: [
 			{
@@ -181,6 +188,7 @@ const endpoints = makeApi([
 		method: "get",
 		path: "/chat/sessions/:session_id",
 		alias: "get_session_by_id_chat_sessions__session_id__get",
+		description: `Get session messages`,
 		requestFormat: "json",
 		parameters: [
 			{
@@ -256,6 +264,27 @@ const endpoints = makeApi([
 		alias: "health_check_health_get",
 		requestFormat: "json",
 		response: z.unknown(),
+	},
+	{
+		method: "post",
+		path: "/rag/query",
+		alias: "query_rag_query_post",
+		requestFormat: "json",
+		parameters: [
+			{
+				name: "body",
+				type: "Body",
+				schema: RagQueryRequest
+			},
+		],
+		response: RagAnswer,
+		errors: [
+			{
+				status: 422,
+				description: `Validation Error`,
+				schema: HTTPValidationError
+			},
+		]
 	},
 ]);
 
