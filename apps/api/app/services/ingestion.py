@@ -1,9 +1,6 @@
 from docling.document_converter import DocumentConverter
 
 
-
-
-
 def ingest_document(file_path):
    converter=DocumentConverter()
    result=converter.convert(file_path)

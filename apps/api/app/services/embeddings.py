@@ -1,7 +1,7 @@
 from sentence_transformers import SentenceTransformer
 from app.core.config import settings
 import torch
-
+from sentence_transformers import SentenceTransformer
 
 _active_model: SentenceTransformer | None = None
 

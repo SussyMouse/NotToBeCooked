@@ -32,6 +32,48 @@ packages = ["app"]
 venvPath = "."
 venv = ".venv"
 
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+# Pinned explicitly rather than relying on ruff's defaults, which shift between
+# releases and would silently change what the gate enforces.
+#   E4/E7/E9 imports, statements, syntax   F  pyflakes
+#   I        import sorting                UP pyupgrade
+#   B        bugbear
+select = ["E4", "E7", "E9", "F", "I", "UP", "B"]
+
+# Baseline, not a permanent exemption. Every rule below fires only inside the
+# auth modules, which AI-1 owns, and every one of them changes how an exception
+# is raised or caught -- a judgement call about someone else's error handling,
+# not a mechanical fix. Enabling them is a separate conversation with AI-1:
+#
+#   B904   7x  raise HTTPException inside except without `from None` / `from err`
+#   BLE001 1x  except Exception around argon2 verify, hiding non-password failures
+#
+# TRY002 was on this list too -- 2x bare `raise Exception`, both inside
+# verify_token(), which had no callers anywhere in the repo. The function was
+# deleted on 15 Aug 2026 rather than fixed, so the exemption went with it.
+#
+# Remove these once AI-1 has taken a view. Nothing else in the backend is exempt.
+ignore = ["B904"]
+
+[tool.ruff.lint.flake8-bugbear]
+# B008 flags FastAPI's required idiom -- `x = Depends(get_session)` in a default
+# argument is how dependency injection is declared, not an accidental call at
+# import time. Without these exemptions the rule fires on every route.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Header",
+    "fastapi.Body",
+    "fastapi.Form",
+    "fastapi.File",
+    "fastapi.Cookie",
+]
+
 [tool.uv.sources]
 torch = { index = "pytorch-cpu" }
 torchvision = { index = "pytorch-cpu" }
@@ -43,5 +85,5 @@ explicit = true
 
 [dependency-groups]
 dev = [
-    "pyright>=1.1.411",
+    "ruff>=0.16",
 ]

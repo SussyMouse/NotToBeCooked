@@ -1,0 +1,55 @@
+name: verify
+
+# The gate from engineering rule 1: typecheck, lint and build, for every package
+# in the monorepo including the Python backend. Runs on every push and every PR
+# so a branch cannot merge into dev while red.
+#
+# This is the same `pnpm verify` you run locally — if it passes on your machine
+# it passes here, and vice versa. Nothing CI-only lives in this file.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+concurrency:
+  # A second push to the same branch cancels the first: no point finishing a run
+  # against code nobody will merge.
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        # version comes from "packageManager" in the root package.json
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Python dependencies
+        working-directory: apps/api
+        # --frozen fails the build if uv.lock is out of date with pyproject.toml,
+        # which is the Python equivalent of --frozen-lockfile above.
+        run: uv sync --frozen --group dev
+
+      - name: Verify
+        run: pnpm verify

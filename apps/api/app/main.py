@@ -1,12 +1,11 @@
-from app.db.database import engine
 import os
 import httpx
 
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.db.database import engine
 from app.db.database import init_db
 from app.dependencies.auth import get_current_user
 from app.routers import auth_router, files_router, rag_router, chat_router
