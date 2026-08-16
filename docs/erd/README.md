@@ -65,6 +65,47 @@ after any reorder.
 `FOLDER → FILE` edge across `CONVERSATION`. `parent_folder_id` is therefore
 documented as a column with no edge drawn. The column carries the meaning.
 
+## Merging `bao-sheng`: squash, do not merge
+
+Agreed with Bao Sheng on 16 Aug 2026. Applies to the merge scheduled after the
+C2 seam lands, ~22 Aug.
+
+`ff5600f` and `f801754` added two 8K renders of a superseded 13-entity draft:
+7.4 MB on disk, against 1.5 MB for the packed history of everything else in this
+repository. `4b320e2` deleted them from the working tree, but the blobs remain in
+the branch's history, and a normal merge would make those commits ancestors of
+`dev` and then `main` — every clone from then on carries the 7.4 MB.
+
+```bash
+git switch dev
+git pull --ff-only origin dev
+git merge --squash bao-sheng
+git commit --author="CH'NG BAO SHENG <chngbaosheng@gmail.com>"   # list the squashed subjects in the body
+```
+
+Then delete the remote branch, and start the next branch from `dev`.
+
+Three things about that sequence are load-bearing:
+
+**`--author` is not cosmetic.** A squash commit is authored by whoever runs the
+merge, so without the flag ten commits collapse into one credited to the wrong
+person. On a graded group project the log is evidence.
+
+**Do not keep committing on `bao-sheng` afterwards.** Git does not know the squash
+commit contains those ten commits, so the next merge replays them and conflicts
+against work `dev` has done since.
+
+**Re-verify on the day.** The zero-conflict dry run on 16 Aug was against `dev` at
+`a52840c`. Re-sync `dev`, re-read the final diff, run `pnpm verify` before
+squashing.
+
+Squash was chosen over rewriting the branch with `filter-branch`. The rewrite also
+works, but it costs Bao Sheng a `git reset --hard` on a branch he is actively
+working on — the operation most likely to lose uncommitted work — for 7.4 MB.
+
+The general rule this came from: **multi-megabyte binaries do not belong in git.**
+The ERD of record renders to 295 KB.
+
 ## Changing the schema
 
 The ERD was ratified by the whole team, so amending it takes a change request,
