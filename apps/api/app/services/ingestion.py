@@ -44,9 +44,20 @@ def extract_text(document):
 
 def split_long_text(text, max_token=500):
     token_count = count_token(text)
-
     if token_count <= max_token:
         return [text]
+    else:
+        tokenizer=get_tokenizer()
+        encoded=tokenizer(text,add_special_tokens=False,return_offsets_mapping=True)
+        offsets=encoded["offset_mapping"]
+        splitting_point=offsets[max_token-1][1]
+        first_part=text[:splitting_point]
+        second_part=text[splitting_point:]
+
+        return [first_part]+split_long_text(second_part,max_token)
+
+       
+ 
 
 
 def create_chunk(extracted_items, file_id, max_word=350):
@@ -108,6 +119,9 @@ def create_chunk(extracted_items, file_id, max_word=350):
         chunks.append(chunk)
 
     return chunks
+
+
+
 
 
 def main() -> None:
