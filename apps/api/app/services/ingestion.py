@@ -47,60 +47,61 @@ def split_long_text(text, max_token=500):
     if token_count <= max_token:
         return [text]
     else:
-        tokenizer=get_tokenizer()
-        encoded=tokenizer(text,add_special_tokens=False,return_offsets_mapping=True)
-        offsets=encoded["offset_mapping"]
-        splitting_point=offsets[max_token-1][1]
-        first_part=text[:splitting_point]
-        second_part=text[splitting_point:]
+        tokenizer = get_tokenizer()
+        encoded = tokenizer(text, add_special_tokens=False, return_offsets_mapping=True)
+        offsets = encoded["offset_mapping"]
+        splitting_point = offsets[max_token - 1][1]
+        first_part = text[:splitting_point]
+        second_part = text[splitting_point:]
 
-        return [first_part]+split_long_text(second_part,max_token)
-
-       
- 
+        return [first_part] + split_long_text(second_part, max_token)
 
 
-def create_chunk(extracted_items, file_id, max_word=350):
+def create_chunk(extracted_items, file_id, max_token=350):
 
     chunks = []
     heading = None  # 是旧箱子的 Introduction
     page = []
     content = []
-    word_count = 0
+    total_token = 0
 
     for item in extracted_items:
         current_heading = item["heading"]  # 是刚读到的 Methods
         current_content = item["content"]
-        words = len(current_content.split())
+        pieces = split_long_text(current_content, max_token)
 
-        if (content and words + word_count > max_word) or (content and current_heading != heading):
-            join_content = " ".join(content)
+        for piece in pieces:
+            token_count = count_token(piece)
 
-            chunk = {
-                "chunk_index": len(chunks),
-                "heading": heading,
-                "page_number": min(page),
-                "page_end": max(page),
-                "content": join_content,
-                "word_count": word_count,
-                "file_id": file_id,
-                "token_count": count_token(join_content),
-            }
+            if (content and total_token + token_count > max_token) or (
+                content and current_heading != heading
+            ):
+                join_content = " ".join(content)
 
-            heading = None
-            page = []
-            content = []
-            word_count = 0
+                chunk = {
+                    "chunk_index": len(chunks),
+                    "heading": heading,
+                    "page_number": min(page),
+                    "page_end": max(page),
+                    "content": join_content,
+                    "file_id": file_id,
+                    "token_count": count_token(join_content),
+                }
 
-            chunks.append(chunk)
+                heading = None
+                page = []
+                content = []
+                total_token = 0
 
-        if not content:
-            heading = current_heading
+                chunks.append(chunk)
 
-        content.append(current_content)
-        page.append(item["page_number"])
-        page.append(item["page_end"])
-        word_count += words
+            if not content:
+                heading = current_heading
+
+            content.append(piece)
+            page.append(item["page_number"])
+            page.append(item["page_end"])
+            total_token += token_count
 
     if content:
         join_content = " ".join(content)
@@ -111,7 +112,6 @@ def create_chunk(extracted_items, file_id, max_word=350):
             "page_number": min(page),
             "page_end": max(page),
             "content": join_content,
-            "word_count": word_count,
             "file_id": file_id,
             "token_count": count_token(join_content),
         }
@@ -121,10 +121,8 @@ def create_chunk(extracted_items, file_id, max_word=350):
     return chunks
 
 
-
-
-
 def main() -> None:
+    """
     file_path = "https://arxiv.org/pdf/2408.09869"
     document = ingest_document(file_path)
     extracted_texts = extract_text(document)
@@ -170,6 +168,34 @@ def main() -> None:
 
     print("First part:", first_part)
     print("Second part: ", second_part)
+    """
+    test_text = "I Love python. " * 100
+    parts = split_long_text(test_text, max_token=20)
+    print("Number of parts: ", len(parts))
+    for part in parts:
+        print("Token COunt for chunks:", count_token(part))
+    print("Content preserved: ", "".join(parts) == test_text)
+
+    test_items = [
+        {
+            "heading": "Test Heading",
+            "page_number": 1,
+            "page_end": 1,
+            "content": test_text,
+        }
+    ]
+    test_max_token = 20
+    rebuilt_text = ""
+    test_file_id = uuid4()
+    test_chunks = create_chunk(test_items, test_file_id, test_max_token)
+    print("Numbe of Chunks: ", len(test_chunks))
+    for chunk in test_chunks:
+        chunk_content = chunk["content"]
+        print("Token Number:", count_token(chunk_content))
+        print(count_token(chunk_content) <= test_max_token)
+        rebuilt_text += chunk_content
+
+    print("Content preserved: ", rebuilt_text == test_text)
 
 
 if __name__ == "__main__":
