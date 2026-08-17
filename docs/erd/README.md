@@ -8,6 +8,7 @@ document disagree, this file wins.
 | `erd.mmd` | The diagram. Mermaid ER syntax. **Edit this, never the PNG.** |
 | `erd.png` | Rendered from `erd.mmd`. Regenerate after every edit — see below. |
 | `KNOWN_ISSUES.md` | Findings that are real and not yet fixed, with the reason and the schedule. Read it before assuming a gap is an oversight. |
+| `CODE_VS_ERD.md` | Where the running code and this diagram disagree, field by field. **Read this before generating a migration** — autogenerate follows the code, not the diagram. Regenerate it with the command at the bottom of that file. |
 
 Ratified 27 Jul 2026. Amended 4 Aug (CR-23) and 15 Aug 2026 (CR-24 → CR-27).
 Handed in 16 Aug 2026 as `NotToBeCooked_ERD_2026-08-16.mmd` / `.png`.
