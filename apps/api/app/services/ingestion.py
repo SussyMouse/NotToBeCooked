@@ -28,12 +28,12 @@ def extract_text(document):
             for provenance in document_item.prov:
                 pages.append(provenance.page_no)
 
-            page_number = min(pages)
+            page_start = min(pages)
             page_end = max(pages)
 
             item = {
                 "heading": current_heading,
-                "page_number": page_number,
+                "page_start": page_start,
                 "page_end": page_end,
                 "content": document_item.text,
             }
@@ -57,7 +57,7 @@ def split_long_text(text, max_token=500):
         return [first_part] + split_long_text(second_part, max_token)
 
 
-def create_chunk(extracted_items, file_id, max_token=350):
+def create_chunk(extracted_items, file_id, course_id, ingestion_run_id, max_token=350):
 
     chunks = []
     heading = None  # 是旧箱子的 Introduction
@@ -81,10 +81,12 @@ def create_chunk(extracted_items, file_id, max_token=350):
                 chunk = {
                     "chunk_index": len(chunks),
                     "heading": heading,
-                    "page_number": min(page),
+                    "page_start": min(page),
                     "page_end": max(page),
                     "content": join_content,
                     "file_id": file_id,
+                    "course_id": course_id,
+                    "ingestion_run_id": ingestion_run_id,
                     "token_count": count_token(join_content),
                 }
 
@@ -99,7 +101,7 @@ def create_chunk(extracted_items, file_id, max_token=350):
                 heading = current_heading
 
             content.append(piece)
-            page.append(item["page_number"])
+            page.append(item["page_start"])
             page.append(item["page_end"])
             total_token += token_count
 
@@ -109,10 +111,12 @@ def create_chunk(extracted_items, file_id, max_token=350):
         chunk = {
             "chunk_index": len(chunks),
             "heading": heading,
-            "page_number": min(page),
+            "page_start": min(page),
             "page_end": max(page),
             "content": join_content,
             "file_id": file_id,
+            "course_id": course_id,
+            "ingestion_run_id": ingestion_run_id,
             "token_count": count_token(join_content),
         }
 
@@ -144,7 +148,7 @@ def main() -> None:
     print("Combined word count: ", len(chunk_content.split()))
 
     file_id = uuid4()
-    chunks = create_chunk(extracted_texts, file_id, max_word=350)
+    chunks = create_chunk(extracted_texts, file_id, max_token=350)
     print("Number of Chunks:", len(chunks))
     print("First chunk:", chunks[0])
     print("Second chunk:", chunks[1])
@@ -179,7 +183,7 @@ def main() -> None:
     test_items = [
         {
             "heading": "Test Heading",
-            "page_number": 1,
+            "page_start": 1,
             "page_end": 1,
             "content": test_text,
         }
@@ -187,7 +191,12 @@ def main() -> None:
     test_max_token = 20
     rebuilt_text = ""
     test_file_id = uuid4()
-    test_chunks = create_chunk(test_items, test_file_id, test_max_token)
+    test_course_id = uuid4()
+    test_ingestion_run_id = uuid4()
+
+    test_chunks = create_chunk(
+        test_items, test_file_id, test_course_id, test_ingestion_run_id, test_max_token
+    )
     print("Numbe of Chunks: ", len(test_chunks))
     for chunk in test_chunks:
         chunk_content = chunk["content"]
