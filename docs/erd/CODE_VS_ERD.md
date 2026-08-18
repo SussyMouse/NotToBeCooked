@@ -1,4 +1,10 @@
-# Code vs ERD — field-by-field diff, 17 Aug 2026
+# Code vs ERD — field-by-field diff, 17 Aug 2026 · re-run 19 Aug 2026
+
+> **Third pass, 19 August 2026 — after the 18 August meeting.** Sections E and F are
+> now outcomes rather than open questions. **Six of the nine entities are byte-exact
+> against the diagram**; every one of section F's eleven live items is closed, and the
+> only column-level differences left are the two blocked on AI-2. The 17 August
+> figures are kept below as the before-picture, not because they are current.
 
 **What was compared**
 
@@ -11,7 +17,7 @@
 
 ---
 
-## Totals
+## Totals — 17 Aug, before the meeting
 
 | | |
 |---|---|
@@ -30,6 +36,27 @@
 | **Differences the 18 Aug agenda does not decide** | **12 — see section F** |
 
 > 28 of the 37 missing columns belong to the three absent tables. **The remaining 9 are spread across four tables that do exist, and those are the ones a migration will freeze in place without anyone noticing.**
+
+## Totals — 19 Aug, after the meeting and `0319f05` / `f7160e5`
+
+| | 17 Aug | 19 Aug |
+|---|---|---|
+| **Entities byte-exact against the diagram** | 0 | **6 of 9** — `USER`, `COURSE`, `CONVERSATION`, `MESSAGE`, and `FILE` / `CHUNK` but for one column each |
+| Entities with no table at all | 3 | 3 — `FOLDER`, `INGESTION_RUN` (AI-2, D5), `MILESTONE` (r42, by design) |
+| Tables with no entity | 1 | **0** — `conversationcourselink` dropped by D1 |
+| **Columns missing from the code, excluding the 3 absent tables** | **9** | **2** — `FILE.folder_id`, `CHUNK.ingestion_run_id`. Both are one line, both wait on AI-2 |
+| Columns only in the code | 4 | **1** — `FILE.course_id`, which is the placeholder `folder_id` replaces |
+| Renames outstanding | 2 | **0** — `page_start` and `storage_key` both landed in the models, so `autogenerate` never sees a rename |
+| Type mismatches | 2 | **0** — `size_bytes` is `BIGINT`, `uploaded_at` is `TIMESTAMP WITH TIME ZONE` |
+| Enum value sets that disagree | 1 | **0** — `FileStatus` is `uploaded, processing, ready, failed` |
+| Unique constraints in the ERD, absent in code | 1 | **0** — `FILE.storage_key` is unique |
+| Nullability contradicting the ERD or itself | 3 | **0** — `conversation_id`, `embedding` and all six `created_at` are NOT NULL |
+| Foreign keys declaring `ON DELETE` | 0 of 7 | **7 of 7.** Six CASCADE, one RESTRICT (`MESSAGE.scope_course_id`) |
+| Differences the agenda did not decide | 12 | **1** — `MILESTONE`, deliberately in migration 2 |
+
+**The number that matters is the second row of the fourth block: two.** Everything a
+migration could freeze wrongly is fixed. What is left is not drift, it is two people's
+work that has not arrived.
 
 ---
 
@@ -193,25 +220,31 @@ Unset means `NO ACTION`, which behaves close to RESTRICT in that it blocks the d
 
 ---
 
-## E. Decisions needed on 18 Aug, most expensive first
+## E. What 18 Aug decided — all seven, and where each one landed
 
-| # | Decision | Cost of not deciding | Owner |
+| # | Decision | Outcome | Landed in |
 |---|---|---|---|
-| 1 | **Which `CONVERSATION` model** — the ERD's home course, or the code's user + many-to-many | The first migration freezes one of them. Switching later touches three tables | Whole team |
-| 2 | **Does `FILE` hang off `folder` or `course`** | Also determines where `CHUNK.course_id` comes from | Whole team |
-| 3 | **CR-28, embeddings at 1024** | The migration has to write a dimension | AI-1 |
-| 4 | **`MESSAGE.scope_course_id` + RESTRICT** (R3 re-vote) | Without the column, that decision has nothing to attach to | Whole team |
-| 5 | `FILE.size_bytes` → bigint | Free now, an `ALTER` later | Lead |
-| 6 | Add `USER.display_name` to the ERD | Document and code disagree | Lead |
-| 7 | Declare `ondelete=` on every FK | A default reads as a decision | Lead |
+| 1 | **Which `CONVERSATION` model** — the ERD's home course, or the code's user + many-to-many | **The ERD** (D1, option A). `Conversation.user_id` and `ConversationCourseLink` both removed | `schemas/chat.py`, `routers/chat.py` — ownership now joins through `Course` |
+| 2 | **Does `FILE` hang off `folder` or `course`** | **`folder`** (D1, option A) | `schemas/file.py` carries `course_id` as a placeholder with a `TODO(r41)`; the FK cannot point at a table with no model |
+| 3 | **CR-28, embeddings at 1024** | **Approved** (D3). Model runs locally | Code was already `VECTOR(1024)`; the **diagram** was the stale side and now says 1024 |
+| 4 | **`MESSAGE.scope_course_id` + RESTRICT** (R3 re-vote) | **All three columns kept, RESTRICT carried** (D2). R13 was taken first and declined, so this was a real vote | `schemas/chat.py` — `ondelete="RESTRICT"` |
+| 5 | `FILE.size_bytes` → bigint | **Passed** | `sa_column=Column(BigInteger, ...)`, verified as `BIGINT` |
+| 6 | Add `USER.display_name` to the ERD | **Passed** | `erd.mmd` — `USER` is now byte-exact against the code |
+| 7 | Declare `ondelete=` on every FK | **Passed** | **7 of 7 declared.** Six CASCADE, one RESTRICT |
 
-**1, 2 and 4 block the 19 Aug migration outright.** 3 already has agreement and needs only recording. 5, 6 and 7 are within the Lead's authority.
+**Item 7 was the one at risk of passing without content.** It was read out as a
+principle, and a principle does not write a value — so the values were chosen
+explicitly: CASCADE everywhere the child has no meaning without its parent, RESTRICT
+on the single column whose whole purpose is to preserve history.
 
-**These seven cover fourteen of the differences in this document. Twelve more have no agenda item at all** — section F.
+**Four more FKs arrive with AI-2's two models** (`FOLDER.course_id`,
+`FOLDER.parent_folder_id`, `FILE.folder_id`, `INGESTION_RUN.file_id`, plus
+`CHUNK.ingestion_run_id`). Item 7 binds those too. Saying "seven foreign keys" stopped
+being accurate the night D1 and D5 passed.
 
 ---
 
-## F. Twelve differences the 18 Aug agenda does not decide
+## F. The twelve the agenda did not decide — eleven closed, one by design
 
 The agenda's own argument for deciding items 1, 2 and 4 is that **`autogenerate` follows the code, not the ERD, so not voting is a vote for what the code already does.** That argument applies word for word to everything below, and nothing below was put to anyone.
 
@@ -238,15 +271,54 @@ Seven further findings are already bucketed as **"Open — first migration"** in
 
 **Recommended handling: none of section F goes on the 18 Aug agenda.** Six decisions already fill the night, and adding twelve non-decisions would push the four that block 19 Aug down the page. Report the existence of this section on the night, in one sentence, and do the work inside r41.
 
+### Closed 19 Aug — `0319f05` and `f7160e5`
+
+The recommendation above was followed: the section was reported in one sentence on the
+night and the work was done in the same pass as the model alignment, before
+`autogenerate` was ever run.
+
+| # | Difference | State | Verified as |
+|---|---|---|---|
+| 1 | `CHUNK.course_id` absent | ✅ added | `course_id UUID NOT NULL -> course.id CASCADE`, commented as the HNSW pre-filter |
+| 2 | `storage_key`, `UK` lost | ✅ both | `storage_key VARCHAR unique=True` |
+| 3 | `FILE.uploaded_at` naive | ✅ fixed | `TIMESTAMP WITH TIME ZONE` |
+| 4 | `FileStatus` missing `uploaded` | ✅ restored | `['uploaded', 'processing', 'ready', 'failed']` |
+| 5 | `page_number` → `page_start` | ✅ renamed in the models | `Chunk` and `ChunkCreate` both. `autogenerate` will never see a rename |
+| 6 | `FILE.sha256` absent | ✅ added | nullable, **not** unique — finding R7 |
+| 7 | `FILE.indexed_at` absent | ✅ added | nullable `timestamptz` |
+| 8 | `FILE.category` still present | ✅ removed | gone from `File` and `FileRead` |
+| 9 | `message.conversation_id` nullable | ✅ NOT NULL | |
+| 10 | `chunk.embedding` nullable | ✅ NOT NULL | `Mapped[list[float]]`, `VECTOR(1024)` |
+| 11 | `created_at` nullable on 4 tables | ✅ NOT NULL on all 6 | one rule, six tables |
+| 12 | `MILESTONE` has no table | ⬜ **still open, by design** | Gantt **r42**, 23–26 Aug. Migration 2 |
+
+**Items 2, 3 and 8 were called "the uncomfortable ones" above** — decided in a ratified
+document, then left out of every schedule. They are the reason this section exists, and
+they are closed. The lesson worth keeping is not that they were fixed; it is that
+**being ratified was not enough to get them done — they needed a line in a diff.**
+
+**What is genuinely still open is not in this section.** It is the seven constraint and
+index findings bucketed as *Open — first migration* in `KNOWN_ISSUES.md`: **R4, R5, R8,
+R17, R18, R19, R20**. The code declares exactly two unique constraints today
+(`user.email`, `file.storage_key`); R17 and R18 are neither of them.
+
 ---
 
 ## G. Order of work before 19 Aug
 
-1. **18 Aug meeting**: vote items 1, 2 and 4; record item 3.
-2. **Align the models** so the code catches up to the ERD. Change the model first, then autogenerate — never generate first and patch the migration afterwards. **Work section F in the same pass** — the models are being edited anyway, and every item there is a one-line change to a model file.
-3. **Task #15, `MILESTONE`**, is scheduled 23–26 Aug, after the first migration. So **the first migration will not contain `MILESTONE`**; a second one adds it.
-4. **`FOLDER` and `INGESTION_RUN` have no owner.** Assign them on 18 Aug.
-5. Only then `alembic revision --autogenerate`, and **read the generated file line by line** before running it.
+1. ✅ **18 Aug meeting**: items 1, 2 and 4 voted; item 3 recorded. All ten decisions carried on the recommendation.
+2. ✅ **Align the models** so the code catches up to the ERD. Change the model first, then autogenerate — never generate first and patch the migration afterwards. **Work section F in the same pass** — the models are being edited anyway, and every item there is a one-line change to a model file. *Done as `0319f05` + `f7160e5`; section F closed eleven of twelve.*
+3. ⬜ **Task #15, `MILESTONE`**, is scheduled 23–26 Aug, after the first migration. So **the first migration will not contain `MILESTONE`**; a second one adds it. *Unchanged.*
+4. ⚠️ **`FOLDER` and `INGESTION_RUN` have no owner.** Assign them on 18 Aug. *Assigned by D5 — both to AI-2 after `INGESTION_RUN` was reassigned from AI-1. **Neither appears in any Gantt row.** Seventeen columns across two models are now owned but unscheduled.*
+5. ⬜ Only then `alembic revision --autogenerate`, and **read the generated file line by line** before running it.
+
+**The migration now waits on exactly one thing: AI-2's two models.** Everything else on
+this list is either done or deliberately deferred to migration 2. When the models land,
+the sequence is `docker compose down -v` → `up -d db` → `revision --autogenerate` →
+read it → `upgrade head`. The volume is dropped rather than stamped because the dev
+database holds six of the seven tables and `alembic stamp head` would record a schema
+that does not exist, stranding `chunk` permanently. The team agreed to the drop; there
+is no data worth keeping.
 
 > **Do not use the migration to paper over a gap in the models.** autogenerate cannot detect a rename: `page_number` → `page_start` reads to it as one column dropped and another added, and the data goes with it. Renames have to be done in the models, or written by hand as `op.alter_column(..., new_column_name=...)`.
 

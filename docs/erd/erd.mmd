@@ -56,6 +56,34 @@
 %%   datetime -> timestamptz throughout. Naive timestamps are not storable for a
 %%                       system whose citations must survive a re-index
 %% ---
+%% ---
+%% 18 Aug 2026 meeting. Ten decisions, all carried on the recommendation. The four
+%% that change this diagram:
+%%   D1  CONVERSATION and FILE both follow this diagram, not the code (option A).
+%%       So CONVERSATION keeps course_id alone and FILE hangs off FOLDER. The code
+%%       was aligned the same night — see docs/erd/CODE_VS_ERD.md
+%%   D2  MESSAGE keeps all three of scope_course_id, citations and scope_snapshot,
+%%       and scope_course_id keeps ON DELETE RESTRICT. This closes R3: the 15 Aug
+%%       CASCADE vote is superseded, not merely flagged
+%%   D3  CR-28 approved. The active embedding dimension is 1024, not 1536
+%%   Lead call 2  USER gains display_name. The column has existed in the code since
+%%       the first commit; the diagram was the side that was wrong
+%% Findings closed the same night:
+%%   R13 declined — no MESSAGE_SCOPE_COURSE junction table in v1. Reopens if US-12
+%%       produces an acceptance case that genuinely needs two courses on one turn
+%%   R14 accepted, then routed by Lead ruling to scope_snapshot rather than into
+%%       citations. A chunk id inside a citation breaks on re-index; inside a
+%%       snapshot a stale id is simply the record of what happened
+%%   R15 accepted — signup creates one "Unsorted" course, so course_id can stay
+%%       NOT NULL without making first run a dead end (routers/auth.py)
+%%   R16 declined — no soft delete in v1. Note the consequence: with RESTRICT on
+%%       MESSAGE.scope_course_id and no deleted_at, a course that has been used in
+%%       any turn cannot be removed at all. v1 ships with no delete-course feature
+%%   R6  not reached on the night, so it proceeds on the recommendation as recorded:
+%%       mentioned_file_ids stays JSONB with no foreign key in v1. Folder-level
+%%       @-mentions are first item at the next meeting
+%%   R10 deferred again. Turn order stays implied by created_at in v1
+%% ---
 %% A bare "%%" line breaks mermaid's ER parser. Every comment line needs content.
 
 erDiagram
@@ -73,6 +101,7 @@ erDiagram
     USER {
         uuid id PK
         string email UK
+        string display_name "nullable — Lead call 2, 18 Aug. The code had it all along"
         string hashed_password
         timestamptz created_at
     }
@@ -133,7 +162,7 @@ erDiagram
         enum status "queued, processing, ready, failed"
         string chunker_version "reproducibility, so a chunk can be traced to how it was cut"
         string embedding_model
-        smallint embedding_dim "was CHUNK.embedding 1536-dim; the run now owns the dimension"
+        smallint embedding_dim "the run owns the dimension; 1024 per CR-28, was 1536"
         bool is_active "exactly one active run per file is visible to retrieval"
         timestamptz started_at
         timestamptz completed_at
@@ -151,7 +180,7 @@ erDiagram
         int page_start "1-based, matches what the reader sees"
         int page_end "a chunk may straddle a page break"
         string heading "nullable, no filename fallback"
-        vector embedding
+        vector embedding "1024 dims — CR-28, approved 18 Aug. Read it from settings"
         tsvector content_tsv "keyword half of hybrid_search"
         timestamptz created_at
     }

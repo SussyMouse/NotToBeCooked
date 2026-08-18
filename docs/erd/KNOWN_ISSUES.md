@@ -1,8 +1,14 @@
 # NotToBeCooked — ERD Known Issues
 
 **Accompanies:** `NotToBeCooked_ERD_2026-08-16.mmd` / `.png`
-**Date:** 16 August 2026
+**Date:** 16 August 2026 · **statuses landed 19 August 2026**
 **Author:** Lim Yong Zhou (AI-3, Project Lead)
+
+> **Update, 19 August 2026.** The 18 August meeting settled every finding this file
+> had marked *Open — 18 August*: **R3, R13, R14, R15, R16** were decided, and **R6**
+> and **R10** were not reached and therefore proceed on the recommendation printed
+> here, as the agenda said they would. Each finding below carries its outcome inline;
+> **Part D** lists the decisions in one place. Nothing was left in the state "open".
 
 The ERD submitted alongside this note went through two independent reviews after
 the 15 August meeting.
@@ -57,6 +63,15 @@ the team and goes back to a vote on 18 August. The diagram shows RESTRICT
 because shipping a diagram with a known hole in it is worse than shipping one
 whose open question is named.
 
+**Closed 18 August — Decision 2 carried RESTRICT.** The 15 August CASCADE vote is
+superseded rather than merely flagged, and `MESSAGE.scope_course_id` now declares
+`ondelete="RESTRICT"` in `app/schemas/chat.py`. R13 was taken first, as the agenda
+required, and declined — so the junction table did not dissolve this question and
+the vote was a real one.
+
+**The consequence R16 leaves behind is recorded under R16.** RESTRICT plus no soft
+delete means a course used in any turn cannot be deleted at all.
+
 ### R7 — `FILE.sha256` UNIQUE constraint removed
 
 Files belong to a user: `FILE → FOLDER → COURSE → USER`. A global UNIQUE on the
@@ -100,7 +115,11 @@ is now a code-vs-diagram mismatch to reconcile, not a schema question.
 
 ---
 
-## Open — scheduled for 18 August
+## Was open for 18 August — neither was reached, both proceed on the recommendation
+
+The agenda's standing rule is that an item not decided on the night proceeds on the
+recommendation printed for it and is recorded that way. These two are the only
+findings that rule was actually exercised on.
 
 ### R6 — `MESSAGE.mentioned_file_ids` is JSONB with no foreign key
 
@@ -118,13 +137,31 @@ holds file IDs. Mentioning a folder currently has to be expanded to files at
 send time, which freezes the folder's contents as of that moment. This has never
 been on an agenda.
 
+**18 August — not reached; proceeds on the recommendation.** The column stays JSONB
+with no foreign key for v1, which is what the code already does. The frozen-record
+property is the reason, not inertia: a dangling file ID is the historically correct
+answer to "what did the user ask for".
+
+**The second half is now a scheduled item, not a gap.** Decision 1 brought `FOLDER`
+into the build, so folder-level @-mentions stop being hypothetical the moment AI-2
+ships that model. It is the first item on the next agenda.
+
 ### R10 — `MESSAGE` has no `sequence_no`
 
 Turn order is currently implied by `created_at`. Two rows written inside the same
 transaction can share a timestamp, and the conversation renders in an arbitrary
 order. A monotonic integer per conversation removes the ambiguity.
 
-Deferred: `ck` branch code.
+**18 August — deferred again, and this file previously contradicted itself on it.**
+The body said "deferred"; the summary table at the foot said "Open — 18 Aug". The
+body was right. R10 was never on the 18 August agenda in the first place, so there
+was nothing to not-decide: turn order stays implied by `created_at` for v1.
+
+**What deferring actually costs.** Two rows written in one transaction can share a
+timestamp, and then the conversation renders in an arbitrary order. In practice a
+user turn and its assistant turn are exactly that pair. This is a real v1 defect
+that has been accepted, not a theoretical one — it is listed here so the first bug
+report about a reversed exchange is recognised instead of investigated.
 
 ---
 
@@ -205,7 +242,7 @@ describes a range. The old name did not read as one half of a range.
 
 Neither of these touches a decision that was voted on.
 
-## Deferred to 18 August
+## Settled on 18 August
 
 ### R13 — `MESSAGE_SCOPE_COURSE` junction table
 
@@ -219,6 +256,15 @@ two.**
 
 Cost: three tables, the ORM models on the `ck` branch, and a rewrite of the C4
 scope-precedence contract. That is why it is a change request and not an edit.
+
+**Declined 18 August.** Not on the merits — the argument above still stands — but on
+the cost landing four days before the first migration. `mentioned_file_ids` already
+carries cross-course scope for the case US-12 actually describes (@-mentioning files
+from another course), so the gap is narrower than the finding reads.
+
+**Reopen condition, recorded so this is not re-argued from memory:** the first US-12
+acceptance case that genuinely needs two courses ticked on one turn, with neither
+expressible as an @-mention. Until then it stays declined.
 
 ### R14 — `MESSAGE_CITATION` table (accepted in part)
 
@@ -236,6 +282,23 @@ stops at the file. Adding `chunk_id` as a field inside the existing JSONB
 recovers the traceability at no structural cost. That is the counter-proposal
 going to 18 August.
 
+**Accepted 18 August, then routed elsewhere by a Lead ruling the same night.** The
+meeting carried "add `chunk_id` to the `citations` JSON". Writing it up against C4
+showed that puts the id in the one place C4 forbids it, for the same reason this
+finding rejects the foreign-key version: **a citation is a durable anchor, and a
+chunk id does not survive a re-index.** A stale id in a citation is a broken
+citation; the fix would have recreated the defect one layer down.
+
+**Where it went instead:** `MESSAGE.scope_snapshot`, whose serialised shape is now
+`ScopeSnapshot` in `app/schemas/rag.py` — `retrieved_chunk_ids` and `used_chunk_ids`
+alongside the scope and the embedding model. A stale chunk id there is acceptable
+because **nothing resolves against it**: the snapshot records what happened, it does
+not point at anything that has to still exist.
+
+Provenance is therefore chunk-level as the meeting intended, and `Citation` stays
+anchored to file + page + quote. Recorded as an amendment rather than a silent edit
+because the minutes say `citations`.
+
 ### R15 — `CONVERSATION.course_id` required
 
 With R1 closed, `course_id` is the only ownership path and therefore mandatory.
@@ -246,12 +309,45 @@ is an onboarding constraint rather than a schema defect, and the options are a
 default "Unsorted" course created at signup, or allowing a null `course_id` with
 ownership carried some other way. 18 August.
 
+**Accepted 18 August — the Unsorted course.** `POST /auth/register` now writes the
+user row and one course row in the same transaction (`build_unsorted_course` in
+`app/routers/auth.py`). `course_id` stays NOT NULL, so the ownership path stays
+single, and first run is not a dead end.
+
+Two details that are decisions rather than implementation:
+
+- **`year` and `sem` are 0, not the calendar year.** They mark the row as a
+  placeholder, and under R17's `UNIQUE (user_id, code, year, sem)` they guarantee
+  an account holds exactly one Unsorted course however long it lives. A calendar
+  year would have allowed one per year.
+- **`status` is written as `"active"`.** `COURSE.status` is free text and its value
+  set has never been defined — ratified 27 July, never specified since. This picks
+  the obvious reading without claiming to settle it. **Still open, still unowned.**
+
 ### R16 — Soft delete on `COURSE` and `FILE`
 
 `deleted_at timestamptz nullable` instead of a physical delete, to preserve
 conversation history, citations and audit trail.
 
 Related to R3 and R13: soft delete is a third answer to the same question.
+
+**Declined 18 August.** v1 deletes physically. Reopen condition: the first time
+someone deletes a course by mistake and asks for it back.
+
+**The consequence, stated plainly because it was not part of the vote.** R3 carried
+RESTRICT on `MESSAGE.scope_course_id`, and R16 removed the only other way a course
+could leave the system. Together:
+
+> **A course that has been the scope of even one turn cannot be deleted.** The
+> database refuses the `DELETE`, and there is no `deleted_at` to fall back on.
+
+So **v1 ships with no delete-course feature at all** — not as a cut item, as an
+arithmetic result of two separate decisions. That is defensible for v1 (nothing is
+lost, and history is exactly what RESTRICT is protecting), but it must be written
+down, because the alternative is discovering it from a `ForeignKeyViolation` in a
+demo. Three ways out exist when it matters: soft delete (R16, reopened), reparenting
+the affected turns to a tombstone course, or `ON DELETE SET NULL` with a nullable
+column — which sub-decision 2 of item 03 voted against for a still-valid reason.
 
 ## Folded into the first Alembic migration
 
@@ -346,24 +442,60 @@ re-index cannot store naive timestamps.
 
 ---
 
+# Part D — the 18 August meeting
+
+Ten decisions, **all carried on the recommendation printed in the agenda**. Recorded
+here rather than only in the minutes because six of them change this file.
+
+| Label | Decision | Outcome |
+|---|---|---|
+| **R13** | `MESSAGE_SCOPE_COURSE` junction table | **Declined.** Reopens on a US-12 acceptance case needing two courses on one turn |
+| **R16** | Soft delete on `COURSE` / `FILE` | **Declined.** Reopens on the first mistaken delete someone wants back |
+| **D1** | Which `CONVERSATION` and which `FILE` — diagram or code | **Option A: both follow the diagram.** Code aligned the same night |
+| **D5** | Owners for `FOLDER` and `INGESTION_RUN` | `FOLDER` → **AI-2**; `INGESTION_RUN` → AI-1, **reassigned to AI-2 after the meeting** |
+| **D2** | `MESSAGE`: keep all three columns, and RESTRICT | **All three kept, RESTRICT carried.** Closes R3 |
+| **R14** | `citations` carries no `chunk_id` | **Accepted**, then routed to `scope_snapshot` by Lead ruling — see R14 |
+| **R15** | Required `course_id` blocks first run | **Accepted.** Unsorted course created at signup |
+| **D3** | CR-28 — embeddings at 1024, model runs locally | **Approved.** The diagram recorded 1536 until now |
+| **D4** | CR-29 — keep `verify.yml` | **Approved** |
+| **D6** | C6-D1 / C6-D2 / C6-D3 | **b / b / a** |
+
+The Lead's six calls were read out and all six passed. Two of them land in this
+file's territory: **`FILE.size_bytes` → `bigint`** and **`USER.display_name` added to
+the diagram** — the code had that column from the first commit and the diagram was
+the side that was wrong.
+
+## What this meeting did not settle
+
+Three things are still unowned, and none of them was on the agenda:
+
+1. **`COURSE.status` has no value set.** Ratified 27 July; never specified. R15's
+   implementation writes `"active"` because it had to write something.
+2. **`FILE.storage_key` is marked `UK` on the diagram and has no unique constraint
+   in the code.** Folded into the first migration by default rather than by decision.
+3. **`FOLDER` and `INGESTION_RUN` appear in no Gantt row**, even though D5 assigned
+   both. Seventeen columns across two models now sit outside the schedule.
+
+---
+
 ## Summary
 
 | # | Finding | Status |
 |---|---------|--------|
 | — | Eight ratified fields dropped in drafting | **Restored — Part C** |
 | R2 | `MESSAGE.course_id` → `scope_course_id` | Fixed in diagram |
-| R3 | `CASCADE` → `RESTRICT` | Fixed in diagram, **reopens a 15 Aug vote** |
+| R3 | `CASCADE` → `RESTRICT` | **Closed 18 Aug — Decision 2 carried RESTRICT** |
 | R7 | `FILE.sha256` global UNIQUE | Fixed in diagram |
 | R9 | `FOLDER.parent_folder_id` | Fixed in diagram |
 | R11 | `COURSE` had no `name` | Fixed in diagram |
 | R12 | `page_number` → `page_start` | Fixed in diagram |
-| R13 | `MESSAGE_SCOPE_COURSE` junction | Open — 18 Aug, **votes together with R3** |
-| R14 | `citations` JSONB carries no `chunk_id` | Open — 18 Aug, counter-proposal |
+| R13 | `MESSAGE_SCOPE_COURSE` junction | **Declined 18 Aug** — reopen condition recorded |
+| R14 | `citations` JSONB carries no `chunk_id` | **Accepted 18 Aug — routed to `scope_snapshot`, not `citations`** |
 | R1 | `CONVERSATION.user_id` redundant | **Closed — the column was never ratified; removed** |
-| R15 | Required `course_id` blocks first-run onboarding | Open — 18 Aug |
-| R6 | `mentioned_file_ids` has no FK; folders unrepresented | Open — 18 Aug |
-| R10 | `MESSAGE` has no `sequence_no` | Open — 18 Aug |
-| R16 | Soft delete on `COURSE` / `FILE` | Open — 18 Aug |
+| R15 | Required `course_id` blocks first-run onboarding | **Accepted 18 Aug — Unsorted course at signup** |
+| R6 | `mentioned_file_ids` has no FK; folders unrepresented | **Not reached — proceeds on the recommendation: JSONB stays in v1.** Folder @-mentions → next meeting |
+| R10 | `MESSAGE` has no `sequence_no` | **Deferred** — accepted v1 defect, order implied by `created_at` |
+| R16 | Soft delete on `COURSE` / `FILE` | **Declined 18 Aug** — and so **v1 has no delete-course feature**, see R16 |
 | R4 | `CHUNK` FKs can contradict each other | Open — first migration |
 | R5 | Vector scan not filtered by embedding model | Open — first migration |
 | R8 | `is_active` needs a partial unique index | Open — first migration |
@@ -375,3 +507,9 @@ re-index cannot store naive timestamps.
 | R22 | `STORED_OBJECT` split | Declined for v1 |
 | R23 | Remove `CHUNK.file_id` / `course_id` | Declined — item 04, see R4 |
 | R24 | Full folder tree | Declined — item 04, see R9 |
+
+**Nothing on this list is marked "Open — 18 Aug" any more.** Everything is decided,
+declined, deferred with its cost stated, or folded into the first migration (Gantt
+**r41**, 19–22 Aug). The one bucket still carrying real risk is that migration bucket:
+**R4, R5, R8, R17, R18, R19, R20** are seven constraint-and-index decisions scheduled
+inside the same four days as the migration itself.
