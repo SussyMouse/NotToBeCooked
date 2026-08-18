@@ -57,6 +57,9 @@ COLOR = {
 }
 CURRENT_WEEK_TINT = "FFF7F3E8"
 CURRENT_WEEK_HEADER = "FF3F5A73"
+# Every other week header. The current-week header has to be reset back to this,
+# not merely overwritten on the new column -- see the comment in main().
+WEEK_HEADER = "FF196B7A"
 
 OVERVIEW_PRIORITY_ROWS = {"MUST": 5, "SHOULD": 6, "COULD": 7, "CUT": 8}
 OVERVIEW_OWNER_ROWS = {"AI-1": 11, "AI-2": 12, "AI-3": 13}
@@ -133,6 +136,14 @@ def main() -> None:
             elif col == current_col:
                 ws.cell(row, col).fill = PatternFill("solid", fgColor=CURRENT_WEEK_TINT)
 
+    # Reset every week header before painting this week's. Only setting the
+    # current column leaves last week's dark header in place, so the sheet grows
+    # one extra "current week" every run -- found on 19 Aug with 12 Aug and
+    # 19 Aug both dark. A generator that is not idempotent is not a generator.
+    for col, _ in weeks:
+        cell = ws.cell(5, col)
+        cell.fill = PatternFill("solid", fgColor=WEEK_HEADER)
+        cell.font = Font(bold=True, color="FFFFFFFF", size=8)
     header = ws.cell(5, current_col)
     header.fill = PatternFill("solid", fgColor=CURRENT_WEEK_HEADER)
     header.font = Font(bold=True, color="FFFFFFFF", size=10)
