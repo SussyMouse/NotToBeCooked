@@ -162,7 +162,7 @@ erDiagram
         enum status "queued, processing, ready, failed"
         string chunker_version "reproducibility, so a chunk can be traced to how it was cut"
         string embedding_model
-        smallint embedding_dim "the run owns the dimension; 1024 per CR-28, was 1536"
+        smallint embedding_dim "the run owns the dimension, not CHUNK. 1024 — CR-28"
         bool is_active "exactly one active run per file is visible to retrieval"
         timestamptz started_at
         timestamptz completed_at
