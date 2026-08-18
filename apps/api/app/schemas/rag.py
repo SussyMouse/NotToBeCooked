@@ -56,7 +56,7 @@ class RetrievedChunk(SQLModel):
     file_id: UUID
     course_id: UUID
     filename: str = Field(..., min_length=1)
-    page_number: int | None = Field(
+    page_start: int | None = Field(
         default=None,
         ge=1,
         description="First page of this chunk, 1-based, matching what the user and PDF "

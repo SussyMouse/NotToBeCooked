@@ -84,12 +84,12 @@ def build_context(chunks: list[RetrievedChunk]) -> tuple[str, list[RetrievedChun
     blocks: list[str] = []
 
     for marker, chunk in enumerate(selected, start=1):
-        if chunk.page_number is None:
+        if chunk.page_start is None:
             page = ""
-        elif chunk.page_end is None or chunk.page_number == chunk.page_end:
-            page = f" (p.{chunk.page_number})"
+        elif chunk.page_end is None or chunk.page_start == chunk.page_end:
+            page = f" (p.{chunk.page_start})"
         else:
-            page = f" (p.{chunk.page_number}-{chunk.page_end})"
+            page = f" (p.{chunk.page_start}-{chunk.page_end})"
 
         heading = f" — {chunk.heading}" if chunk.heading is not None else ""
 

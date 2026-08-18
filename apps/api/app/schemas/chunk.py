@@ -39,14 +39,18 @@ class Chunk(Base):
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    file_id: Mapped[UUID] = mapped_column(ForeignKey("file.id"))
+    file_id: Mapped[UUID] = mapped_column(ForeignKey("file.id", ondelete="CASCADE"))
+    # Denormalised on purpose: this is the filter in front of the HNSW scan.
+    # Without it, scoping by course needs chunk -> file -> course, and that
+    # join has to run before the vector scan.
+    course_id: Mapped[UUID] = mapped_column(ForeignKey("course.id", ondelete="CASCADE"))
     chunk_index: Mapped[int]
-    page_number: Mapped[int | None]
+    page_start: Mapped[int | None]
     page_end: Mapped[int | None] = mapped_column(default=None, nullable=True)
     heading: Mapped[str | None] = mapped_column(default=None, nullable=True)
     content: Mapped[str]
     token_count: Mapped[int]
-    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDINGS_DIM), nullable=True)
+    embedding: Mapped[list[float]] = mapped_column(Vector(EMBEDDINGS_DIM), nullable=False)
     content_tsv: Mapped[str | None] = mapped_column(
         TSVector(),
         Computed("to_tsvector('english', content)", persisted=True),
@@ -61,7 +65,7 @@ class Chunk(Base):
 class ChunkCreate(BaseModel):  # 描述 AI-2 切出来的“一块内容”应该包含哪些资料。
     file_id: UUID
     chunk_index: int  # 它在文件中的顺序
-    page_number: int | None = None
+    page_start: int | None = None
     page_end: int | None = None
     heading: str | None = None
     content: str
