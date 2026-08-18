@@ -205,7 +205,7 @@ def main() -> None:
         rebuilt_text += chunk_content
 
     print("Content preserved: ", rebuilt_text == test_text)
-
+    print(type(test_chunks[0]))
 
 if __name__ == "__main__":
     main()
