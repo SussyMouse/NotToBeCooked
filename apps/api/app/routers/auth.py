@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from uuid import UUID, uuid4
 
 import jwt
 from argon2 import PasswordHasher
@@ -10,11 +11,18 @@ from app.core.config import settings
 from app.db.database import get_session
 from app.dependencies.auth import get_current_user
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
+from app.schemas.course import Course
 from app.schemas.errors import ApiError
 from app.schemas.user import User, UserRead
 
 ph = PasswordHasher()
 auth_router = APIRouter()
+
+# Finding R15, decided 18 Aug: every new account gets one course so that the
+# first run is not a dead end. The names live here rather than inline because
+# the course listing UI has to be able to recognise this row.
+UNSORTED_COURSE_CODE = "UNSORTED"
+UNSORTED_COURSE_NAME = "Unsorted"
 
 
 @auth_router.get(
@@ -213,8 +221,19 @@ async def register(
     bytes = body.password.encode("utf-8")
     hashed_password = ph.hash(bytes)
 
-    user = User(hashed_password=hashed_password, email=body.email, display_name=body.display_name)
+    # The id is minted here rather than left to `default_factory` so the default
+    # course can reference it before either row is flushed. Both INSERTs go in one
+    # transaction: an account that committed without its course would be unable to
+    # open a conversation at all, which is the whole of finding R15.
+    user_id = uuid4()
+    user = User(
+        id=user_id,
+        hashed_password=hashed_password,
+        email=body.email,
+        display_name=body.display_name,
+    )
     session.add(user)
+    session.add(build_unsorted_course(user_id))
     await session.commit()
     await session.refresh(user)
 
@@ -258,3 +277,29 @@ def create_access_token(user: User, expires_in_minutes: int) -> str:
 
     token = jwt.encode(payload, settings.ACCESS_TOKEN_SECRET, algorithm=settings.JWT_ALGORITHM)
     return token
+
+
+def build_unsorted_course(user_id: UUID) -> Course:
+    """The default course every account starts with -- finding R15, decided 18 Aug.
+
+    `CONVERSATION.course_id` is NOT NULL and, since finding R1 removed
+    `CONVERSATION.user_id`, it is the only path from a conversation to its owner.
+    So an account holding no course cannot open a chat. Creating this row at signup
+    removes that dead end without making the column nullable.
+
+    `year` and `sem` are 0 rather than the calendar year on purpose. They mark the
+    row as a placeholder rather than a real enrolment, and they keep it stable:
+    under finding R17's `UNIQUE (user_id, code, year, sem)` an account holds exactly
+    one Unsorted course however long it lives.
+    """
+    return Course(
+        user_id=user_id,
+        code=UNSORTED_COURSE_CODE,
+        name=UNSORTED_COURSE_NAME,
+        year=0,
+        sem=0,
+        # `Course.status` is free text: the column was ratified on 27 Jul but its
+        # value set never was. "active" is the obvious reading and is written here
+        # without claiming to settle it.
+        status="active",
+    )

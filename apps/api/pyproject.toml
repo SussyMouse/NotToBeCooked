@@ -19,6 +19,7 @@ dependencies = [
     "sentence-transformers>=5.7.0",
     "kernels>=0.16.0",
     "httpx>=0.28.1",
+    "alembic>=1.19.1",
 ]
 
 [build-system]

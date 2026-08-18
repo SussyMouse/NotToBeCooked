@@ -133,7 +133,7 @@ async def vector_search(
             file_id=chunk.file_id,
             course_id=file.course_id,
             filename=file.filename,
-            page_number=chunk.page_number,
+            page_start=chunk.page_start,
             page_end=chunk.page_end,
             heading=chunk.heading,
             content=chunk.content,
@@ -169,7 +169,7 @@ async def hybrid_search(
 
     if config is None:
         config = SearchConfig()
-    
+
     # 1: concurrent execution of vector and keyword searchs
     vector_task = _vector_similarity_search(
         query_vector, session, file_ids, top_k=config.vector_limit
@@ -214,7 +214,7 @@ async def hybrid_search(
                 file_id=chunk.file_id,
                 course_id=file.course_id,
                 filename=file.filename,
-                page_number=chunk.page_number,
+                page_start=chunk.page_start,
                 page_end=chunk.page_end,
                 heading=chunk.heading,
                 content=chunk.content,
