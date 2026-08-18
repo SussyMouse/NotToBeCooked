@@ -65,8 +65,10 @@ class Message(SQLModel, table=True):
     scope_snapshot: dict[str, Any] | None = Field(
         default=None,
         sa_column=Column(JSONB, nullable=True),
-        description="What retrieval was allowed to see, frozen at write time. Same purpose "
-        "as `citations`: it has to survive later changes to the corpus.",
+        description="What retrieval was allowed to see for this turn, and what it actually "
+        "used, frozen at write time. Holds the serialised form of `ScopeSnapshot` in "
+        "schemas/rag.py -- including the chunk ids, which is where finding R14's "
+        "chunk-level provenance lives rather than in `citations`.",
     )
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False),

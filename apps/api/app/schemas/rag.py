@@ -49,9 +49,11 @@ class RetrievedChunk(SQLModel):
 
     chunk_id: UUID = Field(
         ...,
-        description="Request-scoped only, for de-duplication and debug logging. "
-        "MUST NOT be persisted in a Citation: chunk ids change whenever "
-        "the chunking strategy is re-run.",
+        description="For de-duplication, debug logging, and provenance. "
+        "MUST NOT be persisted in a Citation: chunk ids change whenever the chunking "
+        "strategy is re-run, so a citation anchored to one stops resolving after a "
+        "re-index. It IS persisted in `ScopeSnapshot`, which is a debug record rather "
+        "than a durable anchor -- finding R14, resolved 18 Aug.",
     )
     file_id: UUID
     course_id: UUID
@@ -82,6 +84,10 @@ class Citation(SQLModel):
     Deliberately anchored to file_id + page + quote and never to chunk_id:
     chunks are a regenerable intermediate product, while the file, the page and
     the quoted text survive re-ingestion.
+
+    Finding R14 asked for chunk-level provenance here. It goes in `ScopeSnapshot`
+    instead: that recovers the traceability without making a citation depend on an
+    id that a re-index invalidates. Resolved 18 Aug.
     """
 
     model_config = {"extra": "forbid"}
@@ -113,4 +119,46 @@ class RagAnswer(SQLModel):
         ge=0,
         description="How many chunks were actually put into the prompt, after selection. "
         "0 means there was no material and the layer should have refused to answer.",
+    )
+
+
+class ScopeSnapshot(SQLModel):
+    """Outbound: generation -> MESSAGE.scope_snapshot. Written once, never updated.
+
+    What retrieval was allowed to see for one turn, and what it actually used.
+    This is where finding R14's chunk-level provenance lives: a `Citation` stays
+    anchored to file + page + quote so it survives a re-index, while this record
+    keeps the chunk ids for tracing a specific answer back to the exact text that
+    produced it. A stale chunk id here is acceptable -- nothing resolves against
+    it, it is evidence of what happened.
+
+    Stored as JSONB. Nothing reads it on the hot path.
+    """
+
+    model_config = {"extra": "forbid"}
+
+    scope_course_id: UUID | None = Field(
+        default=None,
+        description="The course in scope for this turn. None when the request carried "
+        "neither a course nor file mentions, i.e. the whole corpus.",
+    )
+    mentioned_file_ids: list[UUID] | None = Field(
+        default=None,
+        description="The @-mention scope as the user gave it. When present this WAS the "
+        "scope and `scope_course_id` was ignored -- the precedence rule on RagQueryRequest.",
+    )
+    retrieved_chunk_ids: list[UUID] = Field(
+        default_factory=list,
+        description="Every chunk retrieval returned, before selection.",
+    )
+    used_chunk_ids: list[UUID] = Field(
+        default_factory=list,
+        description="The chunks that actually went into the prompt. Length must equal "
+        "RagAnswer.used_chunks; a mismatch means selection and reporting disagree.",
+    )
+    embedding_model: str | None = Field(
+        default=None,
+        description="Which model produced the query vector. Two models with the same "
+        "output dimension put vectors in different spaces, so a snapshot without this "
+        "cannot be compared against a later one -- finding R5.",
     )
