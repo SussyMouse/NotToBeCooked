@@ -65,7 +65,7 @@ async def get_sessions(
         404: {"model": ApiError, "description": "Session not found"},
     },
 )
-async def get_session_by_id(
+async def get_session_by_session_id(
     session_id: UUID,
     session: AsyncSession = Depends(get_session),
     user: dict = Depends(get_current_user),
@@ -108,18 +108,6 @@ async def get_session_by_id(
         updated_at=conversation.updated_at,
         messages=[MessageRead.model_validate(m) for m in messages],
     )
-
-
-@chat_router.post("/sessions")
-async def create_session(
-    session: AsyncSession = Depends(get_session), user: dict = Depends(get_current_user)
-):
-    user_id = user.get("sub")
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"code": "INVALID_TOKEN", "message": "Invalid or tampered token"},
-        )
 
 
 @chat_router.delete("/sessions/{session_id}")
