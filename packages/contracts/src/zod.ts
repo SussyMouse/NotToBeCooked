@@ -12,7 +12,7 @@ const ValidationError = z.object({ loc: z.array(z.union([z.string(), z.number()]
 const HTTPValidationError = z.object({ detail: z.array(ValidationError) }).partial().passthrough();
 const RegisterRequest = z.object({ display_name: z.string(), email: z.string().email(), password: z.string().min(8) }).passthrough();
 const IngestionResponse = z.object({ file_id: z.string().uuid(), status: z.enum(["uploaded", "processing", "ready", "failed"]), chunk_count: z.union([z.number(), z.null()]).optional(), error: z.union([z.string(), z.null()]).optional() }).passthrough();
-const RagQueryRequest = z.object({ question: z.string().min(1).max(2000), course_id: z.union([z.string(), z.null()]).optional(), file_ids: z.union([z.array(z.string().uuid()), z.null()]).optional(), top_k: z.number().int().gte(1).lte(20).optional().default(5) });
+const RagQueryRequest = z.object({ question: z.string().min(1).max(2000), course_id: z.union([z.string(), z.null()]).optional(), conversation_id: z.union([z.string(), z.null()]).optional(), file_ids: z.union([z.array(z.string().uuid()), z.null()]).optional(), top_k: z.union([z.number(), z.null()]).optional().default(5) });
 const Citation = z.object({ marker: z.number().int().gte(1), file_id: z.string().uuid(), course_id: z.string().uuid(), filename: z.string().min(1), page: z.union([z.number(), z.null()]).optional(), page_end: z.union([z.number(), z.null()]).optional(), quote: z.string().min(1) });
 const RagAnswer = z.object({ answer: z.string().min(1), citations: z.array(Citation).optional(), grounded: z.boolean(), used_chunks: z.number().int().gte(0) });
 const course_id = z.union([z.string(), z.null()]).optional();
@@ -221,8 +221,18 @@ const endpoints = makeApi([
 				schema: z.string().uuid()
 			},
 		],
-		response: z.unknown(),
+		response: z.record(z.string()),
 		errors: [
+			{
+				status: 401,
+				description: `Missing, invalid or expired access token`,
+				schema: ApiError
+			},
+			{
+				status: 404,
+				description: `Session not found`,
+				schema: ApiError
+			},
 			{
 				status: 422,
 				description: `Validation Error`,

@@ -14,5 +14,10 @@ export type ApiError = components["schemas"]["ApiError"];
 export type HTTPValidationError = components["schemas"]["HTTPValidationError"];
 /** One entry of a FastAPI 422 body: which field failed and why. */
 export type ValidationIssue = components["schemas"]["ValidationError"];
+export type Conversation = components["schemas"]["Conversation"];
+export type ConversationDetail = components["schemas"]["ConversationDetail"];
+export type MessageRead = components["schemas"]["MessageRead"]
+export type RagAnswer = components["schemas"]["RagAnswer"]
+export type RagQueryRequest = components["schemas"]["RagQueryRequest"]
 
 export type { components, paths };

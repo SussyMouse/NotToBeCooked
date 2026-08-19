@@ -31,11 +31,14 @@ class RagQueryRequest(SQLModel):
     course_id: UUID | None = Field(
         default=None, description="The turn's home course. Ignored when file_ids is set."
     )
+    conversation_id: UUID | None = Field(
+        default=None, description="The turn's conversation"
+    )
     file_ids: list[UUID] | None = Field(
         default=None,
         description="Explicit @-mention scope. May cross courses. When set, overrides course_id.",
     )
-    top_k: int = Field(default=5, ge=1, le=20)
+    top_k: int | None = Field(default=5, ge=1, le=20)
 
 
 class RetrievedChunk(SQLModel):

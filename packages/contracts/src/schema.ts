@@ -441,6 +441,11 @@ export interface components {
              */
             course_id?: string | null;
             /**
+             * Conversation Id
+             * @description The turn's conversation
+             */
+            conversation_id?: string | null;
+            /**
              * File Ids
              * @description Explicit @-mention scope. May cross courses. When set, overrides course_id.
              */
@@ -449,7 +454,7 @@ export interface components {
              * Top K
              * @default 5
              */
-            top_k: number;
+            top_k: number | null;
         };
         /** RegisterRequest */
         RegisterRequest: {
@@ -854,7 +859,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Session not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
             /** @description Validation Error */
