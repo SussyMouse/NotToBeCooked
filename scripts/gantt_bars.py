@@ -64,9 +64,12 @@ WEEK_HEADER = "FF196B7A"
 OVERVIEW_PRIORITY_ROWS = {"MUST": 5, "SHOULD": 6, "COULD": 7, "CUT": 8}
 OVERVIEW_OWNER_ROWS = {"AI-1": 11, "AI-2": 12, "AI-3": 13}
 OVERVIEW_SHARED_ROW = 16
-OVERVIEW_COMPLETED_ROW = 30
-OVERVIEW_REMAINING_ROW = 31
-OVERVIEW_PERCENT_ROW = 32
+# Bumped by one on 19 Aug 2026 when the Resume Cut milestone was inserted at
+# Overview row 22. These are positions in a hand-laid-out sheet, so inserting a
+# row above them moves them -- there is nothing here to detect that.
+OVERVIEW_COMPLETED_ROW = 31
+OVERVIEW_REMAINING_ROW = 32
+OVERVIEW_PERCENT_ROW = 33
 
 
 def parse_day(value: str) -> dt.date:
