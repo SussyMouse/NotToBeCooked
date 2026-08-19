@@ -110,7 +110,15 @@ async def get_session_by_session_id(
     )
 
 
-@chat_router.delete("/sessions/{session_id}")
+@chat_router.delete(
+    "/sessions/{session_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=dict[str, str],
+    responses={
+        401: {"model": ApiError, "description": "Missing, invalid or expired access token"},
+        404: {"model": ApiError, "description": "Session not found"},
+    },
+)
 async def delete_session(
     session_id: UUID,
     session: AsyncSession = Depends(get_session),
@@ -122,3 +130,25 @@ async def delete_session(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": "INVALID_TOKEN", "message": "Invalid or tampered token"},
         )
+
+    statement = (
+        select(Conversation)
+        .join(Course, col(Course.id) == col(Conversation.course_id))
+        .where(
+            Course.user_id == user_id,
+            Conversation.id == session_id
+        )
+    )
+    result = await session.execute(statement)
+    conversation = result.scalar_one_or_none()
+
+    if conversation is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "SESSION_NOT_FOUND", "message": "No session found under user_id"},
+        )
+
+    await session.delete(conversation)
+    await session.commit()
+
+    return { "status": "ok" }

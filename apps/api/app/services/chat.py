@@ -28,7 +28,7 @@ async def get_or_create_conversation(
     if conversation_id:
         statement = (
             select(Conversation)
-            .join(Course, col(Conversation.course_id == Course.id))
+            .join(Course, col(Conversation.course_id) == col(Course.id))
             .where(
                 Course.user_id == user_id,
                 Conversation.id == conversation_id
