@@ -40,8 +40,10 @@ class Chunk(Base):
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     file_id: Mapped[UUID] = mapped_column(ForeignKey("file.id"))
+    course_id:Mapped[UUID]=mapped_column(ForeignKey("course.id"))
+    ingestion_run_id:Mapped[UUID]=mapped_column(ForeignKey("ingestion_run.id"))
     chunk_index: Mapped[int]
-    page_number: Mapped[int | None]
+    page_start: Mapped[int | None]
     page_end: Mapped[int | None] = mapped_column(default=None, nullable=True)
     heading: Mapped[str | None] = mapped_column(default=None, nullable=True)
     content: Mapped[str]
@@ -60,8 +62,10 @@ class Chunk(Base):
 
 class ChunkCreate(BaseModel):  # 描述 AI-2 切出来的“一块内容”应该包含哪些资料。
     file_id: UUID
+    course_id: UUID
+    ingestion_run_id: UUID
     chunk_index: int  # 它在文件中的顺序
-    page_number: int | None = None
+    page_start: int | None = None
     page_end: int | None = None
     heading: str | None = None
     content: str

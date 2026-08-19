@@ -7,6 +7,7 @@ from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import settings
+from app.db.models import register_models
 
 # 1. Create Async Engine (asyncpg)
 engine = create_async_engine(
@@ -21,6 +22,9 @@ async_session_maker = async_sessionmaker(bind=engine, class_=AsyncSession, expir
 
 # 3. Initialize DB and pgvector extension
 async def init_db() -> None:
+
+    register_models()
+
     async with engine.begin() as conn:
         # Ensure pgvector extension is enabled in PostgreSQL
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
