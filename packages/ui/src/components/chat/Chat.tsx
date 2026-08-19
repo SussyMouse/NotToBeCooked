@@ -1,0 +1,403 @@
+import React, { useState, useRef, useEffect, useMemo } from "react";
+import { ChatMessageItem, type ChatMessage, type CitationItem } from "./ChatMessage";
+import { ChatInput, type ChatFile } from "./ChatInput";
+import { History, type ChatSessionItem } from "./History";
+import { CitationDrawer } from "./CitationDrawer";
+
+export type { CitationItem, ChatMessage, ChatFile, ChatSessionItem };
+
+export interface ChatProps {
+  courseCode?: string;
+  filesCount?: number;
+  files?: ChatFile[];
+  categories?: string[];
+  quickPrompts?: string[];
+  
+  // Controlled or uncontrolled message state
+  messages?: ChatMessage[];
+  initialMessages?: ChatMessage[];
+  
+  // Controlled session history state
+  sessions?: ChatSessionItem[];
+  activeSessionId?: string | null;
+  
+  // Loading & State
+  isTyping?: boolean;
+  
+  // Callbacks
+  onSendMessage?: (
+    text: string
+  ) => Promise<{ text: string; cites?: CitationItem[] } | void> | { text: string; cites?: CitationItem[] } | void;
+  onCiteClick?: (cite: CitationItem) => void;
+  onSelectSession?: (sessionId: string) => void;
+  onDeleteSession?: (sessionId: string) => void;
+  onNewChat?: () => void;
+  onClearChat?: () => void;
+  onOpenDocument?: (fileId: string, page: number) => void;
+  
+  className?: string;
+}
+
+export const Chat: React.FC<ChatProps> = ({
+  courseCode = "CS202",
+  filesCount = 9,
+  files = [
+    { id: "cs202-lec4", name: "Lecture 4.pdf", category: "Lecture Decks" },
+    { id: "cs202-lab3", name: "Lab 3.pdf", category: "Lab Handouts" },
+    { id: "cs202-tut1", name: "Tutorial 1.pdf", category: "Tutorials & PYQs" },
+    { id: "cs202-planner", name: "Course Planner.pdf", category: "Course Planner" },
+  ],
+  categories = ["Course Planner", "Lecture Decks", "Lab Handouts", "Tutorials & PYQs"],
+  quickPrompts = ["Condense", "Quiz me", "Simplify", "Storyboard"],
+  messages: controlledMessages,
+  initialMessages,
+  sessions = [],
+  activeSessionId,
+  isTyping: controlledIsTyping,
+  onSendMessage,
+  onCiteClick,
+  onSelectSession,
+  onDeleteSession,
+  onNewChat,
+  onClearChat,
+  onOpenDocument,
+  className = "",
+}) => {
+  // Horizontal Resizing State
+  const [width, setWidth] = useState<number>(340);
+  const [isResizing, setIsResizing] = useState(false);
+
+  // History Drawer State
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  // Selected Citation State for preview drawer
+  const [selectedCitation, setSelectedCitation] = useState<CitationItem | null>(null);
+
+  // Local fallback state when uncontrolled
+  const [localCourseMessagesMap, setLocalCourseMessagesMap] = useState<Record<string, ChatMessage[]>>({});
+  const [localIsTyping, setLocalIsTyping] = useState(false);
+
+  const msgsEndRef = useRef<HTMLDivElement>(null);
+
+  // Determine current active messages (controlled takes precedence)
+  const currentMessages = useMemo(() => {
+    if (controlledMessages !== undefined) return controlledMessages;
+    return localCourseMessagesMap[courseCode] ?? initialMessages ?? [];
+  }, [controlledMessages, localCourseMessagesMap, courseCode, initialMessages]);
+
+  const isTyping = controlledIsTyping !== undefined ? controlledIsTyping : localIsTyping;
+
+  // Horizontal Drag Resizing effect
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = window.innerWidth - e.clientX;
+      if (newWidth >= 280 && newWidth <= 800) {
+        setWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
+
+  const scrollToBottom = () => {
+    msgsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [currentMessages, isTyping, courseCode]);
+
+  const handleSend = async (fullQuery: string) => {
+    if (!fullQuery.trim() || isTyping) return;
+
+    if (controlledMessages === undefined) {
+      // Uncontrolled local update
+      const userMsg: ChatMessage = { r: "me", role: "user", x: fullQuery, content: fullQuery };
+      setLocalCourseMessagesMap((prev) => ({
+        ...prev,
+        [courseCode]: [...(prev[courseCode] ?? initialMessages ?? []), userMsg],
+      }));
+    }
+
+    if (onSendMessage) {
+      if (controlledIsTyping === undefined) setLocalIsTyping(true);
+      try {
+        const res = await onSendMessage(fullQuery);
+        if (controlledIsTyping === undefined) setLocalIsTyping(false);
+        if (res && res.text && controlledMessages === undefined) {
+          setLocalCourseMessagesMap((prev) => ({
+            ...prev,
+            [courseCode]: [
+              ...(prev[courseCode] ?? initialMessages ?? []),
+              {
+                r: "ai",
+                role: "assistant",
+                x: res.text,
+                content: res.text,
+                cites: res.cites,
+                citations: res.cites,
+              },
+            ],
+          }));
+        }
+      } catch {
+        if (controlledIsTyping === undefined) setLocalIsTyping(false);
+      }
+    } else {
+      // Fallback mock response if no handler provided
+      setLocalIsTyping(true);
+      setTimeout(() => {
+        setLocalIsTyping(false);
+        const responseText = `I found grounded material in <b>${courseCode}</b> related to your query. You can inspect the citations below to view the source passage.`;
+        const responseCites: CitationItem[] = [
+          {
+            f: files[0]?.id || "f1",
+            p: 1,
+            l: `${files[0]?.name || "Document"} · p.1`,
+            quote: "Key foundational definitions and theorems from the core syllabus.",
+          },
+        ];
+
+        setLocalCourseMessagesMap((prev) => ({
+          ...prev,
+          [courseCode]: [
+            ...(prev[courseCode] ?? initialMessages ?? []),
+            {
+              r: "ai",
+              role: "assistant",
+              x: responseText,
+              content: responseText,
+              cites: responseCites,
+              citations: responseCites,
+            },
+          ],
+        }));
+      }, 600);
+    }
+  };
+
+  const handleClear = () => {
+    if (controlledMessages === undefined) {
+      setLocalCourseMessagesMap((prev) => ({
+        ...prev,
+        [courseCode]: [],
+      }));
+    }
+    setSelectedCitation(null);
+    onClearChat?.();
+  };
+
+  const handleCitationClick = (cite: CitationItem) => {
+    setSelectedCitation(cite);
+    onCiteClick?.(cite);
+  };
+
+  const handleNewChatClick = () => {
+    if (onNewChat) {
+      onNewChat();
+    } else {
+      handleClear();
+    }
+  };
+
+  return (
+    <div className="flex h-full min-h-0 flex-none relative">
+      {/* Horizontal Drag Resize Handle */}
+      <div
+        onMouseDown={handleMouseDown}
+        className={`w-1.5 cursor-col-resize hover:bg-(--acc,#52A8EA) transition-colors flex-none relative z-10 ${
+          isResizing ? "bg-(--acc,#52A8EA)" : "bg-(--line,#25313E)"
+        }`}
+        title="Drag horizontally to resize Chat panel"
+      />
+
+      {/* Main Chat Panel */}
+      <aside
+        style={{ width: `${width}px` }}
+        className={`flex flex-col min-h-0 bg-(--bg-panel,#121A23) text-(--tx,#DCE3EA) text-xs select-none relative ${className}`}
+      >
+        {/* Top Header */}
+        <div className="flex-none h-9 flex items-center gap-2 px-3 border-b border-(--line-soft,#1B2530) bg-(--bg-bar,#101821)/50">
+          <span className="w-1.5 h-1.5 rounded-full bg-(--ok,#4FB07C) flex-none shadow-[0_0_0_3px_rgba(79,176,124,0.15)]" />
+          <span className="text-[12.5px] font-semibold text-(--tx,#DCE3EA)">
+            Assistant
+          </span>
+
+          <span className="ml-auto font-mono text-[10px] text-(--tx-faint,#5C6976)">
+            {courseCode} · {filesCount} files
+          </span>
+
+          {/* History Drawer Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setHistoryOpen(!historyOpen)}
+            title="Toggle Chat History"
+            className={`p-1 transition-colors rounded cursor-pointer relative ${
+              historyOpen
+                ? "text-(--acc,#52A8EA) bg-(--bg-hover,#213040)"
+                : "text-(--tx-dim,#8B98A7) hover:text-(--tx,#DCE3EA) hover:bg-(--bg-hover,#213040)"
+            }`}
+          >
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M8 3.5v4.5l3 2"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.4" />
+            </svg>
+          </button>
+
+          {/* New Chat Button */}
+          <button
+            type="button"
+            onClick={handleNewChatClick}
+            title="Start new conversation"
+            className="p-1 text-(--tx-dim,#8B98A7) hover:text-(--tx,#DCE3EA) hover:bg-(--bg-hover,#213040) transition-colors rounded cursor-pointer"
+          >
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+
+          {/* Clear Chat Button */}
+          <button
+            type="button"
+            onClick={handleClear}
+            title="Clear conversation"
+            className="p-1 text-(--tx-dim,#8B98A7) hover:text-destructive hover:bg-destructive/10 transition-colors rounded cursor-pointer"
+          >
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+              <path
+                d="M3 4h8M5.6 4V2.8h2.8V4M4.2 4l.5 7.2h4.6L9.8 4"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+
+        {/* History Drawer Overlay */}
+        <History
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          isOpen={historyOpen}
+          onClose={() => setHistoryOpen(false)}
+          onSelectSession={(id) => onSelectSession?.(id)}
+          onDeleteSession={(id) => onDeleteSession?.(id)}
+          onNewChat={handleNewChatClick}
+        />
+
+        {/* Messages Container */}
+        <div className="flex-1 overflow-y-auto p-3 flex flex-col min-h-0 scrollbar-thin [scrollbar-color:var(--line,#25313E)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-(--line,#25313E) [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
+          {currentMessages.length === 0 ? (
+            /* WELCOME HERO SCREEN */
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-3 my-auto gap-3 animate-in fade-in duration-300">
+              <img
+                src="/ntbc-logo.png"
+                alt="NotToBeCooked Logo"
+                className="w-12 h-12 object-contain"
+              />
+
+              <div className="flex flex-col gap-1 max-w-xs">
+                <h3 className="text-base font-semibold tracking-tight text-(--tx,#DCE3EA)">
+                  Synced with <span className="text-(--acc,#52A8EA) font-mono">{filesCount} files</span> in {courseCode}
+                </h3>
+                <p className="text-[12px] text-(--tx-dim,#8B98A7) leading-relaxed">
+                  Ask questions across notes, PYQs, and lab handouts with grounded citations.
+                </p>
+              </div>
+
+              {quickPrompts.length > 0 && (
+                <div className="flex flex-col gap-1.5 w-full max-w-xs mt-2">
+                  <span className="font-mono text-[9.5px] text-(--tx-faint,#5C6976) tracking-wider uppercase">
+                    Suggested Questions
+                  </span>
+                  <div className="flex flex-col gap-1">
+                    {quickPrompts.map((q, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        disabled={isTyping}
+                        onClick={() => handleSend(q)}
+                        className="text-left bg-(--bg-raise,#1C2833) border border-(--line,#25313E) hover:border-(--acc-deep,#1D5D8A) text-(--tx-dim,#8B98A7) hover:text-(--tx,#DCE3EA) rounded-lg px-2.5 py-1.5 text-xs transition-colors cursor-pointer flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed outline-none focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [outline:none]"
+                      >
+                        <span>{q}</span>
+                        <span className="text-(--tx-faint,#5C6976) group-hover:text-(--acc,#52A8EA) transition-colors">
+                          ↗
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* CONVERSATION STREAM */
+            <div className="flex flex-col gap-3">
+              {currentMessages.map((m, idx) => (
+                <ChatMessageItem
+                  key={m.id || idx}
+                  message={m}
+                  onCiteClick={handleCitationClick}
+                />
+              ))}
+
+              {/* Typing indicator */}
+              {isTyping && (
+                <div className="w-full flex items-center py-1">
+                  <div className="flex gap-1.5 py-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-(--acc,#52A8EA) animate-bounce" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-(--acc,#52A8EA) animate-bounce [animation-delay:0.15s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-(--acc,#52A8EA) animate-bounce [animation-delay:0.3s]" />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <div ref={msgsEndRef} />
+        </div>
+
+        {/* Selected Citation Preview Drawer */}
+        <CitationDrawer
+          citation={selectedCitation}
+          onClose={() => setSelectedCitation(null)}
+          onOpenDocument={onOpenDocument}
+        />
+
+        {/* Input Composer */}
+        <div className="flex-none p-2.5 pt-1">
+          <ChatInput
+            files={files}
+            categories={categories}
+            quickPrompts={currentMessages.length > 0 ? quickPrompts : []}
+            isTyping={isTyping}
+            onSend={handleSend}
+          />
+        </div>
+      </aside>
+    </div>
+  );
+};
+
+export default Chat;
