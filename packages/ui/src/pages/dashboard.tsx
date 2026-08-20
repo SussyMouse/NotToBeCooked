@@ -276,6 +276,8 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   const [pageOverride, setPageOverride] = useState<number | null>(null)
   const [zoomLevel, setZoomLevel] = useState<number>(100)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [isWorkspaceFullscreen, setIsWorkspaceFullscreen] =
+    useState<boolean>(false)
 
   // Modals state (Roadmap & Upload)
   const [isRoadmapOpen, setIsRoadmapOpen] = useState(false)
@@ -312,15 +314,20 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     )
   }, [currentCourse])
 
-  // Active opened document
+  // Repository of all files across all courses
+  const allFiles = useMemo(() => {
+    return Object.values(MOCK_FILES_BY_COURSE).flat()
+  }, [])
+
+  // Active opened document (can be from any course)
   const activeTab = useMemo(() => {
     return tabs.find((t) => t.fileId === activeFileId) || null
   }, [tabs, activeFileId])
 
   const activeDocument = useMemo(() => {
     if (!activeFileId) return null
-    return courseFiles.find((f) => f.id === activeFileId) || null
-  }, [courseFiles, activeFileId])
+    return allFiles.find((f) => f.id === activeFileId) || null
+  }, [allFiles, activeFileId])
 
   const activePage = pageOverride ?? activeTab?.page ?? 1
 
@@ -328,9 +335,10 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   const courseRoadmap = useMemo(() => {
     const base = currentCourse.roadmap
     const overrides = milestoneOverrides[currentCourse.id] || {}
+    const overridesForCourse = overrides
     return base.map((m, idx) => ({
       ...m,
-      s: overrides[idx] !== undefined ? overrides[idx]! : m.s,
+      s: overridesForCourse[idx] !== undefined ? overridesForCourse[idx]! : m.s,
     }))
   }, [currentCourse, milestoneOverrides])
 
@@ -370,6 +378,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     setTimeout(() => setToastMessage(null), 3000)
   }
 
+  // Handlers for document & chat interaction
   const handleOpenFile = (file: MockDocumentFile) => {
     openTab(activeCourseId, {
       fileId: file.id,
@@ -382,7 +391,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
 
   const handleCitationClick = (cite: CitationItem) => {
     setSelectedCitation(cite)
-    const targetFile = courseFiles.find((f) => f.id === cite.f) || {
+    const targetFile = allFiles.find((f) => f.id === cite.f) || {
       id: cite.f,
       name: cite.l.split(" · ")[0] || "Referenced Document.pdf",
     }
@@ -413,7 +422,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   }
 
   const handleOpenDocumentFromChat = (fileId: string, page: number) => {
-    const targetFile = courseFiles.find((f) => f.id === fileId)
+    const targetFile = allFiles.find((f) => f.id === fileId)
     openTab(activeCourseId, {
       fileId,
       filename: targetFile?.name || fileId,
@@ -461,20 +470,22 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
         {/* Main 3-Pane Split View */}
         <div className="flex min-h-0 min-w-0 flex-1">
           {/* Left Pane: Structured File Explorer */}
-          <FileExplorer
-            categories={CATEGORIES}
-            files={courseFiles}
-            activeFileId={activeFileId}
-            openedFileIds={openedFileIds}
-            courseWeek={currentCourse.week}
-            courseWeeks={currentCourse.weeks}
-            roadmapProgressPct={roadmapStats.pct}
-            nextMilestoneText={roadmapStats.nextText}
-            onOpenFile={handleOpenFile}
-            onOpenRoadmapModal={() => setIsRoadmapOpen(true)}
-            onOpenBatchUpload={handleOpenBatchUpload}
-            onOpenDirectFolderUpload={handleOpenDirectFolderUpload}
-          />
+          {!isWorkspaceFullscreen && (
+            <FileExplorer
+              categories={CATEGORIES}
+              files={courseFiles}
+              activeFileId={activeFileId}
+              openedFileIds={openedFileIds}
+              courseWeek={currentCourse.week}
+              courseWeeks={currentCourse.weeks}
+              roadmapProgressPct={roadmapStats.pct}
+              nextMilestoneText={roadmapStats.nextText}
+              onOpenFile={handleOpenFile}
+              onOpenRoadmapModal={() => setIsRoadmapOpen(true)}
+              onOpenBatchUpload={handleOpenBatchUpload}
+              onOpenDirectFolderUpload={handleOpenDirectFolderUpload}
+            />
+          )}
 
           {/* Center Workspace: Tabs & Document Viewer */}
           <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-(--bg-canvas,#161F29)">
@@ -523,19 +534,51 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
                   })}
                 </div>
 
-                {/* Tabset Tag */}
-                <div className="hidden items-center gap-1.5 font-mono text-xs text-(--tx-faint,#5C6976) sm:flex">
-                  <span className="font-bold text-(--tx-dim,#8B98A7)">
-                    {currentCourse.code}
-                  </span>
-                  <span>tab set</span>
+                {/* Tabset Actions & Fullscreen Toggle (Icon Only) */}
+                <div className="flex items-center gap-1.5 pr-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIsWorkspaceFullscreen(!isWorkspaceFullscreen)
+                    }
+                    title={
+                      isWorkspaceFullscreen
+                        ? "Restore normal view"
+                        : "Full screen workspace"
+                    }
+                    className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 transition-colors ${
+                      isWorkspaceFullscreen
+                        ? "bg-(--acc,#52A8EA)/15 text-(--acc,#52A8EA)"
+                        : "text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040) hover:text-white"
+                    }`}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                      {isWorkspaceFullscreen ? (
+                        <path
+                          d="M6 2v4H2M10 2v4h4M6 14v-4H2M10 14v-4h4"
+                          stroke="currentColor"
+                          strokeWidth="1.4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      ) : (
+                        <path
+                          d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"
+                          stroke="currentColor"
+                          strokeWidth="1.4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      )}
+                    </svg>
+                  </button>
                 </div>
               </div>
             )}
 
             {/* Document Viewer or Minimal Empty State */}
             {activeDocument ? (
-              /* ACTIVE DOCUMENT VIEWER */
+              /* ACTIVE DOCUMENT VIEWER - DIRECT FULL WORKSPACE CANVAS */
               <div className="flex min-h-0 flex-1 flex-col bg-(--bg-canvas,#161F29)">
                 {/* Document Viewer Control Bar */}
                 <div className="flex items-center justify-between border-b border-(--line-soft,#1B2530) bg-(--bg-panel,#121A23)/40 px-4 py-2.5 text-xs">
@@ -548,7 +591,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
                     </span>
                   </div>
 
-                  {/* Viewer Controls */}
+                  {/* Viewer Controls (No duplicate fullscreen button) */}
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5 rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2.5 py-1 text-xs">
                       <button
@@ -604,11 +647,11 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
                   </div>
                 </div>
 
-                {/* Document Canvas Content Area */}
-                <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto bg-(--bg-canvas,#161F29) p-6">
+                {/* Document Canvas Content Area - Direct full workspace (No border/cards) */}
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-(--bg-canvas,#161F29) p-6 md:p-8 lg:p-10">
                   {/* Citation Highlight Banner if active */}
                   {selectedCitation && (
-                    <div className="mb-4 flex w-full max-w-2xl animate-in items-center justify-between rounded-lg border border-(--cite-line,rgba(227,166,63,0.38)) bg-(--cite-bg,rgba(227,166,63,0.09)) p-3.5 text-xs text-(--cite,#E3A63F) fade-in">
+                    <div className="mb-6 flex w-full animate-in items-center justify-between rounded-lg border border-(--cite-line,rgba(227,166,63,0.38)) bg-(--cite-bg,rgba(227,166,63,0.09)) p-3.5 text-xs text-(--cite,#E3A63F) fade-in">
                       <div className="flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full bg-(--cite,#E3A63F)" />
                         <span>
@@ -626,33 +669,35 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
                     </div>
                   )}
 
-                  {/* Simulated Document Page Sheet */}
+                  {/* Direct Document Reading Content Area */}
                   <div
                     style={{
                       transform: `scale(${zoomLevel / 100})`,
-                      transformOrigin: "top center",
+                      transformOrigin: "top left",
                     }}
-                    className="flex min-h-125 w-full max-w-2xl flex-col gap-4 rounded-xl border border-(--line,#25313E) bg-(--bg-panel,#121A23) p-8 text-sm leading-relaxed text-(--tx,#DCE3EA) shadow-xl transition-transform duration-150"
+                    className="flex flex-1 flex-col gap-6 text-sm leading-relaxed text-(--tx,#DCE3EA) transition-transform duration-150"
                   >
-                    <div className="flex items-center justify-between border-b border-(--line-soft,#1B2530) pb-3 font-mono text-xs text-(--tx-faint,#5C6976)">
-                      <span>{activeDocument.name}</span>
+                    <div className="flex items-center justify-between border-b border-(--line-soft,#1B2530) pb-4 font-mono text-xs text-(--tx-faint,#5C6976)">
+                      <span className="font-semibold text-(--tx,#DCE3EA)">
+                        {activeDocument.name}
+                      </span>
                       <span>
                         Page {activePage} / {activeDocument.totalPages}
                       </span>
                     </div>
 
                     {/* Page Content Display */}
-                    <div className="flex flex-col gap-3.5">
+                    <div className="flex flex-1 flex-col gap-4">
                       {activeDocument.contentByPage?.[activePage] ? (
-                        <div className="space-y-3.5">
+                        <div className="space-y-4">
                           <p className="text-sm leading-relaxed whitespace-pre-line text-(--tx,#DCE3EA)">
                             {activeDocument.contentByPage[activePage]}
                           </p>
 
                           {/* Highlight quote if citation corresponds to this document & page */}
                           {selectedCitation?.quote && (
-                            <div className="rounded-lg border border-(--cite-line,rgba(227,166,63,0.4)) bg-(--cite-bg,rgba(227,166,63,0.12)) p-3.5 text-xs leading-relaxed text-(--tx-strong,#EDF2F6) shadow-sm">
-                              <span className="mb-1 block font-mono text-[11px] font-semibold text-(--cite,#E3A63F) uppercase">
+                            <div className="rounded-lg border border-(--cite-line,rgba(227,166,63,0.4)) bg-(--cite-bg,rgba(227,166,63,0.12)) p-4 text-xs leading-relaxed text-(--tx-strong,#EDF2F6) shadow-sm">
+                              <span className="mb-1.5 block font-mono text-[11px] font-semibold text-(--cite,#E3A63F) uppercase">
                                 Verified Grounded Quote
                               </span>
                               <em>"{selectedCitation.quote}"</em>
@@ -660,21 +705,21 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
                           )}
                         </div>
                       ) : (
-                        <div className="flex flex-col gap-4">
+                        <div className="flex flex-1 flex-col gap-4">
                           <h4 className="text-base font-semibold text-(--acc,#52A8EA)">
                             Section {activePage}.1 — Core Theoretical
                             Foundations
                           </h4>
                           <p className="text-sm leading-relaxed text-(--tx-dim,#8B98A7)">
                             This document contains comprehensive materials for{" "}
-                            {currentCourse.code} ({currentCourse.name}). All
-                            paragraphs and equations in this section are indexed
-                            by the Retrieval-Augmented Generation (RAG) pipeline
-                            for verified citation and context retrieval.
+                            {activeDocument.name}. All paragraphs and equations
+                            in this section are indexed by the
+                            Retrieval-Augmented Generation (RAG) pipeline for
+                            verified citation and context retrieval.
                           </p>
-                          <div className="rounded-lg border border-(--line-soft,#1B2530) bg-(--bg-raise,#1C2833) p-3.5 font-mono text-xs text-(--tx-faint,#5C6976)">
-                            [Indexed Chunk #{activeCourseId}-{activeDocument.id}
-                            -p{activePage}]
+                          <div className="mt-auto rounded-lg border border-(--line-soft,#1B2530) bg-(--bg-raise,#1C2833)/60 p-4 font-mono text-xs text-(--tx-faint,#5C6976)">
+                            [Indexed Document Chunk #{activeDocument.id}-p
+                            {activePage}]
                             <br />
                             Embedding vectors synced with vector store and ready
                             for query matching.
@@ -750,22 +795,24 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
           </main>
 
           {/* Right Pane: AI Chat Assistant */}
-          <Chat
-            courseCode={currentCourse.code}
-            filesCount={courseFiles.length}
-            files={courseFiles}
-            categories={CATEGORIES}
-            messages={messages}
-            sessions={sessions}
-            activeSessionId={activeConversationId}
-            isTyping={isSending || isLoadingMessages}
-            onSendMessage={handleSendMessage}
-            onSelectSession={(id) => selectSession(id)}
-            onDeleteSession={(id) => deleteSession(id)}
-            onNewChat={() => startNewChat()}
-            onOpenDocument={handleOpenDocumentFromChat}
-            onCiteClick={handleCitationClick}
-          />
+          {!isWorkspaceFullscreen && (
+            <Chat
+              courseCode={currentCourse.code}
+              filesCount={courseFiles.length}
+              files={courseFiles}
+              categories={CATEGORIES}
+              messages={messages}
+              sessions={sessions}
+              activeSessionId={activeConversationId}
+              isTyping={isSending || isLoadingMessages}
+              onSendMessage={handleSendMessage}
+              onSelectSession={(id) => selectSession(id)}
+              onDeleteSession={(id) => deleteSession(id)}
+              onNewChat={() => startNewChat()}
+              onOpenDocument={handleOpenDocumentFromChat}
+              onCiteClick={handleCitationClick}
+            />
+          )}
         </div>
       </div>
 

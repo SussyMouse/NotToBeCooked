@@ -7,6 +7,209 @@ interface FileItemProps {
   onOpenFile: (file: MockDocumentFile) => void
 }
 
+function getFileExtension(filename: string): string {
+  const parts = filename.split(".")
+  return parts.length > 1 ? parts.pop()!.toLowerCase() : ""
+}
+
+function FileIcon({ filename }: { filename: string }) {
+  const ext = getFileExtension(filename)
+
+  switch (ext) {
+    case "pdf":
+      return (
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          className="h-4.5 w-4.5 shrink-0 text-red-400/90"
+        >
+          <path
+            d="M4 2h5.5L13 5.5V14H4V2z"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M9 2v4h4"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <text
+            x="5"
+            y="11"
+            fontSize="4"
+            fontWeight="700"
+            fill="currentColor"
+            fontFamily="sans-serif"
+          >
+            PDF
+          </text>
+        </svg>
+      )
+
+    case "txt":
+    case "md":
+    case "markdown":
+      return (
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          className="h-4.5 w-4.5 shrink-0 text-blue-400/90"
+        >
+          <path
+            d="M4 2h5.5L13 5.5V14H4V2z"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M6 7h4M6 9.5h4M6 12h2.5"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+          />
+        </svg>
+      )
+
+    case "doc":
+    case "docx":
+      return (
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          className="h-4.5 w-4.5 shrink-0 text-sky-400/90"
+        >
+          <path
+            d="M4 2h5.5L13 5.5V14H4V2z"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <text
+            x="4.5"
+            y="11"
+            fontSize="3.8"
+            fontWeight="700"
+            fill="currentColor"
+            fontFamily="sans-serif"
+          >
+            DOC
+          </text>
+        </svg>
+      )
+
+    case "ppt":
+    case "pptx":
+      return (
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          className="h-4.5 w-4.5 shrink-0 text-amber-400/90"
+        >
+          <path
+            d="M4 2h5.5L13 5.5V14H4V2z"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <text
+            x="4.8"
+            y="11"
+            fontSize="3.8"
+            fontWeight="700"
+            fill="currentColor"
+            fontFamily="sans-serif"
+          >
+            PPT
+          </text>
+        </svg>
+      )
+
+    case "xls":
+    case "xlsx":
+    case "csv":
+      return (
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          className="h-4.5 w-4.5 shrink-0 text-emerald-400/90"
+        >
+          <path
+            d="M4 2h5.5L13 5.5V14H4V2z"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M6 7.5h4M6 9.5h4M6 11.5h4"
+            stroke="currentColor"
+            strokeWidth="1.1"
+            strokeLinecap="round"
+          />
+        </svg>
+      )
+
+    case "py":
+    case "ts":
+    case "tsx":
+    case "js":
+    case "json":
+      return (
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          className="h-4.5 w-4.5 shrink-0 text-teal-400/90"
+        >
+          <path
+            d="M4 2h5.5L13 5.5V14H4V2z"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M6.5 8l-1.5 1.5 1.5 1.5M9.5 8l1.5 1.5-1.5 1.5"
+            stroke="currentColor"
+            strokeWidth="1.1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )
+
+    default:
+      return (
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          className="h-4.5 w-4.5 shrink-0 text-(--tx-faint,#5C6976) group-hover:text-(--acc,#52A8EA)"
+        >
+          <path
+            d="M4 2h5.5L13 5.5V14H4V2z"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M9 2v4h4"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )
+  }
+}
+
 export function FileItem({
   file,
   isActive,
@@ -17,42 +220,21 @@ export function FileItem({
     <button
       type="button"
       onClick={() => onOpenFile(file)}
-      className={`group flex cursor-pointer items-center justify-between gap-2.5 rounded-md px-2 py-1.5 text-left text-xs transition-colors ${
-        isActive
-          ? "border border-(--acc,#52A8EA)/30 bg-(--bg-raise,#1C2833) font-medium text-(--acc,#52A8EA)"
-          : "text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040)/60 hover:text-(--tx,#DCE3EA)"
-      }`}
+      className="group flex w-full cursor-pointer items-center gap-1.5 py-0 text-left text-xs transition-colors"
     >
-      <div className="flex min-w-0 flex-1 items-center gap-2">
-        <svg
-          width="13"
-          height="13"
-          viewBox="0 0 16 16"
-          fill="none"
-          className="shrink-0 text-(--tx-faint,#5C6976) group-hover:text-(--acc,#52A8EA)"
-        >
-          <path
-            d="M4 2h5.5L13 5.5V14H4V2z"
-            stroke="currentColor"
-            strokeWidth="1.3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M9 2v4h4"
-            stroke="currentColor"
-            strokeWidth="1.3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-        <span className="truncate text-xs font-normal">{file.name}</span>
-      </div>
-      <div className="flex shrink-0 items-center gap-1.5 font-mono text-[11px] text-(--tx-faint,#5C6976)">
-        <span>{file.size}</span>
+      <FileIcon filename={file.name} />
+
+      <div
+        className={`flex min-w-0 flex-1 items-center justify-between gap-1.5 rounded px-1.5 py-0.5 transition-colors ${
+          isActive
+            ? "bg-(--bg-raise,#1C2833) font-medium text-(--acc,#52A8EA)"
+            : "text-(--tx-dim,#8B98A7) group-hover:bg-(--bg-hover,#213040)/40 group-hover:text-(--tx,#DCE3EA)"
+        }`}
+      >
+        <span className="truncate text-xs">{file.name}</span>
         {isOpenInTab && (
           <span
-            className="h-1.5 w-1.5 rounded-full bg-(--acc,#52A8EA)"
+            className="h-1.5 w-1.5 shrink-0 rounded-full bg-(--acc,#52A8EA)"
             title="Open in active tab"
           />
         )}

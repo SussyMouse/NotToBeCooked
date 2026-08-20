@@ -371,26 +371,21 @@ export const Chat: React.FC<ChatProps> = ({
               </div>
 
               {quickPrompts.length > 0 && (
-                <div className="mt-2 flex w-full max-w-xs flex-col gap-1.5">
-                  <span className="font-mono text-[9.5px] tracking-wider text-(--tx-faint,#5C6976) uppercase">
-                    Suggested Questions
-                  </span>
-                  <div className="flex flex-col gap-1">
-                    {quickPrompts.map((q, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        disabled={isTyping}
-                        onClick={() => handleSend(q)}
-                        className="group flex cursor-pointer items-center justify-between rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2.5 py-1.5 text-left text-xs text-(--tx-dim,#8B98A7) [outline:none] transition-colors outline-none hover:border-(--acc-deep,#1D5D8A) hover:text-(--tx,#DCE3EA) focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <span>{q}</span>
-                        <span className="text-(--tx-faint,#5C6976) transition-colors group-hover:text-(--acc,#52A8EA)">
-                          ↗
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                <div className="mt-2 flex w-full max-w-xs flex-col gap-1">
+                  {quickPrompts.map((q, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      disabled={isTyping}
+                      onClick={() => handleSend(q)}
+                      className="group flex cursor-pointer items-center justify-between rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2.5 py-1.5 text-left text-xs text-(--tx-dim,#8B98A7) [outline:none] transition-colors outline-none hover:border-(--acc-deep,#1D5D8A) hover:text-(--tx,#DCE3EA) focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <span>{q}</span>
+                      <span className="text-(--tx-faint,#5C6976) transition-colors group-hover:text-(--acc,#52A8EA)">
+                        ↗
+                      </span>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
