@@ -20,6 +20,10 @@ dependencies = [
     "kernels>=0.16.0",
     "httpx>=0.28.1",
     "alembic>=1.19.1",
+    # Required by the jina embedding model's own custom_st.py, not by our code.
+    # Same constraint AI-2 already carries on bao-sheng (f60b48b), so the
+    # 22 Aug squash-merge sees an identical line rather than a conflict.
+    "peft>=0.20.0",
 ]
 
 [build-system]
