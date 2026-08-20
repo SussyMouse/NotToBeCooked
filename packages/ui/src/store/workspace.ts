@@ -11,19 +11,19 @@
  * exactly one writer. See the ownership table in the C6 proposal document.
  */
 
-import { create } from "zustand";
+import { create } from "zustand"
 
-export type CourseId = string;
-export type FileId = string;
-export type ConversationId = string;
+export type CourseId = string
+export type FileId = string
+export type ConversationId = string
 
 /** One open document in the centre viewer. */
 export interface Tab {
-    fileId: FileId;
-    /** Denormalised so the tab bar renders without waiting on a fetch. */
-    filename: string;
-    /** Set when the tab was opened from a citation; the viewer jumps here. */
-    page: number | null;
+  fileId: FileId
+  /** Denormalised so the tab bar renders without waiting on a fetch. */
+  filename: string
+  /** Set when the tab was opened from a citation; the viewer jumps here. */
+  page: number | null
 }
 
 /**
@@ -34,134 +34,164 @@ export interface Tab {
  * two panes have to remember to fire.
  */
 export interface CourseWorkspace {
-    tabs: Tab[];
-    activeFileId: FileId | null;
-    activeConversationId: ConversationId | null;
+  tabs: Tab[]
+  activeFileId: FileId | null
+  activeConversationId: ConversationId | null
 }
 
 const emptyCourse = (): CourseWorkspace => ({
-    tabs: [],
-    activeFileId: null,
-    activeConversationId: null,
-});
+  tabs: [],
+  activeFileId: null,
+  activeConversationId: null,
+})
 
 interface WorkspaceState {
-    // ---- scope selectors, written by the top bar (F1) ----
-    activeYear: number | null;
-    activeSemester: number | null;
-    activeCourseId: CourseId | null;
+  // ---- scope selectors, written by the top bar (F1) ----
+  activeYear: number | null
+  activeSemester: number | null
+  activeCourseId: CourseId | null
 
-    // ---- per-course panes ----
-    byCourse: Record<CourseId, CourseWorkspace>;
+  // ---- per-course panes ----
+  byCourse: Record<CourseId, CourseWorkspace>
 
-    // ---- assistant scope, written by the chat pane (F3) ----
-    /**
-     * Files the user @-mentioned. Narrows retrieval below the whole course, and
-     * deliberately not keyed by course: US-12 (MVP, MUST) lets the @-picker
-     * surface files from any course, not only the active one. The ratified ERD
-     * annotates `mentioned_file_ids` "may cross courses" for the same reason.
-     */
-    mentionedFileIds: FileId[];
+  // ---- assistant scope, written by the chat pane (F3) ----
+  /**
+   * Files the user @-mentioned. Narrows retrieval below the whole course, and
+   * deliberately not keyed by course: US-12 (MVP, MUST) lets the @-picker
+   * surface files from any course, not only the active one. The ratified ERD
+   * annotates `mentioned_file_ids` "may cross courses" for the same reason.
+   */
+  mentionedFileIds: FileId[]
 
-    // ---- actions ----
-    setScope: (year: number | null, semester: number | null) => void;
-    switchCourse: (courseId: CourseId) => void;
-    openTab: (courseId: CourseId, tab: Tab) => void;
-    closeTab: (courseId: CourseId, fileId: FileId) => void;
-    setActiveFile: (courseId: CourseId, fileId: FileId | null) => void;
-    setActiveConversation: (courseId: CourseId, conversationId: ConversationId | null) => void;
-    mentionFile: (fileId: FileId) => void;
-    clearMentions: () => void;
-    /**
-     * The one cross-pane action: clicking a citation in the chat (F3) may land
-     * on a file belonging to a different course, so it has to switch course
-     * (F1's slice), open a tab (F2's slice) and focus a page — atomically.
-     * Doing it as three separate calls is how tabs end up in the wrong course.
-     */
-    openCitation: (courseId: CourseId, fileId: FileId, filename: string, page: number | null) => void;
+  // ---- actions ----
+  setScope: (year: number | null, semester: number | null) => void
+  switchCourse: (courseId: CourseId) => void
+  openTab: (courseId: CourseId, tab: Tab) => void
+  closeTab: (courseId: CourseId, fileId: FileId) => void
+  setActiveFile: (courseId: CourseId, fileId: FileId | null) => void
+  setActiveConversation: (
+    courseId: CourseId,
+    conversationId: ConversationId | null
+  ) => void
+  mentionFile: (fileId: FileId) => void
+  clearMentions: () => void
+  /**
+   * The one cross-pane action: clicking a citation in the chat (F3) may land
+   * on a file belonging to a different course, so it has to switch course
+   * (F1's slice), open a tab (F2's slice) and focus a page — atomically.
+   * Doing it as three separate calls is how tabs end up in the wrong course.
+   */
+  openCitation: (
+    courseId: CourseId,
+    fileId: FileId,
+    filename: string,
+    page: number | null
+  ) => void
 }
 
 /** Insert or focus `tab` inside `ws`, without duplicating an already-open file. */
 function withTab(ws: CourseWorkspace, tab: Tab): CourseWorkspace {
-    const existing = ws.tabs.find((t) => t.fileId === tab.fileId);
-    const tabs = existing
-        ? ws.tabs.map((t) => (t.fileId === tab.fileId ? { ...t, page: tab.page ?? t.page } : t))
-        : [...ws.tabs, tab];
-    return { ...ws, tabs, activeFileId: tab.fileId };
+  const existing = ws.tabs.find((t) => t.fileId === tab.fileId)
+  const tabs = existing
+    ? ws.tabs.map((t) =>
+        t.fileId === tab.fileId ? { ...t, page: tab.page ?? t.page } : t
+      )
+    : [...ws.tabs, tab]
+  return { ...ws, tabs, activeFileId: tab.fileId }
 }
 
 export const useWorkspace = create<WorkspaceState>((set) => ({
-    activeYear: null,
-    activeSemester: null,
-    activeCourseId: null,
-    byCourse: {},
-    mentionedFileIds: [],
+  activeYear: null,
+  activeSemester: null,
+  activeCourseId: null,
+  byCourse: {},
+  mentionedFileIds: [],
 
-    setScope: (year, semester) => set({ activeYear: year, activeSemester: semester }),
+  setScope: (year, semester) =>
+    set({ activeYear: year, activeSemester: semester }),
 
-    // No tab bookkeeping here on purpose: the outgoing course's tabs are
-    // already stored under its own key, so switching is just a pointer move.
-    //
-    // Mentions deliberately survive the switch. Clearing them here would make
-    // "@-mention a CS202 file, then ask inside CS301" impossible, which is
-    // exactly the case US-12 requires and the team ratified on 2026-07-27.
-    // Use clearMentions() when the user actually sends or dismisses.
-    switchCourse: (courseId) =>
-        set((s) => ({
-            activeCourseId: courseId,
-            byCourse: s.byCourse[courseId] ? s.byCourse : { ...s.byCourse, [courseId]: emptyCourse() },
-        })),
+  // No tab bookkeeping here on purpose: the outgoing course's tabs are
+  // already stored under its own key, so switching is just a pointer move.
+  //
+  // Mentions deliberately survive the switch. Clearing them here would make
+  // "@-mention a CS202 file, then ask inside CS301" impossible, which is
+  // exactly the case US-12 requires and the team ratified on 2026-07-27.
+  // Use clearMentions() when the user actually sends or dismisses.
+  switchCourse: (courseId) =>
+    set((s) => ({
+      activeCourseId: courseId,
+      byCourse: s.byCourse[courseId]
+        ? s.byCourse
+        : { ...s.byCourse, [courseId]: emptyCourse() },
+    })),
 
-    openTab: (courseId, tab) =>
-        set((s) => ({
-            byCourse: { ...s.byCourse, [courseId]: withTab(s.byCourse[courseId] ?? emptyCourse(), tab) },
-        })),
+  openTab: (courseId, tab) =>
+    set((s) => ({
+      byCourse: {
+        ...s.byCourse,
+        [courseId]: withTab(s.byCourse[courseId] ?? emptyCourse(), tab),
+      },
+    })),
 
-    closeTab: (courseId, fileId) =>
-        set((s) => {
-            const ws = s.byCourse[courseId];
-            if (!ws) return s;
-            const tabs = ws.tabs.filter((t) => t.fileId !== fileId);
-            const activeFileId =
-                ws.activeFileId === fileId ? (tabs.at(-1)?.fileId ?? null) : ws.activeFileId;
-            return { byCourse: { ...s.byCourse, [courseId]: { ...ws, tabs, activeFileId } } };
+  closeTab: (courseId, fileId) =>
+    set((s) => {
+      const ws = s.byCourse[courseId]
+      if (!ws) return s
+      const tabs = ws.tabs.filter((t) => t.fileId !== fileId)
+      const activeFileId =
+        ws.activeFileId === fileId
+          ? (tabs.at(-1)?.fileId ?? null)
+          : ws.activeFileId
+      return {
+        byCourse: { ...s.byCourse, [courseId]: { ...ws, tabs, activeFileId } },
+      }
+    }),
+
+  setActiveFile: (courseId, fileId) =>
+    set((s) => ({
+      byCourse: {
+        ...s.byCourse,
+        [courseId]: {
+          ...(s.byCourse[courseId] ?? emptyCourse()),
+          activeFileId: fileId,
+        },
+      },
+    })),
+
+  setActiveConversation: (courseId, conversationId) =>
+    set((s) => ({
+      mentionedFileIds: [],
+      byCourse: {
+        ...s.byCourse,
+        [courseId]: {
+          ...(s.byCourse[courseId] ?? emptyCourse()),
+          activeConversationId: conversationId,
+        },
+      },
+    })),
+
+  mentionFile: (fileId) =>
+    set((s) =>
+      s.mentionedFileIds.includes(fileId)
+        ? s
+        : { mentionedFileIds: [...s.mentionedFileIds, fileId] }
+    ),
+
+  clearMentions: () => set({ mentionedFileIds: [] }),
+
+  openCitation: (courseId, fileId, filename, page) =>
+    set((s) => ({
+      activeCourseId: courseId,
+      byCourse: {
+        ...s.byCourse,
+        [courseId]: withTab(s.byCourse[courseId] ?? emptyCourse(), {
+          fileId,
+          filename,
+          page,
         }),
-
-    setActiveFile: (courseId, fileId) =>
-        set((s) => ({
-            byCourse: {
-                ...s.byCourse,
-                [courseId]: { ...(s.byCourse[courseId] ?? emptyCourse()), activeFileId: fileId },
-            },
-        })),
-
-    setActiveConversation: (courseId, conversationId) =>
-        set((s) => ({
-            mentionedFileIds: [],
-            byCourse: {
-                ...s.byCourse,
-                [courseId]: { ...(s.byCourse[courseId] ?? emptyCourse()), activeConversationId: conversationId },
-            },
-        })),
-
-    mentionFile: (fileId) =>
-        set((s) =>
-            s.mentionedFileIds.includes(fileId)
-                ? s
-                : { mentionedFileIds: [...s.mentionedFileIds, fileId] },
-        ),
-
-    clearMentions: () => set({ mentionedFileIds: [] }),
-
-    openCitation: (courseId, fileId, filename, page) =>
-        set((s) => ({
-            activeCourseId: courseId,
-            byCourse: {
-                ...s.byCourse,
-                [courseId]: withTab(s.byCourse[courseId] ?? emptyCourse(), { fileId, filename, page }),
-            },
-        })),
-}));
+      },
+    })),
+}))
 
 /**
  * The bridge to the C4 contract.
@@ -182,18 +212,24 @@ export const useWorkspace = create<WorkspaceState>((set) => ({
  * retrieves nothing.
  */
 export function ragScope(s: WorkspaceState): {
-    course_id: CourseId | null;
-    file_ids: FileId[] | null;
+  course_id: CourseId | null
+  file_ids: FileId[] | null
 } {
-    return {
-        course_id: s.activeCourseId,
-        file_ids: s.mentionedFileIds.length > 0 ? s.mentionedFileIds : null,
-    };
+  return {
+    course_id: s.activeCourseId,
+    file_ids: s.mentionedFileIds.length > 0 ? s.mentionedFileIds : null,
+  }
 }
 
+const EMPTY_TABS: Tab[] = []
+
 /** Convenience selectors so panes subscribe to one slice, not the whole store. */
-export const selectActiveCourse = (s: WorkspaceState): CourseWorkspace | null =>
-    s.activeCourseId ? (s.byCourse[s.activeCourseId] ?? null) : null;
+export const selectActiveCourse = (
+  s: WorkspaceState
+): CourseWorkspace | null =>
+  s.activeCourseId ? (s.byCourse[s.activeCourseId] ?? null) : null
 
 export const selectTabs = (s: WorkspaceState): Tab[] =>
-    s.activeCourseId ? (s.byCourse[s.activeCourseId]?.tabs ?? []) : [];
+  s.activeCourseId
+    ? (s.byCourse[s.activeCourseId]?.tabs ?? EMPTY_TABS)
+    : EMPTY_TABS

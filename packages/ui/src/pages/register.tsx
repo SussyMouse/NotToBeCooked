@@ -48,6 +48,7 @@ export function RegisterPage() {
     resolver: zodResolver(registerFormSchema),
     mode: "onBlur",
     defaultValues: {
+      display_name: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -87,7 +88,7 @@ export function RegisterPage() {
         err.detail.forEach((issue) => {
           const fieldName = issue.loc[1] as "email" | "password"
           form.setError(fieldName, { message: issue.msg })
-        });
+        })
       } else {
         form.setError("root", { message: err.message })
       }

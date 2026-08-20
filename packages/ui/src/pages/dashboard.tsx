@@ -1,40 +1,48 @@
-import { useState, useMemo, useEffect } from "react";
-import { useAuth } from "../context/auth-context";
-import { useWorkspace, selectTabs, selectActiveCourse } from "../store/workspace";
-import { useChatSession } from "../hooks/useChatSession";
-import Chat, { type CitationItem, type ChatFile } from "../components/chat/Chat";
+import { useState, useMemo, useEffect } from "react"
+import { useAuth } from "../context/auth-context"
+import {
+  useWorkspace,
+  selectTabs,
+  selectActiveCourse,
+} from "../store/workspace"
+import { useChatSession } from "../hooks/useChatSession"
+import Chat, { type CitationItem, type ChatFile } from "../components/chat/Chat"
 
 export interface DashboardPageProps {
-  platform?: "web" | "tauri";
+  platform?: "web" | "tauri"
 }
 
 // ---------------------------------------------------------------------------
 // Mock / Stub Course Catalog & File Repository for Development and Testing
 // ---------------------------------------------------------------------------
 export interface MockCourse {
-  code: string;
-  name: string;
-  year: number;
-  semester: number;
-  description: string;
+  id: string
+  code: string
+  name: string
+  year: number
+  semester: number
+  description: string
 }
 
 export interface MockDocumentFile extends ChatFile {
-  totalPages: number;
-  uploadedAt: string;
-  size: string;
-  contentByPage?: Record<number, string>;
+  totalPages: number
+  uploadedAt: string
+  size: string
+  contentByPage?: Record<number, string>
 }
 
 export const MOCK_COURSES: MockCourse[] = [
   {
+    id: "c2020000-0000-4000-8000-000000000202",
     code: "CS202",
     name: "Software Engineering",
     year: 2,
     semester: 2,
-    description: "Design patterns, architecture, agile methodologies, and testing.",
+    description:
+      "Design patterns, architecture, agile methodologies, and testing.",
   },
   {
+    id: "c2100000-0000-4000-8000-000000000210",
     code: "CS210",
     name: "Data Structures & Algorithms",
     year: 2,
@@ -42,6 +50,7 @@ export const MOCK_COURSES: MockCourse[] = [
     description: "Trees, graphs, dynamic programming, and complexity analysis.",
   },
   {
+    id: "a2010000-0000-4000-8000-000000000201",
     code: "MA201",
     name: "Linear Algebra & Probability",
     year: 2,
@@ -49,18 +58,19 @@ export const MOCK_COURSES: MockCourse[] = [
     description: "Vector spaces, eigenvalues, SVD, and Bayesian inference.",
   },
   {
+    id: "c1010000-0000-4000-8000-000000000101",
     code: "CS101",
     name: "Computer Systems & Architecture",
     year: 1,
     semester: 1,
     description: "Digital logic, CPU pipeline, cache hierarchy, and assembly.",
   },
-];
+]
 
 export const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
-  CS202: [
+  "c2020000-0000-4000-8000-000000000202": [
     {
-      id: "cs202-lec4",
+      id: "f2020004-0000-4000-8000-000000000004",
       name: "Lecture 4 - Architectural Patterns.pdf",
       category: "Lecture Decks",
       totalPages: 32,
@@ -73,7 +83,7 @@ export const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       },
     },
     {
-      id: "cs202-lec1",
+      id: "f2020001-0000-4000-8000-000000000001",
       name: "Lecture 1 - SOLID Principles & OOP.pdf",
       category: "Lecture Decks",
       totalPages: 24,
@@ -84,7 +94,7 @@ export const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       },
     },
     {
-      id: "cs202-lab3",
+      id: "f2020003-0000-4000-8000-000000000003",
       name: "Lab 3 - State Management & Hooks.pdf",
       category: "Lab Handouts",
       totalPages: 6,
@@ -95,7 +105,7 @@ export const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       },
     },
     {
-      id: "cs202-tut1",
+      id: "f2020002-0000-4000-8000-000000000002",
       name: "Tutorial 1 - Component Testing & Mocks.pdf",
       category: "Tutorials & PYQs",
       totalPages: 8,
@@ -106,7 +116,7 @@ export const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       },
     },
     {
-      id: "cs202-midterm-2025",
+      id: "f2020025-0000-4000-8000-000000000025",
       name: "Midterm Exam 2025 Solutions.pdf",
       category: "Tutorials & PYQs",
       totalPages: 12,
@@ -114,7 +124,7 @@ export const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       size: "3.2 MB",
     },
     {
-      id: "cs202-planner",
+      id: "f2020000-0000-4000-8000-000000000000",
       name: "Course Planner & Syllabus 2026.pdf",
       category: "Course Planner",
       totalPages: 4,
@@ -122,9 +132,9 @@ export const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       size: "450 KB",
     },
   ],
-  CS210: [
+  "c2100000-0000-4000-8000-000000000210": [
     {
-      id: "cs210-lec6",
+      id: "f2100006-0000-4000-8000-000000000006",
       name: "Lecture 6 - Graph Algorithms & Flow.pdf",
       category: "Lecture Decks",
       totalPages: 28,
@@ -132,7 +142,7 @@ export const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       size: "3.1 MB",
     },
     {
-      id: "cs210-lab2",
+      id: "f2100002-0000-4000-8000-000000000002",
       name: "Lab 2 - Red-Black Trees Implementation.pdf",
       category: "Lab Handouts",
       totalPages: 5,
@@ -140,7 +150,7 @@ export const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       size: "640 KB",
     },
     {
-      id: "cs210-pyq",
+      id: "f2100024-0000-4000-8000-000000000024",
       name: "Past Year Final Exam 2024.pdf",
       category: "Tutorials & PYQs",
       totalPages: 16,
@@ -148,9 +158,9 @@ export const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       size: "4.5 MB",
     },
   ],
-  MA201: [
+  "a2010000-0000-4000-8000-000000000201": [
     {
-      id: "ma201-lec3",
+      id: "fa201003-0000-4000-8000-000000000003",
       name: "Lecture 3 - Singular Value Decomposition.pdf",
       category: "Lecture Decks",
       totalPages: 20,
@@ -158,7 +168,7 @@ export const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       size: "2.1 MB",
     },
     {
-      id: "ma201-tut2",
+      id: "fa201002-0000-4000-8000-000000000002",
       name: "Tutorial 2 - Eigenvalues & Diagonalization.pdf",
       category: "Tutorials & PYQs",
       totalPages: 7,
@@ -166,9 +176,9 @@ export const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       size: "980 KB",
     },
   ],
-  CS101: [
+  "c1010000-0000-4000-8000-000000000101": [
     {
-      id: "cs101-lec2",
+      id: "fc101002-0000-4000-8000-000000000002",
       name: "Lecture 2 - Memory Hierarchy & Cache.pdf",
       category: "Lecture Decks",
       totalPages: 18,
@@ -176,23 +186,31 @@ export const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       size: "1.5 MB",
     },
   ],
-};
+}
 
-const CATEGORIES = ["Course Planner", "Lecture Decks", "Lab Handouts", "Tutorials & PYQs"];
+const DEFAULT_COURSE_ID = "c2020000-0000-4000-8000-000000000202"
+const CATEGORIES = [
+  "Course Planner",
+  "Lecture Decks",
+  "Lab Handouts",
+  "Tutorials & PYQs",
+]
 
 export function DashboardPage({ platform = "web" }: DashboardPageProps) {
-  const { user, logout } = useAuth();
+  const { user, logout } = useAuth()
 
   // Workspace Zustand store
-  const activeCourseId = useWorkspace((s) => s.activeCourseId) || "CS202";
-  const switchCourse = useWorkspace((s) => s.switchCourse);
-  const tabs = useWorkspace(selectTabs);
-  const activeCourseWorkspace = useWorkspace(selectActiveCourse);
-  const activeFileId = activeCourseWorkspace?.activeFileId ?? (tabs[0]?.fileId || null);
-  const openTab = useWorkspace((s) => s.openTab);
-  const closeTab = useWorkspace((s) => s.closeTab);
-  const setActiveFile = useWorkspace((s) => s.setActiveFile);
-  const openCitation = useWorkspace((s) => s.openCitation);
+  const activeCourseId =
+    useWorkspace((s) => s.activeCourseId) || DEFAULT_COURSE_ID
+  const switchCourse = useWorkspace((s) => s.switchCourse)
+  const tabs = useWorkspace(selectTabs)
+  const activeCourseWorkspace = useWorkspace(selectActiveCourse)
+  const activeFileId =
+    activeCourseWorkspace?.activeFileId ?? (tabs[0]?.fileId || null)
+  const openTab = useWorkspace((s) => s.openTab)
+  const closeTab = useWorkspace((s) => s.closeTab)
+  const setActiveFile = useWorkspace((s) => s.setActiveFile)
+  const openCitation = useWorkspace((s) => s.openCitation)
 
   // Chat Session Hook
   const {
@@ -205,167 +223,178 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
     deleteSession,
     selectSession,
     startNewChat,
-  } = useChatSession(activeCourseId);
+  } = useChatSession(activeCourseId)
 
   // Local UI states
-  const [selectedCitation, setSelectedCitation] = useState<CitationItem | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activePage, setActivePage] = useState<number>(1);
-  const [zoomLevel, setZoomLevel] = useState<number>(100);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [selectedCitation, setSelectedCitation] = useState<CitationItem | null>(
+    null
+  )
+  const [searchQuery, setSearchQuery] = useState("")
+  const [activePage, setActivePage] = useState<number>(1)
+  const [zoomLevel, setZoomLevel] = useState<number>(100)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   // Initialize course if not selected
   useEffect(() => {
     if (!useWorkspace.getState().activeCourseId) {
-      switchCourse("CS202");
+      switchCourse(DEFAULT_COURSE_ID)
     }
-  }, [switchCourse]);
+  }, [switchCourse])
 
   // Current course metadata & files
   const currentCourse = useMemo(() => {
     return (
-      MOCK_COURSES.find((c) => c.code === activeCourseId) ?? {
-        code: activeCourseId,
-        name: `${activeCourseId} Course Workspace`,
-        year: 2,
-        semester: 2,
-        description: "Course syllabus and study materials.",
-      }
-    );
-  }, [activeCourseId]);
+      MOCK_COURSES.find(
+        (c) => c.id === activeCourseId || c.code === activeCourseId
+      ) ?? MOCK_COURSES[0]!
+    )
+  }, [activeCourseId])
 
   const courseFiles = useMemo(() => {
-    return MOCK_FILES_BY_COURSE[activeCourseId] || [];
-  }, [activeCourseId]);
+    return (
+      MOCK_FILES_BY_COURSE[currentCourse.id] ||
+      MOCK_FILES_BY_COURSE[currentCourse.code] ||
+      []
+    )
+  }, [currentCourse])
 
   // Filtered files in explorer
   const filteredFiles = useMemo(() => {
-    if (!searchQuery.trim()) return courseFiles;
-    const q = searchQuery.toLowerCase();
+    if (!searchQuery.trim()) return courseFiles
+    const q = searchQuery.toLowerCase()
     return courseFiles.filter(
       (f) =>
         f.name.toLowerCase().includes(q) ||
         (f.category && f.category.toLowerCase().includes(q))
-    );
-  }, [courseFiles, searchQuery]);
+    )
+  }, [courseFiles, searchQuery])
 
   // Active opened document
   const activeTab = useMemo(() => {
-    return tabs.find((t) => t.fileId === activeFileId) || null;
-  }, [tabs, activeFileId]);
+    return tabs.find((t) => t.fileId === activeFileId) || null
+  }, [tabs, activeFileId])
 
   const activeDocument = useMemo(() => {
-    if (!activeFileId) return null;
-    return courseFiles.find((f) => f.id === activeFileId) || null;
-  }, [courseFiles, activeFileId]);
+    if (!activeFileId) return null
+    return courseFiles.find((f) => f.id === activeFileId) || null
+  }, [courseFiles, activeFileId])
 
   // When active tab changes or citation clicked, sync page
   useEffect(() => {
     if (activeTab?.page) {
-      setActivePage(activeTab.page);
+      setActivePage(activeTab.page)
     }
-  }, [activeTab]);
+  }, [activeTab])
 
   const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
-  };
+    setToastMessage(msg)
+    setTimeout(() => setToastMessage(null), 3000)
+  }
 
   const handleOpenFile = (file: MockDocumentFile) => {
     openTab(activeCourseId, {
       fileId: file.id,
       filename: file.name,
       page: 1,
-    });
-    setActivePage(1);
-    setSelectedCitation(null);
-  };
+    })
+    setActivePage(1)
+    setSelectedCitation(null)
+  }
 
   const handleCitationClick = (cite: CitationItem) => {
-    setSelectedCitation(cite);
+    setSelectedCitation(cite)
     const targetFile = courseFiles.find((f) => f.id === cite.f) || {
       id: cite.f,
       name: cite.l.split(" · ")[0] || "Referenced Document.pdf",
-    };
-
-    openCitation(activeCourseId, cite.f, targetFile.name, cite.p);
-    if (cite.p) {
-      setActivePage(cite.p);
     }
-  };
+
+    openCitation(activeCourseId, cite.f, targetFile.name, cite.p)
+    if (cite.p) {
+      setActivePage(cite.p)
+    }
+  }
 
   const handleSendMessage = async (text: string) => {
     try {
-      const res = await sendMessage(text);
+      const res = await sendMessage(text)
       if (res && res.answer) {
         return {
           text: res.answer,
           cites: res.citations?.map((c) => ({
             f: c.file_id,
             p: c.page ?? 1,
-            l: c.filename ? `${c.filename} · p.${c.page ?? 1}` : `Document · p.${c.page ?? 1}`,
+            l: c.filename
+              ? `${c.filename} · p.${c.page ?? 1}`
+              : `Document · p.${c.page ?? 1}`,
             quote: c.quote,
           })),
-        };
+        }
       }
     } catch {
       // Fallback is handled inside Chat component when undefined is returned
     }
-  };
+  }
 
   const handleOpenDocumentFromChat = (fileId: string, page: number) => {
-    const targetFile = courseFiles.find((f) => f.id === fileId);
+    const targetFile = courseFiles.find((f) => f.id === fileId)
     openTab(activeCourseId, {
       fileId,
       filename: targetFile?.name || fileId,
       page,
-    });
-    setActivePage(page);
-  };
+    })
+    setActivePage(page)
+  }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-(--bg-canvas,#161F29) text-(--tx,#DCE3EA) font-sans select-none">
+    <div className="flex h-screen w-screen overflow-hidden bg-(--bg-canvas,#161F29) font-sans text-(--tx,#DCE3EA) select-none">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 rounded-lg bg-(--bg-raise,#1C2833) border border-(--acc,#52A8EA) px-4 py-2 text-xs text-(--tx,#DCE3EA) shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <span className="w-2 h-2 rounded-full bg-(--acc,#52A8EA)" />
+        <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 animate-in items-center gap-2 rounded-lg border border-(--acc,#52A8EA) bg-(--bg-raise,#1C2833) px-4 py-2 text-xs text-(--tx,#DCE3EA) shadow-lg duration-200 fade-in slide-in-from-bottom-2">
+          <span className="h-2 w-2 rounded-full bg-(--acc,#52A8EA)" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Main Container */}
-      <div className="flex flex-col flex-1 h-full min-w-0">
+      <div className="flex h-full min-w-0 flex-1 flex-col">
         {/* Top Navbar (F1) */}
-        <header className="flex h-12 items-center justify-between border-b border-(--line,#25313E) bg-(--bg-bar,#101821) px-4 flex-none z-10">
+        <header className="z-10 flex h-12 flex-none items-center justify-between border-b border-(--line,#25313E) bg-(--bg-bar,#101821) px-4">
           <div className="flex items-center gap-3">
             <img
               src="/ntbc-logo.png"
               alt="NotToBeCooked Logo"
-              className="w-6 h-6 object-contain rounded"
+              className="h-6 w-6 rounded object-contain"
             />
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm tracking-wide text-primary">NotToBeCooked</span>
-              <span className="rounded bg-(--bg-raise,#1C2833) px-2 py-0.5 text-[10px] font-mono text-(--tx-dim,#8B98A7) border border-(--line,#25313E) uppercase">
+              <span className="text-sm font-bold tracking-wide text-primary">
+                NotToBeCooked
+              </span>
+              <span className="rounded border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2 py-0.5 font-mono text-[10px] text-(--tx-dim,#8B98A7) uppercase">
                 {platform}
               </span>
             </div>
 
-            <div className="hidden md:flex items-center gap-1.5 ml-4 pl-4 border-l border-(--line,#25313E) text-xs text-(--tx-dim,#8B98A7)">
-              <span className="font-medium text-(--tx,#DCE3EA)">{currentCourse.code}</span>
+            <div className="ml-4 hidden items-center gap-1.5 border-l border-(--line,#25313E) pl-4 text-xs text-(--tx-dim,#8B98A7) md:flex">
+              <span className="font-medium text-(--tx,#DCE3EA)">
+                {currentCourse.code}
+              </span>
               <span>·</span>
-              <span className="text-(--tx-faint,#5C6976)">{currentCourse.name}</span>
+              <span className="text-(--tx-faint,#5C6976)">
+                {currentCourse.name}
+              </span>
             </div>
           </div>
 
           <div className="flex items-center gap-4 text-xs">
             {user && (
-              <span className="text-(--tx-dim,#8B98A7) hidden sm:inline">
-                Logged in as <strong className="text-(--tx,#DCE3EA)">{user.email}</strong>
+              <span className="hidden text-(--tx-dim,#8B98A7) sm:inline">
+                Logged in as{" "}
+                <strong className="text-(--tx,#DCE3EA)">{user.email}</strong>
               </span>
             )}
             <button
               onClick={() => logout()}
-              className="rounded bg-(--bg-raise,#1C2833) border border-(--line,#25313E) px-3 py-1 text-xs text-(--tx-dim,#8B98A7) hover:text-white hover:border-destructive transition-colors cursor-pointer"
+              className="cursor-pointer rounded border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-3 py-1 text-xs text-(--tx-dim,#8B98A7) transition-colors hover:border-destructive hover:text-white"
             >
               Log Out
             </button>
@@ -373,55 +402,64 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
         </header>
 
         {/* Main 3-Pane Split View */}
-        <div className="flex flex-1 min-h-0 min-w-0">
+        <div className="flex min-h-0 min-w-0 flex-1">
           {/* Left Pane: Explorer & Course Materials (F4) */}
-          <aside className="w-64 flex-none border-r border-(--line,#25313E) bg-(--bg-panel,#121A23) flex flex-col min-h-0">
+          <aside className="flex min-h-0 w-64 flex-none flex-col border-r border-(--line,#25313E) bg-(--bg-panel,#121A23)">
             {/* Scope / Course Switcher */}
-            <div className="p-3 border-b border-(--line-soft,#1B2530) flex flex-col gap-2">
-              <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-wider text-(--tx-faint,#5C6976)">
+            <div className="flex flex-col gap-2 border-b border-(--line-soft,#1B2530) p-3">
+              <div className="flex items-center justify-between font-mono text-[10px] tracking-wider text-(--tx-faint,#5C6976) uppercase">
                 <span>Courses</span>
                 <span>{MOCK_COURSES.length} Enrolled</span>
               </div>
               <div className="grid grid-cols-2 gap-1.5">
                 {MOCK_COURSES.map((c) => {
-                  const isSelected = activeCourseId === c.code;
+                  const isSelected =
+                    activeCourseId === c.id || activeCourseId === c.code
                   return (
                     <button
-                      key={c.code}
-                      onClick={() => switchCourse(c.code)}
-                      className={`flex flex-col p-2 rounded-lg text-left transition-all cursor-pointer border ${
+                      key={c.id}
+                      onClick={() => switchCourse(c.id)}
+                      className={`flex cursor-pointer flex-col rounded-lg border p-2 text-left transition-all ${
                         isSelected
-                          ? "bg-(--bg-raise,#1C2833) text-(--acc,#52A8EA) border-(--acc,#52A8EA)/30 shadow-sm"
-                          : "bg-transparent text-(--tx-dim,#8B98A7) border-(--line-soft,#1B2530) hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
+                          ? "border-(--acc,#52A8EA)/30 bg-(--bg-raise,#1C2833) text-(--acc,#52A8EA) shadow-sm"
+                          : "border-(--line-soft,#1B2530) bg-transparent text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
                       }`}
                     >
-                      <span className="font-bold text-xs">{c.code}</span>
-                      <span className="text-[10px] truncate text-(--tx-faint,#5C6976)">
+                      <span className="text-xs font-bold">{c.code}</span>
+                      <span className="truncate text-[10px] text-(--tx-faint,#5C6976)">
                         {c.name}
                       </span>
                     </button>
-                  );
+                  )
                 })}
               </div>
             </div>
 
             {/* Document Filter & Upload (Stub) */}
-            <div className="p-3 pb-2 flex flex-col gap-2 border-b border-(--line-soft,#1B2530)">
+            <div className="flex flex-col gap-2 border-b border-(--line-soft,#1B2530) p-3 pb-2">
               <div className="flex items-center justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-(--tx-faint,#5C6976)">
+                <span className="font-mono text-[10px] tracking-wider text-(--tx-faint,#5C6976) uppercase">
                   Materials ({courseFiles.length})
                 </span>
                 <button
                   type="button"
-                  onClick={() => showToast("File upload stub: Document ingestion simulated.")}
-                  className="text-[11px] text-(--acc,#52A8EA) hover:underline cursor-pointer flex items-center gap-1"
+                  onClick={() =>
+                    showToast("File upload stub: Document ingestion simulated.")
+                  }
+                  className="flex cursor-pointer items-center gap-1 text-[11px] text-(--acc,#52A8EA) hover:underline"
                 >
                   <span>+ Upload</span>
                 </button>
               </div>
 
-              <div className="flex items-center gap-1.5 bg-(--bg-raise,#1C2833) border border-(--line,#25313E) rounded px-2 py-1 text-xs">
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="text-(--tx-faint,#5C6976)">
+              <div className="flex items-center gap-1.5 rounded border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2 py-1 text-xs">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  className="text-(--tx-faint,#5C6976)"
+                >
                   <path
                     d="M7 12A5 5 0 107 2a5 5 0 000 10zM14 14l-3.5-3.5"
                     stroke="currentColor"
@@ -434,40 +472,48 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Filter materials..."
-                  className="w-full bg-transparent outline-none text-xs text-(--tx,#DCE3EA) placeholder:text-(--tx-faint,#5C6976)"
+                  className="w-full bg-transparent text-xs text-(--tx,#DCE3EA) outline-none placeholder:text-(--tx-faint,#5C6976)"
                 />
               </div>
             </div>
 
             {/* Categorized File Tree */}
-            <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-3 min-h-0 scrollbar-thin [scrollbar-color:var(--line,#25313E)_transparent]">
+            <div className="flex min-h-0 flex-1 scrollbar-thin [scrollbar-color:var(--line,#25313E)_transparent] flex-col gap-3 overflow-y-auto p-2">
               {CATEGORIES.map((cat) => {
-                const filesInCat = filteredFiles.filter((f) => f.category === cat);
-                if (filesInCat.length === 0) return null;
+                const filesInCat = filteredFiles.filter(
+                  (f) => f.category === cat
+                )
+                if (filesInCat.length === 0) return null
 
                 return (
                   <div key={cat} className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between px-2 py-1 text-[10px] font-mono text-(--tx-faint,#5C6976) uppercase tracking-wider">
+                    <div className="flex items-center justify-between px-2 py-1 font-mono text-[10px] tracking-wider text-(--tx-faint,#5C6976) uppercase">
                       <span>{cat}</span>
                       <span>{filesInCat.length}</span>
                     </div>
 
                     <div className="flex flex-col gap-0.5">
                       {filesInCat.map((file) => {
-                        const isOpen = tabs.some((t) => t.fileId === file.id);
-                        const isActive = activeFileId === file.id;
+                        const isOpen = tabs.some((t) => t.fileId === file.id)
+                        const isActive = activeFileId === file.id
 
                         return (
                           <button
                             key={file.id}
                             onClick={() => handleOpenFile(file)}
-                            className={`flex items-center gap-2 px-2.5 py-1.5 rounded text-left transition-colors cursor-pointer group text-xs ${
+                            className={`group flex cursor-pointer items-center gap-2 rounded px-2.5 py-1.5 text-left text-xs transition-colors ${
                               isActive
-                                ? "bg-(--bg-raise,#1C2833) text-(--acc,#52A8EA) font-medium border border-(--acc,#52A8EA)/20"
+                                ? "border border-(--acc,#52A8EA)/20 bg-(--bg-raise,#1C2833) font-medium text-(--acc,#52A8EA)"
                                 : "text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
                             }`}
                           >
-                            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="shrink-0 text-(--tx-faint,#5C6976) group-hover:text-(--acc,#52A8EA)">
+                            <svg
+                              width="13"
+                              height="13"
+                              viewBox="0 0 16 16"
+                              fill="none"
+                              className="shrink-0 text-(--tx-faint,#5C6976) group-hover:text-(--acc,#52A8EA)"
+                            >
                               <path
                                 d="M4 2h5.5L13 5.5V14H4V2z"
                                 stroke="currentColor"
@@ -475,55 +521,74 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                               />
-                              <path d="M9 2v4h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                              <path
+                                d="M9 2v4h4"
+                                stroke="currentColor"
+                                strokeWidth="1.2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
                             </svg>
-                            <span className="truncate flex-1">{file.name}</span>
+                            <span className="flex-1 truncate">{file.name}</span>
                             {isOpen && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-(--acc,#52A8EA) shrink-0" title="Open in Tab" />
+                              <span
+                                className="h-1.5 w-1.5 shrink-0 rounded-full bg-(--acc,#52A8EA)"
+                                title="Open in Tab"
+                              />
                             )}
                           </button>
-                        );
+                        )
                       })}
                     </div>
                   </div>
-                );
+                )
               })}
             </div>
           </aside>
 
           {/* Center Workspace: Tabs & Document Viewer (F2) */}
-          <main className="flex-1 flex flex-col min-w-0 bg-(--bg-canvas,#161F29) relative overflow-hidden">
+          <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-(--bg-canvas,#161F29)">
             {/* Tabs Bar */}
             {tabs.length > 0 && (
-              <div className="flex h-9 items-center border-b border-(--line,#25313E) bg-(--bg-bar,#101821) px-2 gap-1 overflow-x-auto flex-none scrollbar-none">
+              <div className="flex h-9 flex-none scrollbar-none items-center gap-1 overflow-x-auto border-b border-(--line,#25313E) bg-(--bg-bar,#101821) px-2">
                 {tabs.map((tab) => {
-                  const isActive = tab.fileId === activeFileId;
+                  const isActive = tab.fileId === activeFileId
                   return (
                     <div
                       key={tab.fileId}
                       onClick={() => setActiveFile(activeCourseId, tab.fileId)}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-t text-xs cursor-pointer border-t-2 transition-colors max-w-50 ${
+                      className={`flex max-w-50 cursor-pointer items-center gap-2 rounded-t border-t-2 px-3 py-1.5 text-xs transition-colors ${
                         isActive
-                          ? "bg-(--bg-canvas,#161F29) text-(--tx,#DCE3EA) border-(--acc,#52A8EA) font-medium"
-                          : "bg-transparent text-(--tx-dim,#8B98A7) border-transparent hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
+                          ? "border-(--acc,#52A8EA) bg-(--bg-canvas,#161F29) font-medium text-(--tx,#DCE3EA)"
+                          : "border-transparent bg-transparent text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
                       }`}
                     >
-                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="shrink-0 text-(--tx-faint,#5C6976)">
-                        <path d="M4 2h5.5L13 5.5V14H4V2z" stroke="currentColor" strokeWidth="1.2" />
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        className="shrink-0 text-(--tx-faint,#5C6976)"
+                      >
+                        <path
+                          d="M4 2h5.5L13 5.5V14H4V2z"
+                          stroke="currentColor"
+                          strokeWidth="1.2"
+                        />
                       </svg>
                       <span className="truncate">{tab.filename}</span>
                       <button
                         type="button"
                         onClick={(e) => {
-                          e.stopPropagation();
-                          closeTab(activeCourseId, tab.fileId);
+                          e.stopPropagation()
+                          closeTab(activeCourseId, tab.fileId)
                         }}
-                        className="p-0.5 text-(--tx-faint,#5C6976) hover:text-white hover:bg-(--line,#25313E) rounded"
+                        className="rounded p-0.5 text-(--tx-faint,#5C6976) hover:bg-(--line,#25313E) hover:text-white"
                       >
                         ✕
                       </button>
                     </div>
-                  );
+                  )
                 })}
               </div>
             )}
@@ -531,53 +596,65 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
             {/* Document Viewer or Workspace Overview */}
             {activeDocument ? (
               /* ACTIVE DOCUMENT VIEWER (Stub/Mock Component) */
-              <div className="flex flex-col flex-1 min-h-0 bg-(--bg-canvas,#161F29)">
+              <div className="flex min-h-0 flex-1 flex-col bg-(--bg-canvas,#161F29)">
                 {/* Document Viewer Control Bar */}
-                <div className="flex items-center justify-between px-4 py-2 border-b border-(--line-soft,#1B2530) bg-(--bg-panel,#121A23)/40 text-xs">
+                <div className="flex items-center justify-between border-b border-(--line-soft,#1B2530) bg-(--bg-panel,#121A23)/40 px-4 py-2 text-xs">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-(--tx,#DCE3EA)">{activeDocument.name}</span>
-                    <span className="font-mono text-[10px] text-(--tx-faint,#5C6976) bg-(--bg-raise,#1C2833) px-2 py-0.5 rounded">
+                    <span className="font-semibold text-(--tx,#DCE3EA)">
+                      {activeDocument.name}
+                    </span>
+                    <span className="rounded bg-(--bg-raise,#1C2833) px-2 py-0.5 font-mono text-[10px] text-(--tx-faint,#5C6976)">
                       {activeDocument.size} · {activeDocument.totalPages} pages
                     </span>
                   </div>
 
                   {/* Viewer Controls */}
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1 bg-(--bg-raise,#1C2833) border border-(--line,#25313E) rounded px-2 py-0.5">
+                    <div className="flex items-center gap-1 rounded border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2 py-0.5">
                       <button
                         type="button"
                         disabled={activePage <= 1}
                         onClick={() => setActivePage((p) => Math.max(1, p - 1))}
-                        className="text-(--tx-dim,#8B98A7) hover:text-white disabled:opacity-40 cursor-pointer"
+                        className="cursor-pointer text-(--tx-dim,#8B98A7) hover:text-white disabled:opacity-40"
                       >
                         ◀
                       </button>
-                      <span className="font-mono text-[11px] px-1">
+                      <span className="px-1 font-mono text-[11px]">
                         Page {activePage} of {activeDocument.totalPages}
                       </span>
                       <button
                         type="button"
                         disabled={activePage >= activeDocument.totalPages}
-                        onClick={() => setActivePage((p) => Math.min(activeDocument.totalPages, p + 1))}
-                        className="text-(--tx-dim,#8B98A7) hover:text-white disabled:opacity-40 cursor-pointer"
+                        onClick={() =>
+                          setActivePage((p) =>
+                            Math.min(activeDocument.totalPages, p + 1)
+                          )
+                        }
+                        className="cursor-pointer text-(--tx-dim,#8B98A7) hover:text-white disabled:opacity-40"
                       >
                         ▶
                       </button>
                     </div>
 
-                    <div className="flex items-center gap-1 bg-(--bg-raise,#1C2833) border border-(--line,#25313E) rounded px-2 py-0.5">
+                    <div className="flex items-center gap-1 rounded border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2 py-0.5">
                       <button
                         type="button"
-                        onClick={() => setZoomLevel((z) => Math.max(50, z - 10))}
-                        className="text-(--tx-dim,#8B98A7) hover:text-white cursor-pointer"
+                        onClick={() =>
+                          setZoomLevel((z) => Math.max(50, z - 10))
+                        }
+                        className="cursor-pointer text-(--tx-dim,#8B98A7) hover:text-white"
                       >
                         -
                       </button>
-                      <span className="font-mono text-[11px] px-1">{zoomLevel}%</span>
+                      <span className="px-1 font-mono text-[11px]">
+                        {zoomLevel}%
+                      </span>
                       <button
                         type="button"
-                        onClick={() => setZoomLevel((z) => Math.min(150, z + 10))}
-                        className="text-(--tx-dim,#8B98A7) hover:text-white cursor-pointer"
+                        onClick={() =>
+                          setZoomLevel((z) => Math.min(150, z + 10))
+                        }
+                        className="cursor-pointer text-(--tx-dim,#8B98A7) hover:text-white"
                       >
                         +
                       </button>
@@ -586,20 +663,21 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
                 </div>
 
                 {/* Document Canvas Content Area */}
-                <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center min-h-0 bg-(--bg-canvas,#161F29)">
+                <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto bg-(--bg-canvas,#161F29) p-6">
                   {/* Citation Highlight Banner if active */}
                   {selectedCitation && (
-                    <div className="w-full max-w-2xl mb-4 p-3 rounded-lg border border-(--cite-line,rgba(227,166,63,0.38)) bg-(--cite-bg,rgba(227,166,63,0.09)) text-xs text-(--cite,#E3A63F) flex items-center justify-between animate-in fade-in">
+                    <div className="mb-4 flex w-full max-w-2xl animate-in items-center justify-between rounded-lg border border-(--cite-line,rgba(227,166,63,0.38)) bg-(--cite-bg,rgba(227,166,63,0.09)) p-3 text-xs text-(--cite,#E3A63F) fade-in">
                       <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-(--cite,#E3A63F)" />
+                        <span className="h-2 w-2 rounded-full bg-(--cite,#E3A63F)" />
                         <span>
-                          <strong>Citation Evidence:</strong> {selectedCitation.l} (Page {selectedCitation.p})
+                          <strong>Citation Evidence:</strong>{" "}
+                          {selectedCitation.l} (Page {selectedCitation.p})
                         </span>
                       </div>
                       <button
                         type="button"
                         onClick={() => setSelectedCitation(null)}
-                        className="text-xs hover:text-white cursor-pointer"
+                        className="cursor-pointer text-xs hover:text-white"
                       >
                         Dismiss ✕
                       </button>
@@ -608,12 +686,17 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
 
                   {/* Simulated Document Page Sheet */}
                   <div
-                    style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: "top center" }}
-                    className="w-full max-w-2xl min-h-125 bg-(--bg-panel,#121A23) border border-(--line,#25313E) rounded-lg shadow-xl p-8 flex flex-col gap-4 text-xs leading-relaxed text-(--tx,#DCE3EA) transition-transform duration-150"
+                    style={{
+                      transform: `scale(${zoomLevel / 100})`,
+                      transformOrigin: "top center",
+                    }}
+                    className="flex min-h-125 w-full max-w-2xl flex-col gap-4 rounded-lg border border-(--line,#25313E) bg-(--bg-panel,#121A23) p-8 text-xs leading-relaxed text-(--tx,#DCE3EA) shadow-xl transition-transform duration-150"
                   >
-                    <div className="flex items-center justify-between border-b border-(--line-soft,#1B2530) pb-3 text-(--tx-faint,#5C6976) font-mono text-[10px]">
+                    <div className="flex items-center justify-between border-b border-(--line-soft,#1B2530) pb-3 font-mono text-[10px] text-(--tx-faint,#5C6976)">
                       <span>{activeDocument.name}</span>
-                      <span>Page {activePage} / {activeDocument.totalPages}</span>
+                      <span>
+                        Page {activePage} / {activeDocument.totalPages}
+                      </span>
                     </div>
 
                     {/* Page Content Display */}
@@ -626,8 +709,8 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
 
                           {/* Highlight quote if citation corresponds to this document & page */}
                           {selectedCitation?.quote && (
-                            <div className="p-3 rounded border border-(--cite-line,rgba(227,166,63,0.4)) bg-(--cite-bg,rgba(227,166,63,0.12)) text-(--tx-strong,#EDF2F6) shadow-sm">
-                              <span className="font-mono text-[10px] uppercase font-semibold text-(--cite,#E3A63F) block mb-1">
+                            <div className="rounded border border-(--cite-line,rgba(227,166,63,0.4)) bg-(--cite-bg,rgba(227,166,63,0.12)) p-3 text-(--tx-strong,#EDF2F6) shadow-sm">
+                              <span className="mb-1 block font-mono text-[10px] font-semibold text-(--cite,#E3A63F) uppercase">
                                 Verified Grounded Quote
                               </span>
                               <em>"{selectedCitation.quote}"</em>
@@ -637,16 +720,22 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
                       ) : (
                         <div className="flex flex-col gap-4">
                           <h4 className="text-sm font-semibold text-(--acc,#52A8EA)">
-                            Section {activePage}.1 — Core Theoretical Foundations
+                            Section {activePage}.1 — Core Theoretical
+                            Foundations
                           </h4>
                           <p className="text-(--tx-dim,#8B98A7)">
-                            This document contains comprehensive materials for {currentCourse.code} ({currentCourse.name}).
-                            All paragraphs and equations in this section are indexed by the Retrieval-Augmented Generation (RAG) pipeline for verified citation and context retrieval.
+                            This document contains comprehensive materials for{" "}
+                            {currentCourse.code} ({currentCourse.name}). All
+                            paragraphs and equations in this section are indexed
+                            by the Retrieval-Augmented Generation (RAG) pipeline
+                            for verified citation and context retrieval.
                           </p>
-                          <div className="p-3 bg-(--bg-raise,#1C2833) rounded border border-(--line-soft,#1B2530) font-mono text-[11px] text-(--tx-faint,#5C6976)">
-                            [Indexed Chunk #{activeCourseId}-{activeDocument.id}-p{activePage}]
+                          <div className="rounded border border-(--line-soft,#1B2530) bg-(--bg-raise,#1C2833) p-3 font-mono text-[11px] text-(--tx-faint,#5C6976)">
+                            [Indexed Chunk #{activeCourseId}-{activeDocument.id}
+                            -p{activePage}]
                             <br />
-                            Embedding vectors synced with vector store and ready for query matching.
+                            Embedding vectors synced with vector store and ready
+                            for query matching.
                           </div>
                         </div>
                       )}
@@ -656,56 +745,59 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
               </div>
             ) : (
               /* EMPTY / COURSE OVERVIEW HERO SCREEN */
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center my-auto overflow-y-auto">
-                <div className="max-w-md flex flex-col items-center gap-4">
+              <div className="my-auto flex flex-1 flex-col items-center justify-center overflow-y-auto p-8 text-center">
+                <div className="flex max-w-md flex-col items-center gap-4">
                   <img
                     src="/ntbc-logo.png"
                     alt="NotToBeCooked Logo"
-                    className="w-16 h-16 object-contain"
+                    className="h-16 w-16 object-contain"
                   />
                   <div>
                     <h2 className="text-lg font-bold text-(--tx,#DCE3EA)">
                       {currentCourse.code} — {currentCourse.name}
                     </h2>
-                    <p className="mt-1 text-xs text-(--tx-dim,#8B98A7) leading-relaxed">
+                    <p className="mt-1 text-xs leading-relaxed text-(--tx-dim,#8B98A7)">
                       {currentCourse.description}
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 w-full mt-2">
+                  <div className="mt-2 grid w-full grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => {
                         if (courseFiles.length > 0 && courseFiles[0]) {
-                          handleOpenFile(courseFiles[0]);
+                          handleOpenFile(courseFiles[0])
                         }
                       }}
-                      className="p-3 rounded-lg bg-(--bg-raise,#1C2833) border border-(--line,#25313E) hover:border-(--acc,#52A8EA) text-left transition-colors cursor-pointer group"
+                      className="group cursor-pointer rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833) p-3 text-left transition-colors hover:border-(--acc,#52A8EA)"
                     >
-                      <span className="text-xs font-semibold text-(--tx,#DCE3EA) group-hover:text-(--acc,#52A8EA) block">
+                      <span className="block text-xs font-semibold text-(--tx,#DCE3EA) group-hover:text-(--acc,#52A8EA)">
                         Open Recent Lecture
                       </span>
-                      <span className="text-[10px] text-(--tx-faint,#5C6976) mt-0.5 block truncate">
+                      <span className="mt-0.5 block truncate text-[10px] text-(--tx-faint,#5C6976)">
                         {courseFiles[0]?.name || "Select document"}
                       </span>
                     </button>
 
                     <button
                       type="button"
-                      onClick={() => showToast("Simulated document ingestion triggered.")}
-                      className="p-3 rounded-lg bg-(--bg-raise,#1C2833) border border-(--line,#25313E) hover:border-(--acc,#52A8EA) text-left transition-colors cursor-pointer group"
+                      onClick={() =>
+                        showToast("Simulated document ingestion triggered.")
+                      }
+                      className="group cursor-pointer rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833) p-3 text-left transition-colors hover:border-(--acc,#52A8EA)"
                     >
-                      <span className="text-xs font-semibold text-(--tx,#DCE3EA) group-hover:text-(--acc,#52A8EA) block">
+                      <span className="block text-xs font-semibold text-(--tx,#DCE3EA) group-hover:text-(--acc,#52A8EA)">
                         Add Course Material
                       </span>
-                      <span className="text-[10px] text-(--tx-faint,#5C6976) mt-0.5 block">
+                      <span className="mt-0.5 block text-[10px] text-(--tx-faint,#5C6976)">
                         Upload PDF notes or lab
                       </span>
                     </button>
                   </div>
 
                   <p className="text-[11px] text-(--tx-faint,#5C6976)">
-                    Select a document on the left or ask the AI Assistant on the right with grounded citations.
+                    Select a document on the left or ask the AI Assistant on the
+                    right with grounded citations.
                   </p>
                 </div>
               </div>
@@ -714,7 +806,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
 
           {/* Right Pane: AI Chat Assistant (F3) */}
           <Chat
-            courseCode={activeCourseId}
+            courseCode={currentCourse.code}
             filesCount={courseFiles.length}
             files={courseFiles}
             categories={CATEGORIES}
@@ -732,7 +824,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-export default DashboardPage;
+export default DashboardPage
