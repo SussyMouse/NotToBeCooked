@@ -9,11 +9,11 @@ from app.db.database import get_session
 from app.dependencies.auth import get_current_user
 from app.schemas.chat import (
     Conversation,
-    ConversationCourseLink,
     ConversationDetail,
     Message,
     MessageRead,
 )
+from app.schemas.course import Course
 from app.schemas.errors import ApiError
 
 chat_router = APIRouter()
@@ -39,12 +39,16 @@ async def get_sessions(
             detail={"code": "INVALID_TOKEN", "message": "Invalid or tampered token"},
         )
 
-    statement = select(Conversation).where(col(Conversation.user_id) == user_id)
+    # Ownership derives through course -> user. Conversation.user_id and the
+    # conversationcourselink junction table were removed by Decision 1 (18 Aug).
+    statement = (
+        select(Conversation)
+        .join(Course, col(Conversation.course_id) == col(Course.id))
+        .where(col(Course.user_id) == user_id)
+    )
 
     if course_id:
-        statement = statement.join(ConversationCourseLink).where(
-            col(ConversationCourseLink.course_id) == course_id
-        )
+        statement = statement.where(col(Conversation.course_id) == course_id)
 
     statement = statement.order_by(col(Conversation.updated_at).desc()).offset(offset).limit(limit)
     result = await session.execute(statement)
@@ -74,8 +78,10 @@ async def get_session_by_id(
             detail={"code": "INVALID_TOKEN", "message": "Invalid or tampered token"},
         )
 
-    statement = select(Conversation).where(
-        col(Conversation.id) == session_id, col(Conversation.user_id) == user_id
+    statement = (
+        select(Conversation)
+        .join(Course, col(Conversation.course_id) == col(Course.id))
+        .where(col(Conversation.id) == session_id, col(Course.user_id) == user_id)
     )
     result = await session.execute(statement)
     conversation = result.scalar_one_or_none()
@@ -96,7 +102,7 @@ async def get_session_by_id(
 
     return ConversationDetail(
         id=conversation.id,
-        user_id=conversation.user_id,
+        course_id=conversation.course_id,
         title=conversation.title,
         created_at=conversation.created_at,
         updated_at=conversation.updated_at,

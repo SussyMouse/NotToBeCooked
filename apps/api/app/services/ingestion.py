@@ -58,9 +58,7 @@ def split_long_text(text, max_token=500):
         return [first_part] + split_long_text(second_part, max_token)
 
 
-def create_chunk(
-    extracted_items, file_id, course_id, ingestion_run_id, max_token=350
-) -> list[ChunkCreate]:
+def create_chunk(extracted_items, file_id, max_token=350) -> list[ChunkCreate]:
 
     chunks = []
     heading = None  # 是旧箱子的 Introduction
@@ -88,8 +86,6 @@ def create_chunk(
                     page_end=max(page),
                     content=join_content,
                     file_id=file_id,
-                    course_id=course_id,
-                    ingestion_run_id=ingestion_run_id,
                     token_count=count_token(join_content),
                 )
 
@@ -118,8 +114,6 @@ def create_chunk(
             page_end=max(page),
             content=join_content,
             file_id=file_id,
-            course_id=course_id,
-            ingestion_run_id=ingestion_run_id,
             token_count=count_token(join_content),
         )
 
@@ -194,13 +188,9 @@ def main() -> None:
     test_max_token = 20
     rebuilt_text = ""
     test_file_id = uuid4()
-    test_course_id = uuid4()
-    test_ingestion_run_id = uuid4()
 
     # ChunkCreate test_chunks
-    test_chunks = create_chunk(
-        test_items, test_file_id, test_course_id, test_ingestion_run_id, test_max_token
-    )
+    test_chunks = create_chunk(test_items, test_file_id, max_token=test_max_token)
     print("Numbe of Chunks: ", len(test_chunks))
     for chunk in test_chunks:
         chunk_content = chunk.content

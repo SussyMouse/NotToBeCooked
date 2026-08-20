@@ -2,7 +2,8 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
 
-from sqlmodel import Field, SQLModel
+from sqlalchemy import Column, SmallInteger
+from sqlmodel import DateTime, Field, SQLModel
 
 
 class IngestionRunStatus(StrEnum):
@@ -20,7 +21,7 @@ class IngestionRun(SQLModel, table=True):
         primary_key=True,
     )
 
-    file_id: UUID = Field(foreign_key="file.id")
+    file_id: UUID = Field(foreign_key="file.id", ondelete="CASCADE")
 
     status: IngestionRunStatus = Field(default=IngestionRunStatus.QUEUED)
 
@@ -28,10 +29,16 @@ class IngestionRun(SQLModel, table=True):
 
     embedding_model: str
 
-    embedding_dim: int
+    embedding_dim: int = Field(sa_column=Column(SmallInteger, nullable=False))
 
     is_active: bool = Field(default=False)
 
-    started_at: datetime | None = Field(default=None)
-    completed_at: datetime | None = Field(default=None)
+    started_at: datetime | None = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+
+    completed_at: datetime | None = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+
     error_message: str | None = Field(default=None)
