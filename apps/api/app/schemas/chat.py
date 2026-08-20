@@ -4,8 +4,11 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import Column, DateTime
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
+
+from app.schemas.file import _enum_values
 
 
 class ChatRole(Enum):
@@ -49,7 +52,12 @@ class Message(SQLModel, table=True):
         "individual turns from the middle of a conversation, leaving a transcript that "
         "no longer reads.",
     )
-    role: ChatRole
+    role: ChatRole = Field(
+        sa_column=Column(
+            SAEnum(ChatRole, values_callable=_enum_values, name="chatrole"),
+            nullable=False,
+        ),
+    )
     content: str
     grounded: bool = Field(
         default=False,
