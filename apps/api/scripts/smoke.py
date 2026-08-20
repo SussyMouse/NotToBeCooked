@@ -82,12 +82,21 @@ def check(label: str):
 def _cv2() -> str:
     import cv2
 
-    so = next(Path(cv2.__file__).parent.glob("*.so"))
+    # getattr rather than cv2.__file__ / cv2.__version__ directly: the two opencv
+    # distributions ship different type information, so pyright sees __file__ as
+    # str | None and does not see __version__ at all on one of them. Reading them
+    # defensively keeps this check green under either wheel, which matters because
+    # swapping between the two is exactly what this check exists to catch.
+    location = getattr(cv2, "__file__", None)
+    if location is None:
+        raise RuntimeError("cv2 has no __file__, so its shared objects cannot be located")
+
+    so = next(Path(location).parent.glob("*.so"))
     ldd = subprocess.run(["ldd", str(so)], capture_output=True, text=True).stdout
     missing = [ln.split()[0] for ln in ldd.splitlines() if "not found" in ln]
     if missing:
         raise RuntimeError(f"unresolved: {', '.join(missing)} — GUI opencv in a headless image?")
-    return f"opencv {cv2.__version__}, 0 unresolved"
+    return f"opencv {getattr(cv2, '__version__', 'unknown')}, 0 unresolved"
 
 
 # ---------------------------------------------------------------- 2
