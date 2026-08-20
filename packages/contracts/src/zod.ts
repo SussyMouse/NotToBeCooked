@@ -221,7 +221,7 @@ const endpoints = makeApi([
 				schema: z.string().uuid()
 			},
 		],
-		response: z.record(z.string()),
+		response: z.record(z.string(), z.unknown()),
 		errors: [
 			{
 				status: 401,

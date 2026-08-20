@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { api, RagAnswer } from "@workspace/contracts"
+import { api } from "@workspace/contracts"
 import { useWorkspace, selectActiveCourse, ragScope } from "../store/workspace"
-import type { ChatMessage, CitationItem } from "../components/chat/ChatMessage"
+import type { ChatMessage } from "../components/chat/ChatMessage"
 
 export const useChatSession = (courseId: string | null) => {
   const queryClient = useQueryClient()
@@ -39,7 +39,7 @@ export const useChatSession = (courseId: string | null) => {
         top_k: null, // use default 5
       })
     },
-    onSuccess: (ragAnswer: RagAnswer) => {
+    onSuccess: () => {
       // ensure session list is recent
       queryClient.invalidateQueries({
         queryKey: ["chat", "sessions", courseId],
@@ -86,7 +86,13 @@ export const useChatSession = (courseId: string | null) => {
 
   return {
     // Data
-    sessions: sessionsQuery.data ?? [],
+    sessions: (sessionsQuery.data ?? []).map((s) => ({
+      id: s.id ?? "",
+      title: s.title ?? "Untitled Chat",
+      courseId: s.course_id,
+      createdAt: s.created_at,
+      updatedAt: s.updated_at,
+    })),
     messages,
     activeConversationId,
 

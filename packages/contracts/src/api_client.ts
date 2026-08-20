@@ -7,10 +7,10 @@ import {
     type HTTPValidationError,
     type ValidationIssue,
     schemas,
-    Conversation,
-    ConversationDetail,
-    RagAnswer,
-    RagQueryRequest,
+    type Conversation,
+    type ConversationDetail,
+    type RagAnswer,
+    type RagQueryRequest,
 } from "./index.js"
 
 /**
