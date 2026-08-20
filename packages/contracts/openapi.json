@@ -490,11 +490,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response Delete Session Chat Sessions  Session Id  Delete"
+                  "$ref": "#/components/schemas/DeleteSessionResponse"
                 }
               }
             }
@@ -744,6 +740,17 @@
           "updated_at"
         ],
         "title": "ConversationDetail"
+      },
+      "DeleteSessionResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "ok"
+          }
+        },
+        "type": "object",
+        "title": "DeleteSessionResponse"
       },
       "HTTPValidationError": {
         "properties": {

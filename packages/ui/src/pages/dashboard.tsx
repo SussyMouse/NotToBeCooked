@@ -15,7 +15,7 @@ export interface DashboardPageProps {
 // ---------------------------------------------------------------------------
 // Mock / Stub Course Catalog & File Repository for Development and Testing
 // ---------------------------------------------------------------------------
-export interface MockCourse {
+interface MockCourse {
   id: string
   code: string
   name: string
@@ -24,14 +24,14 @@ export interface MockCourse {
   description: string
 }
 
-export interface MockDocumentFile extends ChatFile {
+interface MockDocumentFile extends ChatFile {
   totalPages: number
   uploadedAt: string
   size: string
   contentByPage?: Record<number, string>
 }
 
-export const MOCK_COURSES: MockCourse[] = [
+const MOCK_COURSES: MockCourse[] = [
   {
     id: "c2020000-0000-4000-8000-000000000202",
     code: "CS202",
@@ -67,7 +67,7 @@ export const MOCK_COURSES: MockCourse[] = [
   },
 ]
 
-export const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
+const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
   "c2020000-0000-4000-8000-000000000202": [
     {
       id: "f2020004-0000-4000-8000-000000000004",
@@ -230,7 +230,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
     null
   )
   const [searchQuery, setSearchQuery] = useState("")
-  const [activePage, setActivePage] = useState<number>(1)
+  const [pageOverride, setPageOverride] = useState<number | null>(null)
   const [zoomLevel, setZoomLevel] = useState<number>(100)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
@@ -279,12 +279,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
     return courseFiles.find((f) => f.id === activeFileId) || null
   }, [courseFiles, activeFileId])
 
-  // When active tab changes or citation clicked, sync page
-  useEffect(() => {
-    if (activeTab?.page) {
-      setActivePage(activeTab.page)
-    }
-  }, [activeTab])
+  const activePage = pageOverride ?? activeTab?.page ?? 1
 
   const showToast = (msg: string) => {
     setToastMessage(msg)
@@ -297,7 +292,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
       filename: file.name,
       page: 1,
     })
-    setActivePage(1)
+    setPageOverride(1)
     setSelectedCitation(null)
   }
 
@@ -309,9 +304,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
     }
 
     openCitation(activeCourseId, cite.f, targetFile.name, cite.p)
-    if (cite.p) {
-      setActivePage(cite.p)
-    }
+    setPageOverride(cite.p || 1)
   }
 
   const handleSendMessage = async (text: string) => {
@@ -342,7 +335,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
       filename: targetFile?.name || fileId,
       page,
     })
-    setActivePage(page)
+    setPageOverride(page)
   }
 
   return (
@@ -614,7 +607,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
                       <button
                         type="button"
                         disabled={activePage <= 1}
-                        onClick={() => setActivePage((p) => Math.max(1, p - 1))}
+                        onClick={() => setPageOverride(Math.max(1, activePage - 1))}
                         className="cursor-pointer text-(--tx-dim,#8B98A7) hover:text-white disabled:opacity-40"
                       >
                         ◀
@@ -626,8 +619,8 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
                         type="button"
                         disabled={activePage >= activeDocument.totalPages}
                         onClick={() =>
-                          setActivePage((p) =>
-                            Math.min(activeDocument.totalPages, p + 1)
+                          setPageOverride(
+                            Math.min(activeDocument.totalPages, activePage + 1)
                           )
                         }
                         className="cursor-pointer text-(--tx-dim,#8B98A7) hover:text-white disabled:opacity-40"

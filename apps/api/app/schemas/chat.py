@@ -95,3 +95,7 @@ class ConversationDetail(SQLModel):
     created_at: datetime
     updated_at: datetime
     messages: list[MessageRead] = []
+
+
+class DeleteSessionResponse(SQLModel):
+    status: str = "ok"

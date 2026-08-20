@@ -70,19 +70,24 @@ export const useChatSession = (courseId: string | null) => {
   })
 
   // map server messages to ChatMessage format
-  const messages: ChatMessage[] = (activeSessionQuery.data?.messages ?? []).map((msgRead) => ({
-    id: msgRead.id,
-    role: msgRead.role as "user" | "assistant",
-    content: msgRead.content,
-    citations: (msgRead.citations ?? []).map((citation: any) => ({
-      f: String(citation.file_id ?? ""),
-      p: Number(citation.page ?? citation.page_start ?? 1),
-      l: citation.filename
-        ? `${citation.filename} · p.${citation.page ?? citation.page_start ?? 1}`
-        : `Document · p.${citation.page ?? citation.page_start ?? 1}`,
-      quote: typeof citation.quote === "string" ? citation.quote : undefined,
-    })),
-  }));
+  const messages: ChatMessage[] = (activeSessionQuery.data?.messages ?? []).map(
+    (msgRead) => ({
+      id: msgRead.id,
+      role: msgRead.role as "user" | "assistant",
+      content: msgRead.content,
+      citations: (msgRead.citations ?? []).map((rawCitation) => {
+        const citation = rawCitation as Record<string, unknown>
+        const pageNum = Number(citation.page ?? citation.page_start ?? 1)
+        const filename = typeof citation.filename === "string" ? citation.filename : "Document"
+        return {
+          f: String(citation.file_id ?? ""),
+          p: pageNum,
+          l: `${filename} · p.${pageNum}`,
+          quote: typeof citation.quote === "string" ? citation.quote : undefined,
+        }
+      }),
+    })
+  )
 
   return {
     // Data

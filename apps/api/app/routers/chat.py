@@ -10,6 +10,7 @@ from app.dependencies.auth import get_current_user
 from app.schemas.chat import (
     Conversation,
     ConversationDetail,
+    DeleteSessionResponse,
     Message,
     MessageRead,
 )
@@ -113,7 +114,7 @@ async def get_session_by_session_id(
 @chat_router.delete(
     "/sessions/{session_id}",
     status_code=status.HTTP_200_OK,
-    response_model=dict[str, str],
+    response_model=DeleteSessionResponse,
     responses={
         401: {"model": ApiError, "description": "Missing, invalid or expired access token"},
         404: {"model": ApiError, "description": "Session not found"},
@@ -151,4 +152,4 @@ async def delete_session(
     await session.delete(conversation)
     await session.commit()
 
-    return { "status": "ok" }
+    return DeleteSessionResponse(status="ok")

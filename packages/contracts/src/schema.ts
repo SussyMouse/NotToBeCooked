@@ -330,6 +330,14 @@ export interface components {
              */
             messages: components["schemas"]["MessageRead"][];
         };
+        /** DeleteSessionResponse */
+        DeleteSessionResponse: {
+            /**
+             * Status
+             * @default ok
+             */
+            status: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -859,9 +867,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
+                    "application/json": components["schemas"]["DeleteSessionResponse"];
                 };
             };
             /** @description Missing, invalid or expired access token */

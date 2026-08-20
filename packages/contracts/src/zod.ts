@@ -20,6 +20,7 @@ const Conversation = z.object({ id: z.union([z.string(), z.null()]).optional(), 
 const ChatRole = z.enum(["user", "assistant"]);
 const MessageRead = z.object({ id: z.string().uuid(), conversation_id: z.string().uuid(), scope_course_id: z.string().uuid(), role: ChatRole, content: z.string(), grounded: z.boolean(), citations: z.union([z.array(z.object({}).partial().passthrough()), z.null()]), mentioned_file_ids: z.union([z.array(z.string().uuid()), z.null()]), created_at: z.string().datetime({ offset: true }) }).passthrough();
 const ConversationDetail = z.object({ id: z.string().uuid(), course_id: z.string().uuid(), title: z.string(), created_at: z.string().datetime({ offset: true }), updated_at: z.string().datetime({ offset: true }), messages: z.array(MessageRead).optional().default([]) }).passthrough();
+const DeleteSessionResponse = z.object({ status: z.string().default("ok") }).partial().passthrough();
 
 export const schemas = {
 	UserRead,
@@ -38,6 +39,7 @@ export const schemas = {
 	ChatRole,
 	MessageRead,
 	ConversationDetail,
+	DeleteSessionResponse,
 };
 
 const endpoints = makeApi([
@@ -221,7 +223,7 @@ const endpoints = makeApi([
 				schema: z.string().uuid()
 			},
 		],
-		response: z.record(z.string(), z.unknown()),
+		response: z.object({ status: z.string().default("ok") }).partial().passthrough(),
 		errors: [
 			{
 				status: 401,
