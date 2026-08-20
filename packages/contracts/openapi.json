@@ -280,6 +280,26 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session or course not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -934,6 +954,19 @@
             "minimum": 0.0,
             "title": "Used Chunks",
             "description": "How many chunks were actually put into the prompt, after selection. 0 means there was no material and the layer should have refused to answer."
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id",
+            "description": "The active or newly created conversation ID."
           }
         },
         "additionalProperties": false,

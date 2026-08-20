@@ -423,6 +423,11 @@ export interface components {
              * @description How many chunks were actually put into the prompt, after selection. 0 means there was no material and the layer should have refused to answer.
              */
             used_chunks: number;
+            /**
+             * Conversation Id
+             * @description The active or newly created conversation ID.
+             */
+            conversation_id?: string | null;
         };
         /**
          * RagQueryRequest
@@ -745,6 +750,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RagAnswer"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Session or course not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
             /** @description Validation Error */

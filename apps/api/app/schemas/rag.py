@@ -123,6 +123,10 @@ class RagAnswer(SQLModel):
         description="How many chunks were actually put into the prompt, after selection. "
         "0 means there was no material and the layer should have refused to answer.",
     )
+    conversation_id: UUID | None = Field(
+        default=None,
+        description="The active or newly created conversation ID.",
+    )
 
 
 class ScopeSnapshot(SQLModel):

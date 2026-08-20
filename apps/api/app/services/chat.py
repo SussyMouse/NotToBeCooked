@@ -10,28 +10,26 @@ from app.schemas.course import Course
 
 async def get_or_create_conversation(
     session: AsyncSession,
-    user_id: UUID,
+    user_id: UUID | str,
     course_id: UUID | None,
-    conversation_id: UUID | None
+    conversation_id: UUID | None,
+    title: str | None = None,
 ) -> Conversation:
     """Gets an existing conversation or creates a new one.
-    
+
     - If conversation_id is provided: verifies ownership via Course -> User and returns it.
     - If course_id is provided: verifies course ownership and creates a new Conversation.
     - If neither is provided: raises 400 Bad Request.
     """
-    # if converation_id provided, check if it exist under the user
-        # if it exist, return. Else raise session not found
-    # if course_id provided, create new conversation provided user owns course_id
-    # raise error if neither is provided
+    uid = UUID(user_id) if not isinstance(user_id, UUID) else user_id
 
     if conversation_id:
         statement = (
             select(Conversation)
             .join(Course, col(Conversation.course_id) == col(Course.id))
             .where(
-                Course.user_id == user_id,
-                Conversation.id == conversation_id
+                col(Course.user_id) == uid,
+                col(Conversation.id) == conversation_id,
             )
         )
         result = await session.execute(statement)
@@ -41,14 +39,14 @@ async def get_or_create_conversation(
             return conversation
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "SESSION_NOT_FOUND", "message": "No session found"}
+            detail={"code": "SESSION_NOT_FOUND", "message": "No session found"},
         )
 
     elif course_id:
         statement = (
             select(Course)
-            .where(Course.user_id == user_id)
-            .where(Course.id == course_id)
+            .where(col(Course.user_id) == uid)
+            .where(col(Course.id) == course_id)
         )
         result = await session.execute(statement)
         course = result.scalar_one_or_none()
@@ -56,10 +54,13 @@ async def get_or_create_conversation(
         if not course:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "COURSE_NOT_FOUND", "message": "No course found under the user_id"}
+                detail={"code": "COURSE_NOT_FOUND", "message": "No course found under the user_id"},
             )
 
-        new_conversation = Conversation(course_id=course_id)
+        new_conversation = Conversation(
+            course_id=course_id,
+            title=title or "Untitled Conversation",
+        )
         session.add(new_conversation)
         await session.commit()
         await session.refresh(new_conversation)
@@ -68,6 +69,5 @@ async def get_or_create_conversation(
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "INVALID_REQUEST", "message": "Either course_id or conversation_id must be provided"}
+            detail={"code": "INVALID_REQUEST", "message": "Either course_id or conversation_id must be provided"},
         )
-
