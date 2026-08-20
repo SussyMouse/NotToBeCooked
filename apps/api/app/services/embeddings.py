@@ -66,7 +66,6 @@ def embed_query(query: str) -> list[float]:
     )
 
 
-
 def embed_text(texts: list[str]) -> list[list[float]]:
     """Used to build vector db with batch embeddings"""
     return (

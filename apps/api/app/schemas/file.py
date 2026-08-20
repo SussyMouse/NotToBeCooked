@@ -4,7 +4,13 @@ from typing import Literal
 from uuid import UUID, uuid4
 
 from sqlalchemy import BigInteger, Column, DateTime
+from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, SQLModel
+
+
+def _enum_values(enum_cls: type[Enum]) -> list[str]:
+    """Render a PostgreSQL enum from member values, not member names."""
+    return [m.value for m in enum_cls]
 
 
 class FileStatus(Enum):
@@ -42,7 +48,20 @@ class File(SQLModel, table=True):
     mime_type: str
     size_bytes: int = Field(sa_column=Column(BigInteger, nullable=False))
     page_count: int | None = None
-    status: FileStatus = Field(default=FileStatus.UPLOADED)
+    # values_callable, because SQLAlchemy names a PostgreSQL enum's members after the
+    # Python member NAMES by default -- 'READY', not 'ready'. The ERD, the API contract
+    # (FileRead's Literal) and the JSON on the wire all say lowercase, so without this the
+    # database is the one place holding a different spelling. Nothing breaks through the
+    # ORM, which maps both ways silently; what breaks is every hand-written query, and
+    # R19's CHECK (is_active implies status = 'ready') would simply never be true.
+    # Free to fix now, an ALTER TYPE once there is data.
+    status: FileStatus = Field(
+        default=FileStatus.UPLOADED,
+        sa_column=Column(
+            SAEnum(FileStatus, values_callable=_enum_values, name="filestatus"),
+            nullable=False,
+        ),
+    )
     error_message: str | None = None
     uploaded_at: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
     indexed_at: datetime | None = Field(

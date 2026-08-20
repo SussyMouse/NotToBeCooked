@@ -3,7 +3,10 @@ from enum import StrEnum
 from uuid import UUID, uuid4
 
 from sqlalchemy import Column, SmallInteger
+from sqlalchemy import Enum as SAEnum
 from sqlmodel import DateTime, Field, SQLModel
+
+from app.schemas.file import _enum_values
 
 
 class IngestionRunStatus(StrEnum):
@@ -23,7 +26,17 @@ class IngestionRun(SQLModel, table=True):
 
     file_id: UUID = Field(foreign_key="file.id", ondelete="CASCADE")
 
-    status: IngestionRunStatus = Field(default=IngestionRunStatus.QUEUED)
+    # values_callable — see the same note on FileStatus in schemas/file.py.
+    # Without it PostgreSQL stores 'QUEUED' while the ERD, the API and every
+    # hand-written query say 'queued'. R19 (is_active implies status = 'ready')
+    # attaches to this column, and would never be true.
+    status: IngestionRunStatus = Field(
+        default=IngestionRunStatus.QUEUED,
+        sa_column=Column(
+            SAEnum(IngestionRunStatus, values_callable=_enum_values, name="ingestionrunstatus"),
+            nullable=False,
+        ),
+    )
 
     chunker_version: str
 
