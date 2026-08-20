@@ -2,8 +2,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { api } from "@workspace/contracts"
 import { useWorkspace, selectActiveCourse, ragScope } from "../store/workspace"
 import type { ChatMessage } from "../components/chat/ChatMessage"
+import {
+  extractMentionsAndResolve,
+  type FileItem,
+} from "../lib/mentions"
 
-export const useChatSession = (courseId: string | null) => {
+export const useChatSession = (
+  courseId: string | null,
+  availableFiles: FileItem[] = []
+) => {
   const queryClient = useQueryClient()
 
   const activeCourseWorkspace = useWorkspace(selectActiveCourse)
@@ -31,24 +38,35 @@ export const useChatSession = (courseId: string | null) => {
   const sendMessageMutation = useMutation({
     mutationFn: async (text: string) => {
       const scope = ragScope(useWorkspace.getState())
+      // Parse @[Filename] mentions from text and resolve to file_ids
+      const mentionResult = extractMentionsAndResolve(text, availableFiles)
+      const effectiveFileIds = mentionResult.fileIds ?? scope.file_ids ?? null
+
       return api.chat.query({
-        question: text,
+        question: mentionResult.cleanQuestion || text,
         course_id: scope.course_id ?? null,
         conversation_id: activeConversationId,
-        file_ids: scope.file_ids ?? null,
+        file_ids: effectiveFileIds,
         top_k: null, // use default 5
       })
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // If turn 1 created a new session, update activeConversationId in Zustand
+      const newConversationId = (data as { conversation_id?: string })?.conversation_id
+      if (!activeConversationId && newConversationId && courseId) {
+        setActiveConversation(courseId, newConversationId)
+      }
+
       // ensure session list is recent
       queryClient.invalidateQueries({
         queryKey: ["chat", "sessions", courseId],
       })
 
       // ensure message of current conversation is recent
-      if (activeConversationId) {
+      const targetId = activeConversationId || (data as { conversation_id?: string })?.conversation_id
+      if (targetId) {
         queryClient.invalidateQueries({
-          queryKey: ["chat", "session", activeConversationId],
+          queryKey: ["chat", "session", targetId],
         })
       }
     },
@@ -69,7 +87,7 @@ export const useChatSession = (courseId: string | null) => {
     },
   })
 
-  // map server messages to ChatMessage format
+  // map server messages to ChatMessage format with filename lookup
   const messages: ChatMessage[] = (activeSessionQuery.data?.messages ?? []).map(
     (msgRead) => ({
       id: msgRead.id,
@@ -78,10 +96,17 @@ export const useChatSession = (courseId: string | null) => {
       citations: (msgRead.citations ?? []).map((rawCitation) => {
         const citation = rawCitation as Record<string, unknown>
         const pageNum = Number(citation.page ?? citation.page_start ?? 1)
+        const fileIdStr = String(citation.file_id ?? "")
+        
+        // Look up file in availableFiles for human-friendly label
+        const matchedFile = availableFiles.find((f) => f.id === fileIdStr)
         const filename =
-          typeof citation.filename === "string" ? citation.filename : "Document"
+          typeof citation.filename === "string"
+            ? citation.filename
+            : matchedFile?.name || "Document"
+
         return {
-          f: String(citation.file_id ?? ""),
+          f: fileIdStr,
           p: pageNum,
           l: `${filename} · p.${pageNum}`,
           quote:

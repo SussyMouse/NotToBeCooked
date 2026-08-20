@@ -357,6 +357,11 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   const updateTabViewState = useWorkspace((s) => s.updateTabViewState)
   const openCitation = useWorkspace((s) => s.openCitation)
 
+  // Repository of all files across all courses
+  const allFiles = useMemo(() => {
+    return Object.values(MOCK_FILES_BY_COURSE).flat()
+  }, [])
+
   // Chat Session Hook
   const {
     sessions,
@@ -368,7 +373,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     deleteSession,
     selectSession,
     startNewChat,
-  } = useChatSession(activeCourseId)
+  } = useChatSession(activeCourseId, allFiles)
 
   // Local UI states
   const [selectedCitation, setSelectedCitation] = useState<CitationItem | null>(
@@ -417,10 +422,6 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     )
   }, [currentCourse])
 
-  // Repository of all files across all courses
-  const allFiles = useMemo(() => {
-    return Object.values(MOCK_FILES_BY_COURSE).flat()
-  }, [])
 
   // Roadmap calculations (from workspace.html)
   const courseRoadmap = useMemo(() => {
