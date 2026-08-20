@@ -131,7 +131,7 @@ async def vector_search(
         retrieved_chunk = RetrievedChunk(
             chunk_id=chunk.id,
             file_id=chunk.file_id,
-            course_id=file.course_id,
+            course_id=chunk.course_id,
             filename=file.filename,
             page_start=chunk.page_start,
             page_end=chunk.page_end,
@@ -212,7 +212,7 @@ async def hybrid_search(
             RetrievedChunk(
                 chunk_id=id,
                 file_id=chunk.file_id,
-                course_id=file.course_id,
+                course_id=chunk.course_id,
                 filename=file.filename,
                 page_start=chunk.page_start,
                 page_end=chunk.page_end,

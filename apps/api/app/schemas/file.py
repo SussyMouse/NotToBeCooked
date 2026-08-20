@@ -29,11 +29,15 @@ class FileStatus(Enum):
 
 class File(SQLModel, table=True):
     id: UUID | None = Field(primary_key=True, default_factory=uuid4)
-    # TODO(r41, 19 Aug): becomes `folder_id -> folder.id` once AI-2 delivers the
-    # FOLDER model (Decision 1 option A, Decision 5). Course is then derived
-    # through the folder rather than stored again. Held here because a foreign
-    # key to a table with no model breaks mapper configuration.
-    course_id: UUID = Field(foreign_key="course.id", ondelete="CASCADE")
+    # A file belongs to a folder, and its course is derived through that folder --
+    # Decision 1 option A, Decision 5, and the ratified ERD. It carried a direct
+    # `course_id` until 20 Aug only because FOLDER did not exist and a foreign key
+    # to a missing table breaks mapper configuration for the whole app.
+    #
+    # Reading a file's course now costs one join. Retrieval does not pay it:
+    # CHUNK carries its own denormalised `course_id`, which is exactly what that
+    # column is for.
+    folder_id: UUID = Field(foreign_key="folder.id", ondelete="CASCADE")
     filename: str
     storage_key: str = Field(
         unique=True,
@@ -76,7 +80,7 @@ class FileRead(SQLModel):
     """Outbound shape for a file."""
 
     id: UUID
-    course_id: UUID
+    folder_id: UUID
     filename: str
     storage_key: str
     sha256: str | None = None
