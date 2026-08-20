@@ -19,6 +19,24 @@ COPY app ./app
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
+# Swap opencv-python for opencv-python-headless, same version.
+#
+# Nothing here chose opencv: docling -> docling-slim[standard] -> rapidocr
+# -> opencv-python, and docling_ibm_models' tf_predictor.py imports cv2 for
+# table structure detection without declaring it. The GUI build links against
+# X11 (libxcb.so.1) and glib (libgthread-2.0.so.0); python:3.13-slim ships
+# neither, so `import cv2` fails in the image and every PDF parse dies with it.
+#
+# Installing X11 into a headless server image is the wrong shape. The headless
+# wheel is the same OpenCV at the same version with no display libraries, which
+# is what a container wants. uv cannot substitute one distribution for another
+# in the lock file, so it is done here, after sync, where it is explicit.
+#
+# Verify with:  docker run --rm --entrypoint /app/.venv/bin/python <img> -c "import cv2"
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip uninstall opencv-python && \
+    uv pip install opencv-python-headless==5.0.0.93
+
 # Final light runtime image
 FROM python:3.13-slim
 
