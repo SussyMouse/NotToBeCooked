@@ -478,6 +478,34 @@ Three things are still unowned, and none of them was on the agenda:
 
 ---
 
+---
+
+# Part E — found while implementing
+
+## R25 — the database was going to store `'READY'` while everything else said `'ready'`
+
+Found 20 Aug 2026, fixed the same day, and it would not have announced itself.
+
+SQLAlchemy renders a PostgreSQL enum from the Python member **names**, not their
+values. `FileStatus.READY = "ready"` therefore becomes the PG value `'READY'`,
+while the ERD, `FileRead`'s `Literal`, and every JSON response say `ready`.
+
+Nothing breaks through the ORM, which maps both directions silently. What breaks
+is anything that touches the column as text:
+
+- every hand-written query — `WHERE status = 'ready'` matches zero rows, with no
+  error to trace
+- **R19 itself.** `is_active` implies `status = 'ready'` is a CHECK constraint
+  going into the first migration. Spelled lowercase against an uppercase enum it
+  is never true, so it never rejects anything, and it looks like it is working.
+
+Both enums now pass `values_callable`, so `filestatus` and `ingestionrunstatus`
+carry the lowercase values the rest of the system already uses. It is free
+today; after there is data it is an `ALTER TYPE`.
+
+Applies to `FileStatus` (AI-3) and `IngestionRunStatus` (AI-2) equally — it is
+SQLAlchemy's default, not anybody's mistake.
+
 ## Summary
 
 | # | Finding | Status |
@@ -496,13 +524,14 @@ Three things are still unowned, and none of them was on the agenda:
 | R6 | `mentioned_file_ids` has no FK; folders unrepresented | **Not reached — proceeds on the recommendation: JSONB stays in v1.** Folder @-mentions → next meeting |
 | R10 | `MESSAGE` has no `sequence_no` | **Deferred** — accepted v1 defect, order implied by `created_at` |
 | R16 | Soft delete on `COURSE` / `FILE` | **Declined 18 Aug** — and so **v1 has no delete-course feature**, see R16 |
-| R4 | `CHUNK` FKs can contradict each other | Open — first migration |
-| R5 | Vector scan not filtered by embedding model | Open — first migration |
-| R8 | `is_active` needs a partial unique index | Open — first migration |
+| R4 | `CHUNK` FKs can contradict each other | Open — first migration. **Unblocked 20 Aug**: all three columns now exist |
+| R5 | Vector scan not filtered by embedding model | Open — first migration. **Unblocked 20 Aug**: `INGESTION_RUN.embedding_model` and `CHUNK.ingestion_run_id` both exist |
+| R8 | `is_active` needs a partial unique index | Open — first migration. **Unblocked 20 Aug** |
 | R17 | `UNIQUE (user_id, code, year, sem)` | Open — first migration |
-| R18 | `UNIQUE (ingestion_run_id, chunk_index)` | Open — first migration |
-| R19 | `is_active` implies `status = 'ready'` | Open — first migration |
-| R20 | Supporting index set | Open — first migration |
+| R18 | `UNIQUE (ingestion_run_id, chunk_index)` | Open — first migration. **Unblocked 20 Aug** |
+| R19 | `is_active` implies `status = 'ready'` | Open — first migration. **Write it lowercase**: see R25 |
+| R20 | Supporting index set | Open — first migration. `COURSE(user_id)` is redundant once R17 lands — a UNIQUE builds its own index and `user_id` is its leftmost column |
+| R25 | PostgreSQL enums were going to store member NAMES | **Fixed 20 Aug** — see below |
 | R21 | `EMBEDDING_PROFILE` entity | Declined for v1 — see R5 |
 | R22 | `STORED_OBJECT` split | Declined for v1 |
 | R23 | Remove `CHUNK.file_id` / `course_id` | Declined — item 04, see R4 |

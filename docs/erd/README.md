@@ -66,46 +66,67 @@ after any reorder.
 `FOLDER → FILE` edge across `CONVERSATION`. `parent_folder_id` is therefore
 documented as a column with no edge drawn. The column carries the meaning.
 
-## Merging `bao-sheng`: squash, do not merge
+## Merging `bao-sheng`: strip the blobs, then merge normally
 
-Agreed with Bao Sheng on 16 Aug 2026. Applies to the merge scheduled after the
-C2 seam lands, ~22 Aug.
+**Done 20 Aug 2026. This reverses the squash-merge agreed with Bao Sheng on
+16 Aug**, and the reversal is recorded here rather than applied quietly.
 
 `ff5600f` and `f801754` added two 8K renders of a superseded 13-entity draft:
 7.4 MB on disk, against 1.5 MB for the packed history of everything else in this
-repository. `4b320e2` deleted them from the working tree, but the blobs remain in
-the branch's history, and a normal merge would make those commits ancestors of
-`dev` and then `main` — every clone from then on carries the 7.4 MB.
+repository. `4b320e2` deleted them from the working tree, but the blobs remained
+in the branch's history, and a normal merge would make those commits ancestors
+of `dev` and then `main` — every clone from then on carrying the 7.4 MB.
+
+Squash keeps them out. It also collapses thirteen commits into one, and on
+20 Aug Bao Sheng asked the question that settles this: after the project, would
+his contributions still be findable on GitHub for his resume? Under a squash the
+honest answer was *the code, but not the commits*.
+
+So the blobs were removed from the branch's history instead. Only 3 of his 13
+commits touch those files, all three are ERD-document commits, and stripping the
+two paths leaves everything else untouched:
 
 ```bash
-git switch dev
-git pull --ff-only origin dev
-git merge --squash bao-sheng
-git commit --author="CH'NG BAO SHENG <chngbaosheng@gmail.com>"   # list the squashed subjects in the body
+git checkout bao-sheng
+FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --index-filter \
+  'git rm -r --cached --ignore-unmatch "docs/erd/*8k.png"' \
+  --prune-empty -- dev..bao-sheng
 ```
 
-Then delete the remote branch, and start the next branch from `dev`.
+Then a normal merge, and the branch survives.
 
-Three things about that sequence are load-bearing:
+**Verify all four before force-pushing**, on a throwaway clone first:
 
-**`--author` is not cosmetic.** A squash commit is authored by whoever runs the
-merge, so without the flag ten commits collapse into one credited to the wrong
-person. On a graded group project the log is evidence.
+```
+no 8K PNG object reachable from the rewritten branch
+all 13 commits present
+every one still authored by CH'NG BAO SHENG
+git diff <old tip> <new tip> is empty — the tree is byte-identical
+```
 
-**Do not keep committing on `bao-sheng` afterwards.** Git does not know the squash
-commit contains those ten commits, so the next merge replays them and conflicts
-against work `dev` has done since.
+The last one is the important one. It is what says the rewrite removed history
+and nothing else.
 
-**Re-verify on the day.** The zero-conflict dry run on 16 Aug was against `dev` at
-`a52840c`. Re-sync `dev`, re-read the final diff, run `pnpm verify` before
-squashing.
+**The rewrite is published with a force push, and `git pull` is the wrong
+action afterwards.** This was learned the hard way on 20 Aug: the push was
+done as a pull, git merged the old remote history back into the rewritten
+branch, and every blob came back inside a merge commit that reported "no files
+in commit". Content unchanged, history restored, work undone. GitHub Desktop
+offers Pull in exactly that position, and it will keep offering it as long as
+the local branch is an ancestor of the remote one.
 
-Squash was chosen over rewriting the branch with `filter-branch`. The rewrite also
-works, but it costs Bao Sheng a `git reset --hard` on a branch he is actively
-working on — the operation most likely to lose uncommitted work — for 7.4 MB.
+**Keep a second copy of the old tip until both sides have verified.** Bao Sheng's
+Codex proposed an archive tag; `filter-branch` leaves `refs/original/` behind on
+its own. Either works, both were used, and one of them is what made the pull
+incident recoverable. Delete them afterwards — a tag or ref pointing at the old
+tip keeps the blobs reachable no matter how clean the branch is.
+
+**`--author` still matters for any squash.** A squash commit is authored by
+whoever runs the merge. That is not needed here, because a stripped branch keeps
+each commit's own author.
 
 The general rule this came from: **multi-megabyte binaries do not belong in git.**
-The ERD of record renders to 295 KB.
+The ERD of record renders to 306 KB.
 
 ## Changing the schema
 

@@ -4,7 +4,13 @@ from typing import Literal
 from uuid import UUID, uuid4
 
 from sqlalchemy import BigInteger, Column, DateTime
+from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, SQLModel
+
+
+def _enum_values(enum_cls: type[Enum]) -> list[str]:
+    """Render a PostgreSQL enum from member values, not member names."""
+    return [m.value for m in enum_cls]
 
 
 class FileStatus(Enum):
@@ -23,11 +29,15 @@ class FileStatus(Enum):
 
 class File(SQLModel, table=True):
     id: UUID | None = Field(primary_key=True, default_factory=uuid4)
-    # TODO(r41, 19 Aug): becomes `folder_id -> folder.id` once AI-2 delivers the
-    # FOLDER model (Decision 1 option A, Decision 5). Course is then derived
-    # through the folder rather than stored again. Held here because a foreign
-    # key to a table with no model breaks mapper configuration.
-    course_id: UUID = Field(foreign_key="course.id", ondelete="CASCADE")
+    # A file belongs to a folder, and its course is derived through that folder --
+    # Decision 1 option A, Decision 5, and the ratified ERD. It carried a direct
+    # `course_id` until 20 Aug only because FOLDER did not exist and a foreign key
+    # to a missing table breaks mapper configuration for the whole app.
+    #
+    # Reading a file's course now costs one join. Retrieval does not pay it:
+    # CHUNK carries its own denormalised `course_id`, which is exactly what that
+    # column is for.
+    folder_id: UUID = Field(foreign_key="folder.id", ondelete="CASCADE")
     filename: str
     storage_key: str = Field(
         unique=True,
@@ -42,7 +52,20 @@ class File(SQLModel, table=True):
     mime_type: str
     size_bytes: int = Field(sa_column=Column(BigInteger, nullable=False))
     page_count: int | None = None
-    status: FileStatus = Field(default=FileStatus.UPLOADED)
+    # values_callable, because SQLAlchemy names a PostgreSQL enum's members after the
+    # Python member NAMES by default -- 'READY', not 'ready'. The ERD, the API contract
+    # (FileRead's Literal) and the JSON on the wire all say lowercase, so without this the
+    # database is the one place holding a different spelling. Nothing breaks through the
+    # ORM, which maps both ways silently; what breaks is every hand-written query, and
+    # R19's CHECK (is_active implies status = 'ready') would simply never be true.
+    # Free to fix now, an ALTER TYPE once there is data.
+    status: FileStatus = Field(
+        default=FileStatus.UPLOADED,
+        sa_column=Column(
+            SAEnum(FileStatus, values_callable=_enum_values, name="filestatus"),
+            nullable=False,
+        ),
+    )
     error_message: str | None = None
     uploaded_at: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
     indexed_at: datetime | None = Field(
@@ -57,7 +80,7 @@ class FileRead(SQLModel):
     """Outbound shape for a file."""
 
     id: UUID
-    course_id: UUID
+    folder_id: UUID
     filename: str
     storage_key: str
     sha256: str | None = None

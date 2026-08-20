@@ -39,6 +39,15 @@ class Chunk(Base):
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    # Which run produced this chunk. Held back until 20 Aug only because a
+    # foreign key to a table with no model breaks mapper configuration for the
+    # whole app -- AI-2 had it right in 5f6bc15 and lost it to a merge. It is
+    # what R5 constrains retrieval by (two models at the same width produce
+    # incomparable vectors) and what R18's UNIQUE (ingestion_run_id, chunk_index)
+    # attaches to.
+    ingestion_run_id: Mapped[UUID] = mapped_column(
+        ForeignKey("ingestion_run.id", ondelete="CASCADE")
+    )
     file_id: Mapped[UUID] = mapped_column(ForeignKey("file.id", ondelete="CASCADE"))
     # Denormalised on purpose: this is the filter in front of the HNSW scan.
     # Without it, scoping by course needs chunk -> file -> course, and that
@@ -63,6 +72,11 @@ class Chunk(Base):
 
 
 class ChunkCreate(BaseModel):  # 描述 AI-2 切出来的“一块内容”应该包含哪些资料。
+    # Deliberately no ingestion_run_id and no course_id, though the Chunk table
+    # has both. A chunker is handed one file; it does not know which run it is
+    # part of, and it does not know the file's course. The processor knows both
+    # -- it opened the run, and it can reach the course through the file -- and
+    # fills them when it turns a ChunkCreate into a Chunk row.
     file_id: UUID
     chunk_index: int  # 它在文件中的顺序
     page_start: int | None = None
