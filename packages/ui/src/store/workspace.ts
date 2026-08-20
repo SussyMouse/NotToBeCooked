@@ -12,6 +12,10 @@
  */
 
 import { create } from "zustand"
+import {
+  loadPersistedWorkspace,
+  savePersistedWorkspace,
+} from "../lib/workspace-storage"
 
 export type CourseId = string
 export type FileId = string
@@ -24,6 +28,10 @@ export interface Tab {
   filename: string
   /** Set when the tab was opened from a citation; the viewer jumps here. */
   page: number | null
+  /** Preserved zoom percentage for this document tab. */
+  zoomLevel?: number
+  /** Preserved scroll position for this document tab. */
+  scrollPos?: number
 }
 
 /**
@@ -68,6 +76,11 @@ interface WorkspaceState {
   switchCourse: (courseId: CourseId) => void
   openTab: (courseId: CourseId, tab: Tab) => void
   closeTab: (courseId: CourseId, fileId: FileId) => void
+  updateTabViewState: (
+    courseId: CourseId,
+    fileId: FileId,
+    viewState: Partial<Pick<Tab, "page" | "zoomLevel" | "scrollPos">>
+  ) => void
   setActiveFile: (courseId: CourseId, fileId: FileId | null) => void
   setActiveConversation: (
     courseId: CourseId,
@@ -94,17 +107,45 @@ function withTab(ws: CourseWorkspace, tab: Tab): CourseWorkspace {
   const existing = ws.tabs.find((t) => t.fileId === tab.fileId)
   const tabs = existing
     ? ws.tabs.map((t) =>
-        t.fileId === tab.fileId ? { ...t, page: tab.page ?? t.page } : t
+        t.fileId === tab.fileId
+          ? {
+              ...t,
+              page: tab.page ?? t.page ?? 1,
+              zoomLevel: tab.zoomLevel ?? t.zoomLevel ?? 100,
+              scrollPos: tab.scrollPos ?? t.scrollPos ?? 0,
+            }
+          : t
       )
-    : [...ws.tabs, tab]
+    : [
+        ...ws.tabs,
+        {
+          ...tab,
+          page: tab.page ?? 1,
+          zoomLevel: tab.zoomLevel ?? 100,
+          scrollPos: tab.scrollPos ?? 0,
+        },
+      ]
   return { ...ws, tabs, activeFileId: tab.fileId }
+}
+
+// Hydrate from localStorage if available
+const persisted = loadPersistedWorkspace()
+const initialByCourse: Record<CourseId, CourseWorkspace> = {}
+if (persisted?.byCourse) {
+  for (const [cId, data] of Object.entries(persisted.byCourse)) {
+    initialByCourse[cId] = {
+      tabs: data.tabs || [],
+      activeFileId: data.activeFileId ?? null,
+      activeConversationId: null,
+    }
+  }
 }
 
 export const useWorkspace = create<WorkspaceState>((set) => ({
   activeYear: null,
   activeSemester: null,
-  activeCourseId: null,
-  byCourse: {},
+  activeCourseId: persisted?.activeCourseId ?? null,
+  byCourse: initialByCourse,
   mentionedFileIds: [],
 
   setScope: (year, semester) =>
@@ -144,6 +185,21 @@ export const useWorkspace = create<WorkspaceState>((set) => ({
           : ws.activeFileId
       return {
         byCourse: { ...s.byCourse, [courseId]: { ...ws, tabs, activeFileId } },
+      }
+    }),
+
+  updateTabViewState: (courseId, fileId, viewState) =>
+    set((s) => {
+      const ws = s.byCourse[courseId]
+      if (!ws) return s
+      const tabs = ws.tabs.map((t) =>
+        t.fileId === fileId ? { ...t, ...viewState } : t
+      )
+      return {
+        byCourse: {
+          ...s.byCourse,
+          [courseId]: { ...ws, tabs },
+        },
       }
     }),
 
@@ -192,6 +248,11 @@ export const useWorkspace = create<WorkspaceState>((set) => ({
       },
     })),
 }))
+
+// Automatically sync updates to localStorage
+useWorkspace.subscribe((state) => {
+  savePersistedWorkspace(state.activeCourseId, state.byCourse)
+})
 
 /**
  * The bridge to the C4 contract.

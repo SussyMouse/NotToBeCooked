@@ -7,13 +7,20 @@ interface FileItemProps {
   onOpenFile: (file: MockDocumentFile) => void
 }
 
-function getFileExtension(filename: string): string {
+export function getFileExtension(filename: string): string {
   const parts = filename.split(".")
   return parts.length > 1 ? parts.pop()!.toLowerCase() : ""
 }
 
-function FileIcon({ filename }: { filename: string }) {
+export function FileIcon({
+  filename,
+  className,
+}: {
+  filename: string
+  className?: string
+}) {
   const ext = getFileExtension(filename)
+  const defaultClasses = className || "h-4.5 w-4.5 shrink-0"
 
   switch (ext) {
     case "pdf":
@@ -21,7 +28,7 @@ function FileIcon({ filename }: { filename: string }) {
         <svg
           viewBox="0 0 16 16"
           fill="none"
-          className="h-4.5 w-4.5 shrink-0 text-red-400/90"
+          className={`${defaultClasses} text-red-400/90`}
         >
           <path
             d="M4 2h5.5L13 5.5V14H4V2z"
@@ -57,7 +64,7 @@ function FileIcon({ filename }: { filename: string }) {
         <svg
           viewBox="0 0 16 16"
           fill="none"
-          className="h-4.5 w-4.5 shrink-0 text-blue-400/90"
+          className={`${defaultClasses} text-blue-400/90`}
         >
           <path
             d="M4 2h5.5L13 5.5V14H4V2z"
@@ -81,7 +88,7 @@ function FileIcon({ filename }: { filename: string }) {
         <svg
           viewBox="0 0 16 16"
           fill="none"
-          className="h-4.5 w-4.5 shrink-0 text-sky-400/90"
+          className={`${defaultClasses} text-sky-400/90`}
         >
           <path
             d="M4 2h5.5L13 5.5V14H4V2z"
@@ -109,7 +116,7 @@ function FileIcon({ filename }: { filename: string }) {
         <svg
           viewBox="0 0 16 16"
           fill="none"
-          className="h-4.5 w-4.5 shrink-0 text-amber-400/90"
+          className={`${defaultClasses} text-amber-400/90`}
         >
           <path
             d="M4 2h5.5L13 5.5V14H4V2z"
@@ -138,7 +145,7 @@ function FileIcon({ filename }: { filename: string }) {
         <svg
           viewBox="0 0 16 16"
           fill="none"
-          className="h-4.5 w-4.5 shrink-0 text-emerald-400/90"
+          className={`${defaultClasses} text-emerald-400/90`}
         >
           <path
             d="M4 2h5.5L13 5.5V14H4V2z"
@@ -165,7 +172,7 @@ function FileIcon({ filename }: { filename: string }) {
         <svg
           viewBox="0 0 16 16"
           fill="none"
-          className="h-4.5 w-4.5 shrink-0 text-teal-400/90"
+          className={`${defaultClasses} text-teal-400/90`}
         >
           <path
             d="M4 2h5.5L13 5.5V14H4V2z"
@@ -189,7 +196,7 @@ function FileIcon({ filename }: { filename: string }) {
         <svg
           viewBox="0 0 16 16"
           fill="none"
-          className="h-4.5 w-4.5 shrink-0 text-(--tx-faint,#5C6976) group-hover:text-(--acc,#52A8EA)"
+          className={`${defaultClasses} text-(--tx-faint,#5C6976)`}
         >
           <path
             d="M4 2h5.5L13 5.5V14H4V2z"

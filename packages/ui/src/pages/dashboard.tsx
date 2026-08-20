@@ -11,6 +11,7 @@ import { TopBar } from "../components/topbar/TopBar"
 import { FileExplorer } from "../components/explorer/FileExplorer"
 import { RoadmapModal } from "../components/roadmap/RoadmapModal"
 import { UploadModal } from "../components/upload/UploadModal"
+import { TabBar } from "../components/tabs"
 import type { MockCourse, MockDocumentFile } from "../types/course"
 
 export interface DashboardPageProps {
@@ -116,7 +117,7 @@ const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
   "c2020000-0000-4000-8000-000000000202": [
     {
       id: "f2020004-0000-4000-8000-000000000004",
-      name: "Lecture 4 - Architectural Patterns.pdf",
+      name: "Lecture 4 - Architectural Patterns & Component Decoupling.pdf",
       category: "Lecture Decks",
       totalPages: 32,
       uploadedAt: "2 days ago",
@@ -128,32 +129,71 @@ const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       },
     },
     {
+      id: "f2020005-0000-4000-8000-000000000005",
+      name: "Lecture 5 - Advanced Distributed Systems, Consensus Protocols & Raft Architecture (Spring 2026 Comprehensive Edition).pdf",
+      category: "Lecture Decks",
+      totalPages: 56,
+      uploadedAt: "Yesterday",
+      size: "6.8 MB",
+      contentByPage: {
+        1: "Lecture 5: Distributed Consensus and Fault Tolerance\n\nKey Topics:\n- The CAP Theorem in modern cloud deployments\n- Leader election and log replication with Raft\n- Byzantine Fault Tolerance (BFT) fundamentals",
+        12: "Raft Leader Election:\nFollowers increment their term and transition to candidate state if no heartbeat is received within the randomized election timeout window.",
+        24: "Log Replication & Safety Invariants:\nOnce an entry is committed by a majority of cluster nodes, it is guaranteed to survive subsequent leader failovers.",
+        48: "Network Partition Scenarios (Split-Brain):\nHow quorum consensus guarantees that a minority partition cannot commit writes independently.",
+      },
+    },
+    {
       id: "f2020001-0000-4000-8000-000000000001",
-      name: "Lecture 1 - SOLID Principles & OOP.pdf",
+      name: "Lecture 1 - SOLID Principles & OOP Fundamentals.pdf",
       category: "Lecture Decks",
       totalPages: 24,
       uploadedAt: "1 week ago",
       size: "1.8 MB",
       contentByPage: {
-        1: "Lecture 1: SOLID Principles\n\nSingle Responsibility, Open-Closed, Liskov Substitution, Interface Segregation, Dependency Inversion.",
+        1: "Lecture 1: SOLID Principles & Object-Oriented Design\n\nSingle Responsibility, Open-Closed, Liskov Substitution, Interface Segregation, Dependency Inversion.",
+        5: "Single Responsibility Principle (SRP):\nA module or class should have one, and only one, reason to change.",
+        15: "Liskov Substitution Principle (LSP):\nFunctions that use pointers or references to base classes must be able to use objects of derived classes without knowing it.",
+      },
+    },
+    {
+      id: "f2020002-0000-4000-8000-000000000020",
+      name: "Lecture 2 - Object-Oriented Domain Modeling, UML Class Diagrams & Design Heuristics.pdf",
+      category: "Lecture Decks",
+      totalPages: 28,
+      uploadedAt: "6 days ago",
+      size: "2.1 MB",
+      contentByPage: {
+        1: "Lecture 2: Domain Modeling & UML Design\n\nRepresenting entity relationships, aggregation vs composition, and state machine transitions.",
       },
     },
     {
       id: "f2020003-0000-4000-8000-000000000003",
-      name: "Lab 3 - State Management & Hooks.pdf",
+      name: "Lab 3 - State Management & Reactive UI Hooks.pdf",
       category: "Lab Handouts",
-      totalPages: 6,
+      totalPages: 14,
       uploadedAt: "3 days ago",
-      size: "820 KB",
+      size: "1.2 MB",
       contentByPage: {
         1: "Lab 3 Instructions: Integrating Zustand with React\n\nTask: Build a multi-pane layout syncing tab state across separate component trees.",
+        4: "Exercise 2: Fine-Grained Selectors and Memoization\nEnsure that active document switching does not trigger re-renders in unmounted sidebar components.",
+      },
+    },
+    {
+      id: "f2020004-0000-4000-8000-000000000040",
+      name: "Lab 4 - Full-Stack Concurrent State Synchronization & Optimistic UI Updates in Distributed React Applications.pdf",
+      category: "Lab Handouts",
+      totalPages: 18,
+      uploadedAt: "2 days ago",
+      size: "1.9 MB",
+      contentByPage: {
+        1: "Lab 4: Optimistic Concurrency and Conflict Resolution\n\nBuilding responsive UI states with rollback mechanisms when network requests fail.",
       },
     },
     {
       id: "f2020002-0000-4000-8000-000000000002",
-      name: "Tutorial 1 - Component Testing & Mocks.pdf",
+      name: "Tutorial 1 - Component Testing & Mocking Frameworks.pdf",
       category: "Tutorials & PYQs",
-      totalPages: 8,
+      totalPages: 10,
       uploadedAt: "5 days ago",
       size: "1.1 MB",
       contentByPage: {
@@ -161,20 +201,53 @@ const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       },
     },
     {
-      id: "f2020025-0000-4000-8000-000000000025",
-      name: "Midterm Exam 2025 Solutions.pdf",
+      id: "f2020003-0000-4000-8000-000000000030",
+      name: "Tutorial 3 - Microservices Decomposition, Domain-Driven Design (DDD) Bounded Contexts & Event Sourcing Case Studies.pdf",
       category: "Tutorials & PYQs",
-      totalPages: 12,
+      totalPages: 22,
+      uploadedAt: "3 days ago",
+      size: "3.4 MB",
+      contentByPage: {
+        1: "Tutorial 3: DDD Bounded Contexts & CQRS\n\nCase study on breaking down monolithic architectures into decoupled microservices.",
+      },
+    },
+    {
+      id: "f2020025-0000-4000-8000-000000000025",
+      name: "Midterm Examination 2025 Comprehensive Solutions & Examiner Commentary.pdf",
+      category: "Tutorials & PYQs",
+      totalPages: 20,
       uploadedAt: "2 weeks ago",
-      size: "3.2 MB",
+      size: "4.2 MB",
+      contentByPage: {
+        1: "CS202 Midterm Examination 2025 — Official Solutions\n\nSection A: Multiple Choice Questions\nSection B: Architecture & Design Pattern Problems",
+      },
+    },
+    {
+      id: "f2020099-0000-4000-8000-000000000099",
+      name: "Past Year Final Examination 2023-2024 Semester 2 With Detailed Worked Solutions.pdf",
+      category: "Tutorials & PYQs",
+      totalPages: 36,
+      uploadedAt: "1 month ago",
+      size: "5.1 MB",
     },
     {
       id: "f2020000-0000-4000-8000-000000000000",
-      name: "Course Planner & Syllabus 2026.pdf",
+      name: "Course Planner, Learning Outcomes & Syllabus 2026.pdf",
       category: "Course Planner",
-      totalPages: 4,
+      totalPages: 6,
       uploadedAt: "1 month ago",
-      size: "450 KB",
+      size: "620 KB",
+      contentByPage: {
+        1: "CS202 Software Engineering (AY2025/2026 Semester 2)\n\nInstructor: Prof. Alan Turing\nPrerequisites: CS101, CS102",
+      },
+    },
+    {
+      id: "f2020088-0000-4000-8000-000000000088",
+      name: "Software Engineering Capstone Team Project Specification Guidelines & Grading Rubric (v3.4 Final Release).pdf",
+      category: "Course Planner",
+      totalPages: 44,
+      uploadedAt: "3 weeks ago",
+      size: "4.8 MB",
     },
   ],
   "c2100000-0000-4000-8000-000000000210": [
@@ -254,6 +327,8 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     activeCourseWorkspace?.activeFileId ?? (tabs[0]?.fileId || null)
   const openTab = useWorkspace((s) => s.openTab)
   const closeTab = useWorkspace((s) => s.closeTab)
+  const setActiveFile = useWorkspace((s) => s.setActiveFile)
+  const updateTabViewState = useWorkspace((s) => s.updateTabViewState)
   const openCitation = useWorkspace((s) => s.openCitation)
 
   // Chat Session Hook
@@ -273,8 +348,6 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   const [selectedCitation, setSelectedCitation] = useState<CitationItem | null>(
     null
   )
-  const [pageOverride, setPageOverride] = useState<number | null>(null)
-  const [zoomLevel, setZoomLevel] = useState<number>(100)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isWorkspaceFullscreen, setIsWorkspaceFullscreen] =
     useState<boolean>(false)
@@ -329,7 +402,9 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     return allFiles.find((f) => f.id === activeFileId) || null
   }, [allFiles, activeFileId])
 
-  const activePage = pageOverride ?? activeTab?.page ?? 1
+  // Individual per-tab view state
+  const activePage = activeTab?.page ?? 1
+  const activeZoom = activeTab?.zoomLevel ?? 100
 
   // Roadmap calculations (from workspace.html)
   const courseRoadmap = useMemo(() => {
@@ -383,9 +458,8 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     openTab(activeCourseId, {
       fileId: file.id,
       filename: file.name,
-      page: 1,
+      page: null,
     })
-    setPageOverride(1)
     setSelectedCitation(null)
   }
 
@@ -397,7 +471,6 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     }
 
     openCitation(activeCourseId, cite.f, targetFile.name, cite.p)
-    setPageOverride(cite.p || 1)
   }
 
   const handleSendMessage = async (text: string) => {
@@ -428,7 +501,6 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
       filename: targetFile?.name || fileId,
       page,
     })
-    setPageOverride(page)
   }
 
   const handleOpenBatchUpload = () => {
@@ -490,91 +562,50 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
           {/* Center Workspace: Tabs & Document Viewer */}
           <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-(--bg-canvas,#161F29)">
             {/* Tabs Bar */}
-            {tabs.length > 0 && (
-              <div className="flex h-10 flex-none scrollbar-none items-center justify-between overflow-x-auto border-b border-(--line,#25313E) bg-(--bg-bar,#101821) px-2">
-                <div className="flex items-center gap-1">
-                  {tabs.map((tab) => {
-                    const isActive = tab.fileId === activeFileId
-                    return (
-                      <div
-                        key={tab.fileId}
-                        onClick={() => openTab(activeCourseId, tab)}
-                        className={`group flex cursor-pointer items-center gap-2 rounded-t-md px-3.5 py-2 text-xs transition-colors ${
-                          isActive
-                            ? "border-t-2 border-(--acc,#52A8EA) bg-(--bg-panel,#121A23) font-medium text-(--tx-strong,#EDF2F6)"
-                            : "bg-transparent text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040)/40 hover:text-(--tx,#DCE3EA)"
-                        }`}
-                      >
-                        <svg
-                          width="13"
-                          height="13"
-                          viewBox="0 0 16 16"
-                          fill="none"
-                          className="shrink-0 text-(--tx-faint,#5C6976)"
-                        >
-                          <path
-                            d="M4 2h5.5L13 5.5V14H4V2z"
-                            stroke="currentColor"
-                            strokeWidth="1.2"
-                          />
-                        </svg>
-                        <span className="truncate">{tab.filename}</span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            closeTab(activeCourseId, tab.fileId)
-                          }}
-                          className="rounded p-0.5 text-(--tx-faint,#5C6976) hover:bg-(--line,#25313E) hover:text-white"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {/* Tabset Actions & Fullscreen Toggle (Icon Only) */}
-                <div className="flex items-center gap-1.5 pr-1">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setIsWorkspaceFullscreen(!isWorkspaceFullscreen)
-                    }
-                    title={
-                      isWorkspaceFullscreen
-                        ? "Restore normal view"
-                        : "Full screen workspace"
-                    }
-                    className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 transition-colors ${
-                      isWorkspaceFullscreen
-                        ? "bg-(--acc,#52A8EA)/15 text-(--acc,#52A8EA)"
-                        : "text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040) hover:text-white"
-                    }`}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                      {isWorkspaceFullscreen ? (
-                        <path
-                          d="M6 2v4H2M10 2v4h4M6 14v-4H2M10 14v-4h4"
-                          stroke="currentColor"
-                          strokeWidth="1.4"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      ) : (
-                        <path
-                          d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"
-                          stroke="currentColor"
-                          strokeWidth="1.4"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      )}
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            )}
+            <TabBar
+              tabs={tabs}
+              activeFileId={activeFileId}
+              onSelectTab={(tab) => setActiveFile(activeCourseId, tab.fileId)}
+              onCloseTab={(fileId) => closeTab(activeCourseId, fileId)}
+              rightActions={
+                <button
+                  type="button"
+                  onClick={() =>
+                    setIsWorkspaceFullscreen(!isWorkspaceFullscreen)
+                  }
+                  title={
+                    isWorkspaceFullscreen
+                      ? "Restore normal view"
+                      : "Full screen workspace"
+                  }
+                  className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 transition-colors ${
+                    isWorkspaceFullscreen
+                      ? "bg-(--acc,#52A8EA)/15 text-(--acc,#52A8EA)"
+                      : "text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040) hover:text-white"
+                  }`}
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                    {isWorkspaceFullscreen ? (
+                      <path
+                        d="M6 2v4H2M10 2v4h4M6 14v-4H2M10 14v-4h4"
+                        stroke="currentColor"
+                        strokeWidth="1.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    ) : (
+                      <path
+                        d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"
+                        stroke="currentColor"
+                        strokeWidth="1.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    )}
+                  </svg>
+                </button>
+              }
+            />
 
             {/* Document Viewer or Minimal Empty State */}
             {activeDocument ? (
@@ -597,9 +628,13 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
                       <button
                         type="button"
                         disabled={activePage <= 1}
-                        onClick={() =>
-                          setPageOverride(Math.max(1, activePage - 1))
-                        }
+                        onClick={() => {
+                          if (activeFileId) {
+                            updateTabViewState(activeCourseId, activeFileId, {
+                              page: Math.max(1, activePage - 1),
+                            })
+                          }
+                        }}
                         className="cursor-pointer text-(--tx-dim,#8B98A7) hover:text-white disabled:opacity-40"
                       >
                         ◀
@@ -610,11 +645,16 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
                       <button
                         type="button"
                         disabled={activePage >= activeDocument.totalPages}
-                        onClick={() =>
-                          setPageOverride(
-                            Math.min(activeDocument.totalPages, activePage + 1)
-                          )
-                        }
+                        onClick={() => {
+                          if (activeFileId) {
+                            updateTabViewState(activeCourseId, activeFileId, {
+                              page: Math.min(
+                                activeDocument.totalPages,
+                                activePage + 1
+                              ),
+                            })
+                          }
+                        }}
                         className="cursor-pointer text-(--tx-dim,#8B98A7) hover:text-white disabled:opacity-40"
                       >
                         ▶
@@ -624,21 +664,29 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
                     <div className="flex items-center gap-1.5 rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2.5 py-1 text-xs">
                       <button
                         type="button"
-                        onClick={() =>
-                          setZoomLevel((z) => Math.max(50, z - 10))
-                        }
+                        onClick={() => {
+                          if (activeFileId) {
+                            updateTabViewState(activeCourseId, activeFileId, {
+                              zoomLevel: Math.max(50, activeZoom - 10),
+                            })
+                          }
+                        }}
                         className="cursor-pointer text-(--tx-dim,#8B98A7) hover:text-white"
                       >
                         -
                       </button>
                       <span className="px-1 font-mono text-xs">
-                        {zoomLevel}%
+                        {activeZoom}%
                       </span>
                       <button
                         type="button"
-                        onClick={() =>
-                          setZoomLevel((z) => Math.min(150, z + 10))
-                        }
+                        onClick={() => {
+                          if (activeFileId) {
+                            updateTabViewState(activeCourseId, activeFileId, {
+                              zoomLevel: Math.min(150, activeZoom + 10),
+                            })
+                          }
+                        }}
                         className="cursor-pointer text-(--tx-dim,#8B98A7) hover:text-white"
                       >
                         +
@@ -672,7 +720,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
                   {/* Direct Document Reading Content Area */}
                   <div
                     style={{
-                      transform: `scale(${zoomLevel / 100})`,
+                      transform: `scale(${activeZoom / 100})`,
                       transformOrigin: "top left",
                     }}
                     className="flex flex-1 flex-col gap-6 text-sm leading-relaxed text-(--tx,#DCE3EA) transition-transform duration-150"

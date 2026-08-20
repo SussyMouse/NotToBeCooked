@@ -69,7 +69,7 @@ export function FolderItem({
 
       {/* Children list (FileItems) with exact pixel alignment matching folder icon */}
       {!isCollapsed && (
-        <div className="-mt-0.5 ml-[13px] flex flex-col gap-0.5 border-l border-(--line-soft,#1B2530) pl-3">
+        <div className="-mt-0.5 ml-3.25 flex flex-col gap-0.5 border-l border-(--line-soft,#1B2530) pl-3">
           {children}
         </div>
       )}
