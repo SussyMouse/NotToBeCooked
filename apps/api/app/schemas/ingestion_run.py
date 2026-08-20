@@ -17,7 +17,16 @@ class IngestionRunStatus(StrEnum):
 
 
 class IngestionRun(SQLModel, table=True):
-    __tablename__ = "ingestion_run"  # pyright: ignore[reportAssignmentType]
+    # SQLModel declares __tablename__ as a descriptor, so assigning a plain string
+    # to it is an inconsistent override and every type checker says so in its own
+    # words. It cannot be dropped: SQLModel would default to "ingestionrun", and
+    # CHUNK's foreign key targets "ingestion_run.id". Rewriting it as a
+    # declared_attr was tried and is worse -- pyright then reports two errors
+    # instead of one and pyrefly still reports the override.
+    #
+    # Two named suppressions rather than a bare `# type: ignore`, so a genuinely
+    # new error on this line still surfaces.
+    __tablename__ = "ingestion_run"  # pyrefly: ignore[bad-override]  # pyright: ignore[reportAssignmentType]
 
     id: UUID | None = Field(
         default_factory=uuid4,
