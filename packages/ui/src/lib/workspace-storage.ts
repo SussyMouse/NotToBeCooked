@@ -8,8 +8,8 @@
 
 import type { CourseWorkspace, Tab } from "../store/workspace"
 
-const STORAGE_KEY = "ntbc_workspace_tabs_v1"
-const SCHEMA_VERSION = 1
+export const STORAGE_KEY = "ntbc_workspace_tabs_v1"
+export const SCHEMA_VERSION = 1
 
 export interface PersistedWorkspaceCourse {
   tabs: Tab[]
