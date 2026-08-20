@@ -66,6 +66,7 @@ def embed_query(query: str) -> list[float]:
     )
 
 
+
 def embed_text(texts: list[str]) -> list[list[float]]:
     """Used to build vector db with batch embeddings"""
     return (
@@ -80,6 +81,21 @@ def embed_text(texts: list[str]) -> list[list[float]]:
         )
         .tolist()
     )
+
+
+def get_tokenizer():
+    model = _get_model()
+    tokenizer = model.tokenizer
+    return tokenizer
+
+
+def count_token(text):
+    tokenizer = get_tokenizer()
+    token_ids = tokenizer.encode(
+        text,
+        add_special_tokens=False,
+    )
+    return len(token_ids)
 
 
 if __name__ == "__main__":

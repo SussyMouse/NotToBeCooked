@@ -20,9 +20,11 @@ dependencies = [
     "kernels>=0.16.0",
     "httpx>=0.28.1",
     "alembic>=1.19.1",
-    # Required by the jina embedding model's own custom_st.py, not by our code.
-    # Same constraint AI-2 already carries on bao-sheng (f60b48b), so the
-    # 22 Aug squash-merge sees an identical line rather than a conflict.
+    # Required by the jina embedding model's own custom_st.py, not by our code,
+    # which is why it was never declared. AI-2 hit the same requirement
+    # independently on his branch (f60b48b) when he needed the model's tokenizer
+    # for token counting -- both branches added this exact line, in different
+    # positions, and merging them conflicted. One line survives.
     "peft>=0.20.0",
 ]
 

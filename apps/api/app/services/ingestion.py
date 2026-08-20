@@ -1,4 +1,9 @@
+from uuid import uuid4
+
 from docling.document_converter import DocumentConverter
+
+from app.schemas.chunk import ChunkCreate
+from app.services.embeddings import count_token, get_tokenizer
 
 
 def ingest_document(file_path):
@@ -24,12 +29,12 @@ def extract_text(document):
             for provenance in document_item.prov:
                 pages.append(provenance.page_no)
 
-            page_number = min(pages)
+            page_start = min(pages)
             page_end = max(pages)
 
             item = {
                 "heading": current_heading,
-                "page_number": page_number,
+                "page_start": page_start,
                 "page_end": page_end,
                 "content": document_item.text,
             }
@@ -38,7 +43,87 @@ def extract_text(document):
     return extracted_items
 
 
+def split_long_text(text, max_token=500):
+    token_count = count_token(text)
+    if token_count <= max_token:
+        return [text]
+    else:
+        tokenizer = get_tokenizer()
+        encoded = tokenizer(text, add_special_tokens=False, return_offsets_mapping=True)
+        offsets = encoded["offset_mapping"]
+        splitting_point = offsets[max_token - 1][1]
+        first_part = text[:splitting_point]
+        second_part = text[splitting_point:]
+
+        return [first_part] + split_long_text(second_part, max_token)
+
+
+def create_chunk(extracted_items, file_id, max_token=350) -> list[ChunkCreate]:
+
+    chunks = []
+    heading = None  # 是旧箱子的 Introduction
+    page = []
+    content = []
+    total_token = 0
+
+    for item in extracted_items:
+        current_heading = item["heading"]  # 是刚读到的 Methods
+        current_content = item["content"]
+        pieces = split_long_text(current_content, max_token)
+
+        for piece in pieces:
+            token_count = count_token(piece)
+
+            if (content and total_token + token_count > max_token) or (
+                content and current_heading != heading
+            ):
+                join_content = " ".join(content)
+
+                chunk = ChunkCreate(
+                    chunk_index=len(chunks),
+                    heading=heading,
+                    page_start=min(page),
+                    page_end=max(page),
+                    content=join_content,
+                    file_id=file_id,
+                    token_count=count_token(join_content),
+                )
+
+                heading = None
+                page = []
+                content = []
+                total_token = 0
+
+                chunks.append(chunk)
+
+            if not content:
+                heading = current_heading
+
+            content.append(piece)
+            page.append(item["page_start"])
+            page.append(item["page_end"])
+            total_token += token_count
+
+    if content:
+        join_content = " ".join(content)
+
+        chunk = ChunkCreate(
+            chunk_index=len(chunks),
+            heading=heading,
+            page_start=min(page),
+            page_end=max(page),
+            content=join_content,
+            file_id=file_id,
+            token_count=count_token(join_content),
+        )
+
+        chunks.append(chunk)
+
+    return chunks
+
+
 def main() -> None:
+    """
     file_path = "https://arxiv.org/pdf/2408.09869"
     document = ingest_document(file_path)
     extracted_texts = extract_text(document)
@@ -59,72 +144,78 @@ def main() -> None:
     print("Combine content: ", chunk_content)
     print("Combined word count: ", len(chunk_content.split()))
 
-    chunks = []
-    current_pages = []
-    current_parts = []
-    current_chunk_heading = None
-    current_word_count = 0
-    max_word = 350
-
-    for item in extracted_texts:
-        content = item["content"]
-        item_heading = item["heading"]
-
-        words = content.split()
-        item_word_count = len(words)
-
-        too_large = current_parts and current_word_count + item_word_count > max_word
-
-        title_change = current_parts and item_heading != current_chunk_heading
-
-        if too_large or title_change:
-            chunk_content = " ".join(current_parts)
-            chunk = {
-                "chunk_index": len(chunks),
-                "heading": current_chunk_heading,
-                "page_number": min(current_pages),
-                "page_end": max(current_pages),
-                "content": chunk_content,
-                "word_count": len(chunk_content.split()),
-            }
-            chunks.append(chunk)
-
-            current_parts = []
-            current_pages = []
-            current_word_count = 0
-            current_chunk_heading = None
-
-        if not current_parts:
-            current_chunk_heading = item_heading
-
-        current_parts.append(content)
-        current_pages.append(item["page_number"])
-        current_pages.append(item["page_end"])
-        current_word_count = current_word_count + item_word_count
-
-    if current_parts:
-        chunk_content = " ".join(current_parts)
-        chunk = {
-            "chunk_index": len(chunks),
-            "heading": current_chunk_heading,
-            "page_number": min(current_pages),
-            "page_end": max(current_pages),
-            "content": chunk_content,
-            "word_count": len(chunk_content.split()),
-        }
-        chunks.append(chunk)
-
+    file_id = uuid4()
+    chunks = create_chunk(extracted_texts, file_id, max_token=350)
     print("Number of Chunks:", len(chunks))
-    print("First Chunk Index:", chunks[0]["chunk_index"])
-    print("First Chunk heading:", chunks[0]["heading"])
-    print("First Chunk Page Number", chunks[0]["page_number"])
-    print("First Chunk Page End:", chunks[0]["page_end"])
-    print("First Chunk Word Count:", chunks[0]["word_count"])
-    print("First Chunk Content:", chunks[0]["content"])
+    print("First chunk:", chunks[0])
+    print("Second chunk:", chunks[1])
+
+    text = "I love Python"
+    tokenizer = get_tokenizer()
+    encoded = tokenizer(text, add_special_tokens=False, return_offsets_mapping=True)
+    print(encoded["input_ids"])
+    print(encoded["offset_mapping"])
+
+    for start, end in encoded["offset_mapping"]:
+        print(text[start:end])
+
+    max_tokens = 2
+    offsets = encoded["offset_mapping"]
+
+    last_allocated_offset = offsets[max_tokens - 1]
+    cut_position = last_allocated_offset[1]
+    first_part = text[:cut_position]
+    second_part = text[cut_position:]
+
+    print("First part:", first_part)
+    print("Second part: ", second_part)
+    """
+    test_text = "I Love python. " * 100
+    parts = split_long_text(test_text, max_token=20)
+    print("Number of parts: ", len(parts))
+    for part in parts:
+        print("Token COunt for chunks:", count_token(part))
+    print("Content preserved: ", "".join(parts) == test_text)
+
+    test_items = [
+        {
+            "heading": "Test Heading",
+            "page_start": 1,
+            "page_end": 1,
+            "content": test_text,
+        }
+    ]
+    test_max_token = 20
+    rebuilt_text = ""
+    test_file_id = uuid4()
+
+    # ChunkCreate test_chunks
+    test_chunks = create_chunk(test_items, test_file_id, max_token=test_max_token)
+    print("Numbe of Chunks: ", len(test_chunks))
+    for chunk in test_chunks:
+        chunk_content = chunk.content
+        print("Token Number:", count_token(chunk_content))
+        print(count_token(chunk_content) <= test_max_token)
+        rebuilt_text += chunk_content
+
+    print("Content preserved: ", rebuilt_text == test_text)
+    print(type(test_chunks[0]))
 
 
 if __name__ == "__main__":
     main()
 
 
+# $env:DOCLING_INFERENCE_COMPILE_TORCH_MODELS="false"
 # uv run --directory apps/api python -m app.services.ingestion
+"""
+encoded             → 你的变量名，可以更换
+"input_ids"         → Hugging Face 规定的 key= 代表每个 token 在 tokenizer 字典里的编号。
+"attention_mask"    → Hugging Face 规定的 key=告诉模型哪些位置是真实内容，哪些位置只是为了对齐而补上的空位
+"offset_mapping"    → Hugging Face 规定的 key=代表每个 token 对应原文的字符范围
+里面的数字和位置     → tokenizer 根据输入动态生成
+
+input_ids       → token 是谁
+attention_mask  → token 要不要看
+offset_mapping  → token 在原文哪里
+"""
