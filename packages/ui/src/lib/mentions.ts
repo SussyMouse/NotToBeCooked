@@ -28,6 +28,11 @@ const MENTION_REGEX = /(@\[([^\]]+)\]|@([a-zA-Z0-9_\-.]+))/g
 
 /**
  * Extract raw mention label strings from prompt text and compute clean question.
+ *
+ * Implements Option B: Converts mention syntax like `@[Lecture 1 - SOLID.pdf]`
+ * to clean natural title text `"Lecture 1 - SOLID"` (stripping `@`, `[]`, and
+ * file extensions) so that semantic vector search preserves substantive nouns
+ * and topic keywords without query syntax noise.
  */
 export function parseMentions(promptText: string): {
   cleanQuestion: string
@@ -38,20 +43,21 @@ export function parseMentions(promptText: string): {
   }
 
   const labels: string[] = []
-  let match: RegExpExecArray | null
 
-  // Collect all mention labels
-  const regex = new RegExp(MENTION_REGEX.source, "g")
-  while ((match = regex.exec(promptText)) !== null) {
-    const label = match[2] || match[3]
-    if (label && label.trim()) {
-      labels.push(label.trim())
-    }
-  }
-
-  // Strip mention tags from text
+  // Replace each mention tag with a clean human-readable title
   const cleanQuestion = promptText
-    .replace(MENTION_REGEX, "")
+    .replace(MENTION_REGEX, (_fullMatch, _atomic, atomicName, inlineWord) => {
+      const rawName = (atomicName || inlineWord || "").trim()
+      if (rawName) {
+        labels.push(rawName)
+        // Clean out file extension (e.g. "Lecture 1.pdf" -> "Lecture 1")
+        const naturalTitle = rawName
+          .replace(/\.(pdf|docx?|pptx?|txt|md)$/i, "")
+          .trim()
+        return naturalTitle
+      }
+      return ""
+    })
     .replace(/\s+/g, " ")
     .trim()
 

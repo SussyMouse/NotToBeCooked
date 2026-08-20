@@ -14,6 +14,7 @@ export const SCHEMA_VERSION = 1
 export interface PersistedWorkspaceCourse {
   tabs: Tab[]
   activeFileId: string | null
+  activeConversationId?: string | null
 }
 
 export interface PersistedWorkspaceState {
@@ -80,13 +81,14 @@ export function savePersistedWorkspace(
 
   writeTimeout = setTimeout(() => {
     try {
-      // Only serialize tabs and activeFileId (keep conversations / mentions ephemeral)
+      // Serialize tabs, activeFileId, and activeConversationId (keep mentions ephemeral)
       const cleanByCourse: Record<string, PersistedWorkspaceCourse> = {}
       for (const [courseId, ws] of Object.entries(byCourse)) {
         if (ws && Array.isArray(ws.tabs)) {
           cleanByCourse[courseId] = {
             tabs: ws.tabs,
             activeFileId: ws.activeFileId ?? null,
+            activeConversationId: ws.activeConversationId ?? null,
           }
         }
       }

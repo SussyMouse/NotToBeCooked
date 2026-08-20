@@ -136,7 +136,7 @@ if (persisted?.byCourse) {
     initialByCourse[cId] = {
       tabs: data.tabs || [],
       activeFileId: data.activeFileId ?? null,
-      activeConversationId: null,
+      activeConversationId: data.activeConversationId ?? null,
     }
   }
 }

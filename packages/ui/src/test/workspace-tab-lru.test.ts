@@ -82,7 +82,7 @@ describe("Workspace Storage Layer", () => {
           },
         ],
         activeFileId: "f1",
-        activeConversationId: null,
+        activeConversationId: "conv-123",
       },
       cs210: {
         tabs: [
@@ -113,6 +113,7 @@ describe("Workspace Storage Layer", () => {
     assert.equal(parsed.byCourse.cs202.tabs.length, 2)
     assert.equal(parsed.byCourse.cs202.tabs[0].page, 3)
     assert.equal(parsed.byCourse.cs202.tabs[0].zoomLevel, 120)
+    assert.equal(parsed.byCourse.cs202.activeConversationId, "conv-123")
     assert.equal(parsed.byCourse.cs210.tabs[0].page, 8)
 
     // Read back via loadPersistedWorkspace
@@ -120,6 +121,7 @@ describe("Workspace Storage Layer", () => {
     assert.ok(loaded)
     assert.equal(loaded?.activeCourseId, "cs202")
     assert.equal(loaded?.byCourse.cs202.tabs[0].filename, "Lec1.pdf")
+    assert.equal(loaded?.byCourse.cs202.activeConversationId, "conv-123")
   })
 
   it("handles corrupted JSON gracefully without crashing", () => {

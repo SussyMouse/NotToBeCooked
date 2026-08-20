@@ -38,21 +38,27 @@ describe("Mention Parsing & Resolution Utility", () => {
       assert.deepEqual(result.mentionedLabels, [])
     })
 
-    it("extracts atomic @[Filename] tags and strips them from clean question", () => {
+    it("converts atomic @[Filename] tags to natural titles in clean question", () => {
       const result = parseMentions(
         "Explain QuickSort @[Lecture 4 - Architectural Patterns.pdf]"
       )
-      assert.equal(result.cleanQuestion, "Explain QuickSort")
+      assert.equal(
+        result.cleanQuestion,
+        "Explain QuickSort Lecture 4 - Architectural Patterns"
+      )
       assert.deepEqual(result.mentionedLabels, [
         "Lecture 4 - Architectural Patterns.pdf",
       ])
     })
 
-    it("extracts multiple atomic mentions and deduplicates labels", () => {
+    it("converts multiple atomic mentions into natural comparative question", () => {
       const result = parseMentions(
-        "Compare @[Lecture 4 - Architectural Patterns.pdf] with @[Lab 3 - State Management.pdf]"
+        "@[Lecture 4 - Architectural Patterns.pdf] vs @[Lab 3 - State Management.pdf] tell me their difference"
       )
-      assert.equal(result.cleanQuestion, "Compare with")
+      assert.equal(
+        result.cleanQuestion,
+        "Lecture 4 - Architectural Patterns vs Lab 3 - State Management tell me their difference"
+      )
       assert.deepEqual(result.mentionedLabels, [
         "Lecture 4 - Architectural Patterns.pdf",
         "Lab 3 - State Management.pdf",
@@ -61,7 +67,7 @@ describe("Mention Parsing & Resolution Utility", () => {
 
     it("handles standard @Word syntax", () => {
       const result = parseMentions("Summarize @Lecture4 for exam prep")
-      assert.equal(result.cleanQuestion, "Summarize for exam prep")
+      assert.equal(result.cleanQuestion, "Summarize Lecture4 for exam prep")
       assert.deepEqual(result.mentionedLabels, ["Lecture4"])
     })
   })
@@ -97,7 +103,10 @@ describe("Mention Parsing & Resolution Utility", () => {
         "Can you explain state management? @[Lab 3 - State Management.pdf]",
         MOCK_FILES
       )
-      assert.equal(result.cleanQuestion, "Can you explain state management?")
+      assert.equal(
+        result.cleanQuestion,
+        "Can you explain state management? Lab 3 - State Management"
+      )
       assert.deepEqual(result.fileIds, ["f202-lab3"])
       assert.deepEqual(result.mentionedLabels, [
         "Lab 3 - State Management.pdf",
