@@ -78,12 +78,14 @@ export const useChatSession = (courseId: string | null) => {
       citations: (msgRead.citations ?? []).map((rawCitation) => {
         const citation = rawCitation as Record<string, unknown>
         const pageNum = Number(citation.page ?? citation.page_start ?? 1)
-        const filename = typeof citation.filename === "string" ? citation.filename : "Document"
+        const filename =
+          typeof citation.filename === "string" ? citation.filename : "Document"
         return {
           f: String(citation.file_id ?? ""),
           p: pageNum,
           l: `${filename} · p.${pageNum}`,
-          quote: typeof citation.quote === "string" ? citation.quote : undefined,
+          quote:
+            typeof citation.quote === "string" ? citation.quote : undefined,
         }
       }),
     })

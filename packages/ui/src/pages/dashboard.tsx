@@ -6,7 +6,12 @@ import {
   selectActiveCourse,
 } from "../store/workspace"
 import { useChatSession } from "../hooks/useChatSession"
-import Chat, { type CitationItem, type ChatFile } from "../components/chat/Chat"
+import Chat, { type CitationItem } from "../components/chat/Chat"
+import { TopBar } from "../components/topbar/TopBar"
+import { FileExplorer } from "../components/explorer/FileExplorer"
+import { RoadmapModal } from "../components/roadmap/RoadmapModal"
+import { UploadModal } from "../components/upload/UploadModal"
+import type { MockCourse, MockDocumentFile } from "../types/course"
 
 export interface DashboardPageProps {
   platform?: "web" | "tauri"
@@ -15,22 +20,6 @@ export interface DashboardPageProps {
 // ---------------------------------------------------------------------------
 // Mock / Stub Course Catalog & File Repository for Development and Testing
 // ---------------------------------------------------------------------------
-interface MockCourse {
-  id: string
-  code: string
-  name: string
-  year: number
-  semester: number
-  description: string
-}
-
-interface MockDocumentFile extends ChatFile {
-  totalPages: number
-  uploadedAt: string
-  size: string
-  contentByPage?: Record<number, string>
-}
-
 const MOCK_COURSES: MockCourse[] = [
   {
     id: "c2020000-0000-4000-8000-000000000202",
@@ -38,8 +27,31 @@ const MOCK_COURSES: MockCourse[] = [
     name: "Software Engineering",
     year: 2,
     semester: 2,
+    week: 5,
+    weeks: 14,
+    target: "finish Lab 3 and read Lecture 4 before Friday",
     description:
       "Design patterns, architecture, agile methodologies, and testing.",
+    roadmap: [
+      { w: "Week 1", n: "Complexity analysis & asymptotic notation", s: 1 },
+      { w: "Week 2", n: "Cost models and empirical timing", s: 1 },
+      { w: "Week 3", n: "Arrays & dynamic arrays", s: 1 },
+      { w: "Week 4", n: "Linked lists, stacks & queues", s: 1 },
+      { w: "Week 4", n: "Tutorial 1 submission", s: 1 },
+      {
+        w: "Week 5",
+        n: "Sorting — QuickSort, MergeSort, HeapSort",
+        s: 0,
+        now: true,
+      },
+      { w: "Week 5", n: "Lab 3 — State Management & Hooks", s: 0, now: true },
+      { w: "Week 6", n: "Binary search trees & self-balancing trees", s: 0 },
+      { w: "Week 7", n: "Heaps & priority queues", s: 0 },
+      { w: "Week 8", n: "Midterm examination", s: 0, tag: "exam" },
+      { w: "Week 9", n: "Graphs & topological traversal", s: 0 },
+      { w: "Week 11", n: "Hashing & collision resolution", s: 0 },
+      { w: "Week 14", n: "Final examination", s: 0, tag: "exam" },
+    ],
   },
   {
     id: "c2100000-0000-4000-8000-000000000210",
@@ -47,7 +59,19 @@ const MOCK_COURSES: MockCourse[] = [
     name: "Data Structures & Algorithms",
     year: 2,
     semester: 2,
+    week: 5,
+    weeks: 14,
+    target: "submit Lab 2 and start the graph algorithms problem set",
     description: "Trees, graphs, dynamic programming, and complexity analysis.",
+    roadmap: [
+      { w: "Week 1", n: "Relational model & key constraints", s: 1 },
+      { w: "Week 2", n: "Relational algebra & calculus", s: 1 },
+      { w: "Week 3", n: "Lab 1 — Red-Black trees implementation", s: 1 },
+      { w: "Week 5", n: "Graph algorithms & network flow", s: 0, now: true },
+      { w: "Week 7", n: "Project schema design draft", s: 0 },
+      { w: "Week 9", n: "B+ Trees & indexing structures", s: 0 },
+      { w: "Week 14", n: "Final examination", s: 0, tag: "exam" },
+    ],
   },
   {
     id: "a2010000-0000-4000-8000-000000000201",
@@ -55,7 +79,18 @@ const MOCK_COURSES: MockCourse[] = [
     name: "Linear Algebra & Probability",
     year: 2,
     semester: 1,
+    week: 4,
+    weeks: 14,
+    target: "complete Problem Set 2 on eigenvalues before tutorial",
     description: "Vector spaces, eigenvalues, SVD, and Bayesian inference.",
+    roadmap: [
+      { w: "Week 1", n: "Vector spaces and subspaces", s: 1 },
+      { w: "Week 2", n: "Linear independence and basis", s: 1 },
+      { w: "Week 3", n: "Eigenvalues & diagonalization", s: 1 },
+      { w: "Week 4", n: "Singular Value Decomposition (SVD)", s: 0, now: true },
+      { w: "Week 8", n: "Midterm examination", s: 0, tag: "exam" },
+      { w: "Week 14", n: "Final examination", s: 0, tag: "exam" },
+    ],
   },
   {
     id: "c1010000-0000-4000-8000-000000000101",
@@ -63,7 +98,17 @@ const MOCK_COURSES: MockCourse[] = [
     name: "Computer Systems & Architecture",
     year: 1,
     semester: 1,
+    week: 6,
+    weeks: 14,
+    target: "review cache hierarchy and practice assembly tracing",
     description: "Digital logic, CPU pipeline, cache hierarchy, and assembly.",
+    roadmap: [
+      { w: "Week 1", n: "Digital logic gates & boolean algebra", s: 1 },
+      { w: "Week 2", n: "CPU pipelines & registers", s: 1 },
+      { w: "Week 3", n: "Cache hierarchy & memory mapping", s: 1 },
+      { w: "Week 6", n: "Assembly language instructions", s: 0, now: true },
+      { w: "Week 14", n: "Final examination", s: 0, tag: "exam" },
+    ],
   },
 ]
 
@@ -196,7 +241,7 @@ const CATEGORIES = [
   "Tutorials & PYQs",
 ]
 
-export function DashboardPage({ platform = "web" }: DashboardPageProps) {
+export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   const { user, logout } = useAuth()
 
   // Workspace Zustand store
@@ -209,7 +254,6 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
     activeCourseWorkspace?.activeFileId ?? (tabs[0]?.fileId || null)
   const openTab = useWorkspace((s) => s.openTab)
   const closeTab = useWorkspace((s) => s.closeTab)
-  const setActiveFile = useWorkspace((s) => s.setActiveFile)
   const openCitation = useWorkspace((s) => s.openCitation)
 
   // Chat Session Hook
@@ -229,10 +273,20 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
   const [selectedCitation, setSelectedCitation] = useState<CitationItem | null>(
     null
   )
-  const [searchQuery, setSearchQuery] = useState("")
   const [pageOverride, setPageOverride] = useState<number | null>(null)
   const [zoomLevel, setZoomLevel] = useState<number>(100)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+
+  // Modals state (Roadmap & Upload)
+  const [isRoadmapOpen, setIsRoadmapOpen] = useState(false)
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
+  const [uploadCategory, setUploadCategory] = useState<string>("Lecture Decks")
+  const [isDirectFolderUpload, setIsDirectFolderUpload] = useState(false)
+
+  // Interactive Roadmap Milestone check state
+  const [milestoneOverrides, setMilestoneOverrides] = useState<
+    Record<string, Record<number, number>>
+  >({})
 
   // Initialize course if not selected
   useEffect(() => {
@@ -258,17 +312,6 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
     )
   }, [currentCourse])
 
-  // Filtered files in explorer
-  const filteredFiles = useMemo(() => {
-    if (!searchQuery.trim()) return courseFiles
-    const q = searchQuery.toLowerCase()
-    return courseFiles.filter(
-      (f) =>
-        f.name.toLowerCase().includes(q) ||
-        (f.category && f.category.toLowerCase().includes(q))
-    )
-  }, [courseFiles, searchQuery])
-
   // Active opened document
   const activeTab = useMemo(() => {
     return tabs.find((t) => t.fileId === activeFileId) || null
@@ -280,6 +323,47 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
   }, [courseFiles, activeFileId])
 
   const activePage = pageOverride ?? activeTab?.page ?? 1
+
+  // Roadmap calculations (from workspace.html)
+  const courseRoadmap = useMemo(() => {
+    const base = currentCourse.roadmap
+    const overrides = milestoneOverrides[currentCourse.id] || {}
+    return base.map((m, idx) => ({
+      ...m,
+      s: overrides[idx] !== undefined ? overrides[idx]! : m.s,
+    }))
+  }, [currentCourse, milestoneOverrides])
+
+  const roadmapStats = useMemo(() => {
+    const total = courseRoadmap.length
+    const done = courseRoadmap.filter((m) => m.s === 1).length
+    const pct = total ? Math.round((done / total) * 100) : 0
+    const nowItem =
+      courseRoadmap.find((m) => m.now && m.s === 0) ||
+      courseRoadmap.find((m) => m.s === 0)
+    const nextText = total
+      ? nowItem
+        ? nowItem.n.split("—")[0]?.trim() || nowItem.n
+        : "all clear"
+      : "no milestones yet"
+
+    return { done, total, pct, nextText }
+  }, [courseRoadmap])
+
+  const toggleMilestone = (idx: number) => {
+    setMilestoneOverrides((prev) => {
+      const courseMap = { ...(prev[currentCourse.id] || {}) }
+      const currentVal =
+        courseMap[idx] !== undefined
+          ? courseMap[idx]
+          : currentCourse.roadmap[idx]?.s || 0
+      courseMap[idx] = currentVal === 1 ? 0 : 1
+      return {
+        ...prev,
+        [currentCourse.id]: courseMap,
+      }
+    })
+  }
 
   const showToast = (msg: string) => {
     setToastMessage(msg)
@@ -324,7 +408,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
         }
       }
     } catch {
-      // Fallback is handled inside Chat component when undefined is returned
+      // Fallback handled in Chat component
     }
   }
 
@@ -338,6 +422,20 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
     setPageOverride(page)
   }
 
+  const handleOpenBatchUpload = () => {
+    setUploadCategory("Lecture Decks")
+    setIsDirectFolderUpload(false)
+    setIsUploadModalOpen(true)
+  }
+
+  const handleOpenDirectFolderUpload = (category: string) => {
+    setUploadCategory(category)
+    setIsDirectFolderUpload(true)
+    setIsUploadModalOpen(true)
+  }
+
+  const openedFileIds = useMemo(() => tabs.map((t) => t.fileId), [tabs])
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-(--bg-canvas,#161F29) font-sans text-(--tx,#DCE3EA) select-none">
       {/* Toast Notification */}
@@ -350,269 +448,120 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
 
       {/* Main Container */}
       <div className="flex h-full min-w-0 flex-1 flex-col">
-        {/* Top Navbar (F1) */}
-        <header className="z-10 flex h-12 flex-none items-center justify-between border-b border-(--line,#25313E) bg-(--bg-bar,#101821) px-4">
-          <div className="flex items-center gap-3">
-            <img
-              src="/ntbc-logo.png"
-              alt="NotToBeCooked Logo"
-              className="h-6 w-6 rounded object-contain"
-            />
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold tracking-wide text-primary">
-                NotToBeCooked
-              </span>
-              <span className="rounded border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2 py-0.5 font-mono text-[10px] text-(--tx-dim,#8B98A7) uppercase">
-                {platform}
-              </span>
-            </div>
-
-            <div className="ml-4 hidden items-center gap-1.5 border-l border-(--line,#25313E) pl-4 text-xs text-(--tx-dim,#8B98A7) md:flex">
-              <span className="font-medium text-(--tx,#DCE3EA)">
-                {currentCourse.code}
-              </span>
-              <span>·</span>
-              <span className="text-(--tx-faint,#5C6976)">
-                {currentCourse.name}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4 text-xs">
-            {user && (
-              <span className="hidden text-(--tx-dim,#8B98A7) sm:inline">
-                Logged in as{" "}
-                <strong className="text-(--tx,#DCE3EA)">{user.email}</strong>
-              </span>
-            )}
-            <button
-              onClick={() => logout()}
-              className="cursor-pointer rounded border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-3 py-1 text-xs text-(--tx-dim,#8B98A7) transition-colors hover:border-destructive hover:text-white"
-            >
-              Log Out
-            </button>
-          </div>
-        </header>
+        {/* Top Navbar Component */}
+        <TopBar
+          platform={platform}
+          currentCourse={currentCourse}
+          courses={MOCK_COURSES}
+          userEmail={user?.email}
+          onSwitchCourse={(id) => switchCourse(id)}
+          onLogout={() => logout()}
+        />
 
         {/* Main 3-Pane Split View */}
         <div className="flex min-h-0 min-w-0 flex-1">
-          {/* Left Pane: Explorer & Course Materials (F4) */}
-          <aside className="flex min-h-0 w-64 flex-none flex-col border-r border-(--line,#25313E) bg-(--bg-panel,#121A23)">
-            {/* Scope / Course Switcher */}
-            <div className="flex flex-col gap-2 border-b border-(--line-soft,#1B2530) p-3">
-              <div className="flex items-center justify-between font-mono text-[10px] tracking-wider text-(--tx-faint,#5C6976) uppercase">
-                <span>Courses</span>
-                <span>{MOCK_COURSES.length} Enrolled</span>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5">
-                {MOCK_COURSES.map((c) => {
-                  const isSelected =
-                    activeCourseId === c.id || activeCourseId === c.code
-                  return (
-                    <button
-                      key={c.id}
-                      onClick={() => switchCourse(c.id)}
-                      className={`flex cursor-pointer flex-col rounded-lg border p-2 text-left transition-all ${
-                        isSelected
-                          ? "border-(--acc,#52A8EA)/30 bg-(--bg-raise,#1C2833) text-(--acc,#52A8EA) shadow-sm"
-                          : "border-(--line-soft,#1B2530) bg-transparent text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
-                      }`}
-                    >
-                      <span className="text-xs font-bold">{c.code}</span>
-                      <span className="truncate text-[10px] text-(--tx-faint,#5C6976)">
-                        {c.name}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+          {/* Left Pane: Structured File Explorer */}
+          <FileExplorer
+            categories={CATEGORIES}
+            files={courseFiles}
+            activeFileId={activeFileId}
+            openedFileIds={openedFileIds}
+            courseWeek={currentCourse.week}
+            courseWeeks={currentCourse.weeks}
+            roadmapProgressPct={roadmapStats.pct}
+            nextMilestoneText={roadmapStats.nextText}
+            onOpenFile={handleOpenFile}
+            onOpenRoadmapModal={() => setIsRoadmapOpen(true)}
+            onOpenBatchUpload={handleOpenBatchUpload}
+            onOpenDirectFolderUpload={handleOpenDirectFolderUpload}
+          />
 
-            {/* Document Filter & Upload (Stub) */}
-            <div className="flex flex-col gap-2 border-b border-(--line-soft,#1B2530) p-3 pb-2">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[10px] tracking-wider text-(--tx-faint,#5C6976) uppercase">
-                  Materials ({courseFiles.length})
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    showToast("File upload stub: Document ingestion simulated.")
-                  }
-                  className="flex cursor-pointer items-center gap-1 text-[11px] text-(--acc,#52A8EA) hover:underline"
-                >
-                  <span>+ Upload</span>
-                </button>
-              </div>
-
-              <div className="flex items-center gap-1.5 rounded border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2 py-1 text-xs">
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  className="text-(--tx-faint,#5C6976)"
-                >
-                  <path
-                    d="M7 12A5 5 0 107 2a5 5 0 000 10zM14 14l-3.5-3.5"
-                    stroke="currentColor"
-                    strokeWidth="1.4"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Filter materials..."
-                  className="w-full bg-transparent text-xs text-(--tx,#DCE3EA) outline-none placeholder:text-(--tx-faint,#5C6976)"
-                />
-              </div>
-            </div>
-
-            {/* Categorized File Tree */}
-            <div className="flex min-h-0 flex-1 scrollbar-thin [scrollbar-color:var(--line,#25313E)_transparent] flex-col gap-3 overflow-y-auto p-2">
-              {CATEGORIES.map((cat) => {
-                const filesInCat = filteredFiles.filter(
-                  (f) => f.category === cat
-                )
-                if (filesInCat.length === 0) return null
-
-                return (
-                  <div key={cat} className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between px-2 py-1 font-mono text-[10px] tracking-wider text-(--tx-faint,#5C6976) uppercase">
-                      <span>{cat}</span>
-                      <span>{filesInCat.length}</span>
-                    </div>
-
-                    <div className="flex flex-col gap-0.5">
-                      {filesInCat.map((file) => {
-                        const isOpen = tabs.some((t) => t.fileId === file.id)
-                        const isActive = activeFileId === file.id
-
-                        return (
-                          <button
-                            key={file.id}
-                            onClick={() => handleOpenFile(file)}
-                            className={`group flex cursor-pointer items-center gap-2 rounded px-2.5 py-1.5 text-left text-xs transition-colors ${
-                              isActive
-                                ? "border border-(--acc,#52A8EA)/20 bg-(--bg-raise,#1C2833) font-medium text-(--acc,#52A8EA)"
-                                : "text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
-                            }`}
-                          >
-                            <svg
-                              width="13"
-                              height="13"
-                              viewBox="0 0 16 16"
-                              fill="none"
-                              className="shrink-0 text-(--tx-faint,#5C6976) group-hover:text-(--acc,#52A8EA)"
-                            >
-                              <path
-                                d="M4 2h5.5L13 5.5V14H4V2z"
-                                stroke="currentColor"
-                                strokeWidth="1.2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                              <path
-                                d="M9 2v4h4"
-                                stroke="currentColor"
-                                strokeWidth="1.2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                            <span className="flex-1 truncate">{file.name}</span>
-                            {isOpen && (
-                              <span
-                                className="h-1.5 w-1.5 shrink-0 rounded-full bg-(--acc,#52A8EA)"
-                                title="Open in Tab"
-                              />
-                            )}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </aside>
-
-          {/* Center Workspace: Tabs & Document Viewer (F2) */}
+          {/* Center Workspace: Tabs & Document Viewer */}
           <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-(--bg-canvas,#161F29)">
             {/* Tabs Bar */}
             {tabs.length > 0 && (
-              <div className="flex h-9 flex-none scrollbar-none items-center gap-1 overflow-x-auto border-b border-(--line,#25313E) bg-(--bg-bar,#101821) px-2">
-                {tabs.map((tab) => {
-                  const isActive = tab.fileId === activeFileId
-                  return (
-                    <div
-                      key={tab.fileId}
-                      onClick={() => setActiveFile(activeCourseId, tab.fileId)}
-                      className={`flex max-w-50 cursor-pointer items-center gap-2 rounded-t border-t-2 px-3 py-1.5 text-xs transition-colors ${
-                        isActive
-                          ? "border-(--acc,#52A8EA) bg-(--bg-canvas,#161F29) font-medium text-(--tx,#DCE3EA)"
-                          : "border-transparent bg-transparent text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
-                      }`}
-                    >
-                      <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                        className="shrink-0 text-(--tx-faint,#5C6976)"
+              <div className="flex h-10 flex-none scrollbar-none items-center justify-between overflow-x-auto border-b border-(--line,#25313E) bg-(--bg-bar,#101821) px-2">
+                <div className="flex items-center gap-1">
+                  {tabs.map((tab) => {
+                    const isActive = tab.fileId === activeFileId
+                    return (
+                      <div
+                        key={tab.fileId}
+                        onClick={() => openTab(activeCourseId, tab)}
+                        className={`group flex cursor-pointer items-center gap-2 rounded-t-md px-3.5 py-2 text-xs transition-colors ${
+                          isActive
+                            ? "border-t-2 border-(--acc,#52A8EA) bg-(--bg-panel,#121A23) font-medium text-(--tx-strong,#EDF2F6)"
+                            : "bg-transparent text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040)/40 hover:text-(--tx,#DCE3EA)"
+                        }`}
                       >
-                        <path
-                          d="M4 2h5.5L13 5.5V14H4V2z"
-                          stroke="currentColor"
-                          strokeWidth="1.2"
-                        />
-                      </svg>
-                      <span className="truncate">{tab.filename}</span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          closeTab(activeCourseId, tab.fileId)
-                        }}
-                        className="rounded p-0.5 text-(--tx-faint,#5C6976) hover:bg-(--line,#25313E) hover:text-white"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  )
-                })}
+                        <svg
+                          width="13"
+                          height="13"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          className="shrink-0 text-(--tx-faint,#5C6976)"
+                        >
+                          <path
+                            d="M4 2h5.5L13 5.5V14H4V2z"
+                            stroke="currentColor"
+                            strokeWidth="1.2"
+                          />
+                        </svg>
+                        <span className="truncate">{tab.filename}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            closeTab(activeCourseId, tab.fileId)
+                          }}
+                          className="rounded p-0.5 text-(--tx-faint,#5C6976) hover:bg-(--line,#25313E) hover:text-white"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Tabset Tag */}
+                <div className="hidden items-center gap-1.5 font-mono text-xs text-(--tx-faint,#5C6976) sm:flex">
+                  <span className="font-bold text-(--tx-dim,#8B98A7)">
+                    {currentCourse.code}
+                  </span>
+                  <span>tab set</span>
+                </div>
               </div>
             )}
 
-            {/* Document Viewer or Workspace Overview */}
+            {/* Document Viewer or Minimal Empty State */}
             {activeDocument ? (
-              /* ACTIVE DOCUMENT VIEWER (Stub/Mock Component) */
+              /* ACTIVE DOCUMENT VIEWER */
               <div className="flex min-h-0 flex-1 flex-col bg-(--bg-canvas,#161F29)">
                 {/* Document Viewer Control Bar */}
-                <div className="flex items-center justify-between border-b border-(--line-soft,#1B2530) bg-(--bg-panel,#121A23)/40 px-4 py-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-(--tx,#DCE3EA)">
+                <div className="flex items-center justify-between border-b border-(--line-soft,#1B2530) bg-(--bg-panel,#121A23)/40 px-4 py-2.5 text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-sm font-semibold text-(--tx,#DCE3EA)">
                       {activeDocument.name}
                     </span>
-                    <span className="rounded bg-(--bg-raise,#1C2833) px-2 py-0.5 font-mono text-[10px] text-(--tx-faint,#5C6976)">
+                    <span className="rounded-md bg-(--bg-raise,#1C2833) px-2 py-0.5 font-mono text-[11px] text-(--tx-faint,#5C6976)">
                       {activeDocument.size} · {activeDocument.totalPages} pages
                     </span>
                   </div>
 
                   {/* Viewer Controls */}
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1 rounded border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2 py-0.5">
+                    <div className="flex items-center gap-1.5 rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2.5 py-1 text-xs">
                       <button
                         type="button"
                         disabled={activePage <= 1}
-                        onClick={() => setPageOverride(Math.max(1, activePage - 1))}
+                        onClick={() =>
+                          setPageOverride(Math.max(1, activePage - 1))
+                        }
                         className="cursor-pointer text-(--tx-dim,#8B98A7) hover:text-white disabled:opacity-40"
                       >
                         ◀
                       </button>
-                      <span className="px-1 font-mono text-[11px]">
+                      <span className="px-1.5 font-mono text-xs">
                         Page {activePage} of {activeDocument.totalPages}
                       </span>
                       <button
@@ -629,7 +578,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
                       </button>
                     </div>
 
-                    <div className="flex items-center gap-1 rounded border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2 py-0.5">
+                    <div className="flex items-center gap-1.5 rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2.5 py-1 text-xs">
                       <button
                         type="button"
                         onClick={() =>
@@ -639,7 +588,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
                       >
                         -
                       </button>
-                      <span className="px-1 font-mono text-[11px]">
+                      <span className="px-1 font-mono text-xs">
                         {zoomLevel}%
                       </span>
                       <button
@@ -659,7 +608,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
                 <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto bg-(--bg-canvas,#161F29) p-6">
                   {/* Citation Highlight Banner if active */}
                   {selectedCitation && (
-                    <div className="mb-4 flex w-full max-w-2xl animate-in items-center justify-between rounded-lg border border-(--cite-line,rgba(227,166,63,0.38)) bg-(--cite-bg,rgba(227,166,63,0.09)) p-3 text-xs text-(--cite,#E3A63F) fade-in">
+                    <div className="mb-4 flex w-full max-w-2xl animate-in items-center justify-between rounded-lg border border-(--cite-line,rgba(227,166,63,0.38)) bg-(--cite-bg,rgba(227,166,63,0.09)) p-3.5 text-xs text-(--cite,#E3A63F) fade-in">
                       <div className="flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full bg-(--cite,#E3A63F)" />
                         <span>
@@ -683,9 +632,9 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
                       transform: `scale(${zoomLevel / 100})`,
                       transformOrigin: "top center",
                     }}
-                    className="flex min-h-125 w-full max-w-2xl flex-col gap-4 rounded-lg border border-(--line,#25313E) bg-(--bg-panel,#121A23) p-8 text-xs leading-relaxed text-(--tx,#DCE3EA) shadow-xl transition-transform duration-150"
+                    className="flex min-h-125 w-full max-w-2xl flex-col gap-4 rounded-xl border border-(--line,#25313E) bg-(--bg-panel,#121A23) p-8 text-sm leading-relaxed text-(--tx,#DCE3EA) shadow-xl transition-transform duration-150"
                   >
-                    <div className="flex items-center justify-between border-b border-(--line-soft,#1B2530) pb-3 font-mono text-[10px] text-(--tx-faint,#5C6976)">
+                    <div className="flex items-center justify-between border-b border-(--line-soft,#1B2530) pb-3 font-mono text-xs text-(--tx-faint,#5C6976)">
                       <span>{activeDocument.name}</span>
                       <span>
                         Page {activePage} / {activeDocument.totalPages}
@@ -693,17 +642,17 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
                     </div>
 
                     {/* Page Content Display */}
-                    <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-3.5">
                       {activeDocument.contentByPage?.[activePage] ? (
-                        <div className="space-y-3">
-                          <p className="whitespace-pre-line text-(--tx,#DCE3EA)">
+                        <div className="space-y-3.5">
+                          <p className="text-sm leading-relaxed whitespace-pre-line text-(--tx,#DCE3EA)">
                             {activeDocument.contentByPage[activePage]}
                           </p>
 
                           {/* Highlight quote if citation corresponds to this document & page */}
                           {selectedCitation?.quote && (
-                            <div className="rounded border border-(--cite-line,rgba(227,166,63,0.4)) bg-(--cite-bg,rgba(227,166,63,0.12)) p-3 text-(--tx-strong,#EDF2F6) shadow-sm">
-                              <span className="mb-1 block font-mono text-[10px] font-semibold text-(--cite,#E3A63F) uppercase">
+                            <div className="rounded-lg border border-(--cite-line,rgba(227,166,63,0.4)) bg-(--cite-bg,rgba(227,166,63,0.12)) p-3.5 text-xs leading-relaxed text-(--tx-strong,#EDF2F6) shadow-sm">
+                              <span className="mb-1 block font-mono text-[11px] font-semibold text-(--cite,#E3A63F) uppercase">
                                 Verified Grounded Quote
                               </span>
                               <em>"{selectedCitation.quote}"</em>
@@ -712,18 +661,18 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
                         </div>
                       ) : (
                         <div className="flex flex-col gap-4">
-                          <h4 className="text-sm font-semibold text-(--acc,#52A8EA)">
+                          <h4 className="text-base font-semibold text-(--acc,#52A8EA)">
                             Section {activePage}.1 — Core Theoretical
                             Foundations
                           </h4>
-                          <p className="text-(--tx-dim,#8B98A7)">
+                          <p className="text-sm leading-relaxed text-(--tx-dim,#8B98A7)">
                             This document contains comprehensive materials for{" "}
                             {currentCourse.code} ({currentCourse.name}). All
                             paragraphs and equations in this section are indexed
                             by the Retrieval-Augmented Generation (RAG) pipeline
                             for verified citation and context retrieval.
                           </p>
-                          <div className="rounded border border-(--line-soft,#1B2530) bg-(--bg-raise,#1C2833) p-3 font-mono text-[11px] text-(--tx-faint,#5C6976)">
+                          <div className="rounded-lg border border-(--line-soft,#1B2530) bg-(--bg-raise,#1C2833) p-3.5 font-mono text-xs text-(--tx-faint,#5C6976)">
                             [Indexed Chunk #{activeCourseId}-{activeDocument.id}
                             -p{activePage}]
                             <br />
@@ -737,67 +686,70 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
                 </div>
               </div>
             ) : (
-              /* EMPTY / COURSE OVERVIEW HERO SCREEN */
+              /* EMPTY / RECENT LECTURES CENTER VIEW (Minimalist & Borderless) */
               <div className="my-auto flex flex-1 flex-col items-center justify-center overflow-y-auto p-8 text-center">
-                <div className="flex max-w-md flex-col items-center gap-4">
+                <div className="flex w-full max-w-md flex-col items-center gap-6">
                   <img
                     src="/ntbc-logo.png"
                     alt="NotToBeCooked Logo"
-                    className="h-16 w-16 object-contain"
+                    className="h-16 w-16 object-contain opacity-90"
                   />
-                  <div>
-                    <h2 className="text-lg font-bold text-(--tx,#DCE3EA)">
-                      {currentCourse.code} — {currentCourse.name}
-                    </h2>
-                    <p className="mt-1 text-xs leading-relaxed text-(--tx-dim,#8B98A7)">
-                      {currentCourse.description}
-                    </p>
-                  </div>
 
-                  <div className="mt-2 grid w-full grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (courseFiles.length > 0 && courseFiles[0]) {
-                          handleOpenFile(courseFiles[0])
-                        }
-                      }}
-                      className="group cursor-pointer rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833) p-3 text-left transition-colors hover:border-(--acc,#52A8EA)"
-                    >
-                      <span className="block text-xs font-semibold text-(--tx,#DCE3EA) group-hover:text-(--acc,#52A8EA)">
-                        Open Recent Lecture
+                  {/* Recently Opened / Available Lectures List */}
+                  {courseFiles.length > 0 && (
+                    <div className="flex w-full flex-col items-center gap-2.5">
+                      <span className="text-center font-mono text-[11px] font-semibold tracking-widest text-(--tx-faint,#5C6976) uppercase">
+                        Recent Lectures & Materials
                       </span>
-                      <span className="mt-0.5 block truncate text-[10px] text-(--tx-faint,#5C6976)">
-                        {courseFiles[0]?.name || "Select document"}
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        showToast("Simulated document ingestion triggered.")
-                      }
-                      className="group cursor-pointer rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833) p-3 text-left transition-colors hover:border-(--acc,#52A8EA)"
-                    >
-                      <span className="block text-xs font-semibold text-(--tx,#DCE3EA) group-hover:text-(--acc,#52A8EA)">
-                        Add Course Material
-                      </span>
-                      <span className="mt-0.5 block text-[10px] text-(--tx-faint,#5C6976)">
-                        Upload PDF notes or lab
-                      </span>
-                    </button>
-                  </div>
-
-                  <p className="text-[11px] text-(--tx-faint,#5C6976)">
-                    Select a document on the left or ask the AI Assistant on the
-                    right with grounded citations.
-                  </p>
+                      <div className="flex w-full flex-col gap-1">
+                        {courseFiles.slice(0, 4).map((file) => (
+                          <button
+                            key={file.id}
+                            type="button"
+                            onClick={() => handleOpenFile(file)}
+                            className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3.5 py-2 text-left transition-colors hover:bg-(--bg-hover,#213040)/50"
+                          >
+                            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                className="shrink-0 text-(--tx-faint,#5C6976) group-hover:text-(--acc,#52A8EA)"
+                              >
+                                <path
+                                  d="M4 2h5.5L13 5.5V14H4V2z"
+                                  stroke="currentColor"
+                                  strokeWidth="1.2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                                <path
+                                  d="M9 2v4h4"
+                                  stroke="currentColor"
+                                  strokeWidth="1.2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                              <span className="truncate text-xs font-medium text-(--tx-dim,#8B98A7) group-hover:text-(--tx,#DCE3EA)">
+                                {file.name}
+                              </span>
+                            </div>
+                            <span className="shrink-0 font-mono text-xs text-(--tx-faint,#5C6976) group-hover:text-(--tx-dim,#8B98A7)">
+                              {file.size}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
           </main>
 
-          {/* Right Pane: AI Chat Assistant (F3) */}
+          {/* Right Pane: AI Chat Assistant */}
           <Chat
             courseCode={currentCourse.code}
             filesCount={courseFiles.length}
@@ -816,6 +768,31 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps) {
           />
         </div>
       </div>
+
+      {/* Learning Roadmap Modal Component */}
+      <RoadmapModal
+        isOpen={isRoadmapOpen}
+        course={currentCourse}
+        roadmap={courseRoadmap}
+        progressPct={roadmapStats.pct}
+        doneCount={roadmapStats.done}
+        totalCount={roadmapStats.total}
+        onToggleMilestone={toggleMilestone}
+        onClose={() => setIsRoadmapOpen(false)}
+      />
+
+      {/* Batch / Direct Folder Upload Modal Component */}
+      <UploadModal
+        isOpen={isUploadModalOpen}
+        courseCode={currentCourse.code}
+        categories={CATEGORIES}
+        initialCategory={uploadCategory}
+        isDirectFolderUpload={isDirectFolderUpload}
+        onClose={() => setIsUploadModalOpen(false)}
+        onUploadSuccess={(category) => {
+          showToast(`Uploaded document to ${category}.`)
+        }}
+      />
     </div>
   )
 }

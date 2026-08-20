@@ -260,79 +260,76 @@ export const Chat: React.FC<ChatProps> = ({
         className={`relative flex min-h-0 flex-col bg-(--bg-panel,#121A23) text-xs text-(--tx,#DCE3EA) select-none ${className}`}
       >
         {/* Top Header */}
-        <div className="flex h-9 flex-none items-center gap-2 border-b border-(--line-soft,#1B2530) bg-(--bg-bar,#101821)/50 px-3">
-          <span className="h-1.5 w-1.5 flex-none rounded-full bg-(--ok,#4FB07C) shadow-[0_0_0_3px_rgba(79,176,124,0.15)]" />
-          <span className="text-[12.5px] font-semibold text-(--tx,#DCE3EA)">
-            Assistant
-          </span>
-
-          <span className="ml-auto font-mono text-[10px] text-(--tx-faint,#5C6976)">
+        <div className="flex h-10 flex-none items-center justify-between border-b border-(--line-soft,#1B2530) bg-(--bg-bar,#101821)/50 px-3">
+          <span className="font-mono text-xs text-(--tx-dim,#8B98A7)">
             {courseCode} · {filesCount} files
           </span>
 
-          {/* History Drawer Toggle Button */}
-          <button
-            type="button"
-            onClick={() => setHistoryOpen(!historyOpen)}
-            title="Toggle Chat History"
-            className={`relative cursor-pointer rounded p-1 transition-colors ${
-              historyOpen
-                ? "bg-(--bg-hover,#213040) text-(--acc,#52A8EA)"
-                : "text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
-            }`}
-          >
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-              <path
-                d="M8 3.5v4.5l3 2"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle
-                cx="8"
-                cy="8"
-                r="6"
-                stroke="currentColor"
-                strokeWidth="1.4"
-              />
-            </svg>
-          </button>
+          <div className="flex items-center gap-1.5">
+            {/* History Drawer Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(!historyOpen)}
+              title="Toggle Chat History"
+              className={`relative cursor-pointer rounded p-1 transition-colors ${
+                historyOpen
+                  ? "bg-(--bg-hover,#213040) text-(--acc,#52A8EA)"
+                  : "text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
+              }`}
+            >
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <path
+                  d="M8 3.5v4.5l3 2"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <circle
+                  cx="8"
+                  cy="8"
+                  r="6"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                />
+              </svg>
+            </button>
 
-          {/* New Chat Button */}
-          <button
-            type="button"
-            onClick={handleNewChatClick}
-            title="Start new conversation"
-            className="cursor-pointer rounded p-1 text-(--tx-dim,#8B98A7) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
-          >
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-              <path
-                d="M7 2v10M2 7h10"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
+            {/* New Chat Button */}
+            <button
+              type="button"
+              onClick={handleNewChatClick}
+              title="Start new conversation"
+              className="cursor-pointer rounded p-1 text-(--tx-dim,#8B98A7) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
+            >
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                <path
+                  d="M7 2v10M2 7h10"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
 
-          {/* Clear Chat Button */}
-          <button
-            type="button"
-            onClick={handleClear}
-            title="Clear conversation"
-            className="cursor-pointer rounded p-1 text-(--tx-dim,#8B98A7) transition-colors hover:bg-destructive/10 hover:text-destructive"
-          >
-            <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-              <path
-                d="M3 4h8M5.6 4V2.8h2.8V4M4.2 4l.5 7.2h4.6L9.8 4"
-                stroke="currentColor"
-                strokeWidth="1.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
+            {/* Clear Chat Button */}
+            <button
+              type="button"
+              onClick={handleClear}
+              title="Clear conversation"
+              className="cursor-pointer rounded p-1 text-(--tx-dim,#8B98A7) transition-colors hover:bg-destructive/10 hover:text-destructive"
+            >
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                <path
+                  d="M3 4h8M5.6 4V2.8h2.8V4M4.2 4l.5 7.2h4.6L9.8 4"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* History Drawer Overlay */}
@@ -359,15 +356,17 @@ export const Chat: React.FC<ChatProps> = ({
 
               <div className="flex max-w-xs flex-col gap-1">
                 <h3 className="text-base font-semibold tracking-tight text-(--tx,#DCE3EA)">
-                  Synced with{" "}
-                  <span className="font-mono text-(--acc,#52A8EA)">
-                    {filesCount} files
-                  </span>{" "}
-                  in {courseCode}
+                  Ask anything about{" "}
+                  <span className="font-bold text-(--acc,#52A8EA)">
+                    {courseCode}
+                  </span>
                 </h3>
-                <p className="text-[12px] leading-relaxed text-(--tx-dim,#8B98A7)">
-                  Ask questions across notes, PYQs, and lab handouts with
-                  grounded citations.
+                <p className="text-xs leading-relaxed text-(--tx-dim,#8B98A7)">
+                  Explore lectures, labs, and notes across{" "}
+                  <span className="font-medium text-(--tx,#DCE3EA)">
+                    {filesCount} course files
+                  </span>
+                  .
                 </p>
               </div>
 
