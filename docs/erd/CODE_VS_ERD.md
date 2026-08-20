@@ -1,5 +1,35 @@
 # Code vs ERD — field-by-field diff, 17 Aug 2026 · re-run 19 Aug 2026
 
+> ## Status — 20 August 2026
+>
+> **Re-run after AI-2's models landed. Seven of eight tables now match the ERD
+> column for column: `chunk`, `conversation`, `course`, `folder`,
+> `ingestion_run`, `message`, `user`.**
+>
+> Everything below this box was written on 17 Aug against a code base missing
+> three tables and nine columns. It is kept because the reasoning still holds
+> and because §F is still the list nobody scheduled. **The counts in §A are the
+> 17 Aug counts and are no longer current.**
+>
+> | | 17 Aug | 20 Aug |
+> |---|---|---|
+> | Tables absent from the code | 3 | **1** — `MILESTONE`, deliberately in migration 2 (Gantt r42) |
+> | Columns missing from the code | 9 | **1** — `FILE.folder_id` |
+> | Columns only in the code | 4 | **1** — `FILE.course_id`, the placeholder `folder_id` replaces |
+>
+> `FILE` is the only structural gap left, and it is one decision rather than an
+> oversight: the ERD derives a file's course through its folder, the code stores
+> it directly. `FOLDER` now exists, so nothing blocks the change except that
+> `vector_ops.py` reads `file.course_id` in two places and belongs to AI-1.
+>
+> §F items 1, 4, 5, 6, 7 and 8 are all done. Items 2 and 3 are folded into
+> `FILE.folder_id`. Items 9, 10 and 11 — the nullability inconsistencies — have
+> not been touched.
+>
+> One finding was added since: **R25**, PostgreSQL enums storing member names
+> rather than values. See `KNOWN_ISSUES.md` Part E.
+
+
 > **Third pass, 19 August 2026 — after the 18 August meeting.** Sections E and F are
 > now outcomes rather than open questions. **Six of the nine entities are byte-exact
 > against the diagram**; every one of section F's eleven live items is closed, and the
