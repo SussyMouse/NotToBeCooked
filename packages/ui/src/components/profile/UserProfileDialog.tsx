@@ -76,7 +76,7 @@ export function UserProfileDialog({
           </DialogDescription>
         </DialogHeader>
         {/* Header Hero Banner */}
-        <div className="relative border-0 bg-gradient-to-r from-(--bg-raise,#1C2833) via-(--bg-bar,#101821) to-(--bg-panel,#121A23) p-6 pb-5">
+        <div className="relative border-0 bg-linear-to-r from-(--bg-raise,#1C2833) via-(--bg-bar,#101821) to-(--bg-panel,#121A23) p-6 pb-5">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16 shadow-lg ring-2 ring-(--acc,#52A8EA)/25">
               <AvatarFallback className="bg-(--acc,#52A8EA)/20 text-lg font-bold text-(--acc,#52A8EA)">

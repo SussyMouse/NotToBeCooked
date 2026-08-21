@@ -63,12 +63,26 @@ export function ThemeProvider({
 
       if (activeTheme === "light") {
         root.classList.remove("dark")
+        root.classList.add("light")
         root.setAttribute("data-theme", "light")
         root.setAttribute("data-pal", "light")
+        if (document.body) {
+          document.body.classList.remove("dark")
+          document.body.classList.add("light")
+          document.body.setAttribute("data-theme", "light")
+          document.body.setAttribute("data-pal", "light")
+        }
       } else {
+        root.classList.remove("light")
         root.classList.add("dark")
         root.setAttribute("data-theme", activeTheme)
         root.setAttribute("data-pal", activeTheme)
+        if (document.body) {
+          document.body.classList.remove("light")
+          document.body.classList.add("dark")
+          document.body.setAttribute("data-theme", activeTheme)
+          document.body.setAttribute("data-pal", activeTheme)
+        }
       }
     },
     []
