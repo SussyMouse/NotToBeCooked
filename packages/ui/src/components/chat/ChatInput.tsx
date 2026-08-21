@@ -50,25 +50,31 @@ export function getQueryFromEditor(editor: HTMLDivElement | null): string {
   if (!editor) return ""
   let result = ""
 
-  const walk = (node: Node) => {
+  const walk = (node: Node, isRoot = false) => {
     if (node.nodeType === Node.TEXT_NODE) {
-      result += node.nodeValue || ""
+      result += (node.nodeValue || "").replace(/\u00A0/g, " ")
     } else if (node.nodeType === Node.ELEMENT_NODE) {
       const el = node as HTMLElement
+      const isBlock = !isRoot && (el.tagName === "DIV" || el.tagName === "P")
+
+      if (isBlock && result.length > 0 && !result.endsWith("\n")) {
+        result += "\n"
+      }
+
       if (el.dataset.mention) {
         result += el.dataset.mention
       } else if (el.tagName === "BR") {
         result += "\n"
       } else {
         for (let i = 0; i < el.childNodes.length; i++) {
-          walk(el.childNodes[i])
+          walk(el.childNodes[i], false)
         }
       }
     }
   }
 
   for (let i = 0; i < editor.childNodes.length; i++) {
-    walk(editor.childNodes[i])
+    walk(editor.childNodes[i], true)
   }
   return result
 }
@@ -244,12 +250,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
-      {/* Quick Suggestions Row */}
+      {/* Quick Suggestions Chips (Without "TRY" label) */}
       {quickPrompts.length > 0 && (
         <div className="flex flex-wrap items-center gap-1 px-1">
-          <span className="mr-1 font-mono text-[9.5px] tracking-wider text-(--tx-faint,#5C6976) uppercase">
-            Try
-          </span>
           {quickPrompts.map((q, idx) => (
             <button
               key={idx}
@@ -275,7 +278,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 ↑↓ to navigate · Enter to select
               </span>
             </div>
-            <div className="max-h-48 scrollbar-thin [scrollbar-color:var(--line,#25313E)_transparent] overflow-y-auto p-1">
+            <div className="max-h-48 scrollbar-thin [scrollbar-color:var(--line,#25313E)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-(--line,#25313E) overflow-y-auto p-1">
               {filteredCategories.map((cat, idx) => {
                 const isSelected = selectedIndex === idx
                 return (
@@ -333,11 +336,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </div>
         )}
 
-        {/* Input Box with Send Button */}
-        <div className="relative flex items-end gap-2 rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833) p-2 transition-colors focus-within:border-(--acc-deep,#1D5D8A)">
+        {/* Input Box with Dynamic Height Expansion and Circular Send Button */}
+        <div className="relative flex min-h-[42px] items-end gap-2 rounded-xl border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-3 py-2 transition-colors focus-within:border-(--acc-deep,#1D5D8A)">
           <div className="relative min-w-0 flex-1">
             {isEmpty && (
-              <div className="pointer-events-none absolute top-0.5 left-0 text-[13.5px] text-(--tx-faint,#5C6976) select-none">
+              <div className="pointer-events-none absolute inset-x-0 top-0 py-0 text-[13.5px] leading-[24px] text-(--tx-faint,#5C6976) select-none truncate">
                 {isTyping ? "Assistant is thinking…" : placeholder}
               </div>
             )}
@@ -347,27 +350,29 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               onInput={handleEditorInput}
               onKeyDown={handleEditorKeyDown}
               onKeyUp={handleEditorInput}
-              className="max-h-36 min-h-6 scrollbar-thin [scrollbar-color:var(--line,#25313E)_transparent] overflow-y-auto py-0.5 text-[13.5px] leading-relaxed wrap-break-word whitespace-pre-wrap text-(--tx,#DCE3EA) [outline:none] outline-none focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none"
+              className="min-h-[24px] max-h-36 scrollbar-thin [scrollbar-width:thin] [scrollbar-color:var(--line,#25313E)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-(--line,#25313E) overflow-y-auto py-0 text-[13.5px] leading-[24px] wrap-break-word whitespace-pre-wrap text-(--tx,#DCE3EA) [outline:none] outline-none focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none"
             />
           </div>
 
-          <button
-            type="button"
-            onClick={() => handleSubmit()}
-            disabled={isTyping || isEmpty || disabled}
-            title="Send Message"
-            className="mb-0.5 flex h-6.5 w-6.5 flex-none cursor-pointer items-center justify-center rounded bg-(--acc-deep,#1D5D8A) text-(--on-acc,#EAF5FD) transition-colors hover:bg-(--acc-deep-h,#246C9E) disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-(--acc-deep,#1D5D8A)"
-          >
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-              <path
-                d="M1.8 7h9.4M7.4 3.2L11.2 7l-3.8 3.8"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
+          {!isEmpty && (
+            <button
+              type="button"
+              onClick={() => handleSubmit()}
+              disabled={isTyping || disabled}
+              title="Send Message (Enter)"
+              className="flex h-6 w-6 flex-none cursor-pointer items-center justify-center rounded-full bg-(--acc,#52A8EA) text-[#0B1118] shadow-sm transition-all hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <path
+                  d="M8 12.5V3.5M3.5 8L8 3.5l4.5 4.5"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -48,8 +48,8 @@ async def query(
         )
 
     # 1. Get or create conversation via services/chat.py
-    raw_title = request.question.strip()
-    clean_title = raw_title[:40].strip() + ("..." if len(raw_title) > 40 else "")
+    first_line = next((line.strip() for line in request.question.split("\n") if line.strip()), "New Chat")
+    clean_title = first_line[:40].strip() + ("..." if len(first_line) > 40 else "")
     conversation = await get_or_create_conversation(
         session=session,
         user_id=UUID(str(user_id)),
@@ -65,7 +65,7 @@ async def query(
         )
     conv_id: UUID = conversation.id
 
-    # 2. Record User turn in Message table
+    # 2. Record User turn in Message table (Stores exact raw multiline text)
     user_message = Message(
         id=uuid4(),
         conversation_id=conv_id,
@@ -80,7 +80,11 @@ async def query(
     session.add(user_message)
 
     # 3. Retrieve chunks or construct mock grounded citations
-    chunks = await _retrieve(request)
+    # Strip newlines and normalize whitespace when feeding to RAG search & summary
+    clean_rag_query = " ".join(request.question.split()).strip()
+
+    rag_request = request.model_copy(update={"question": clean_rag_query})
+    chunks = await _retrieve(rag_request)
     _context, selected = build_context(chunks)
 
     if selected:
@@ -96,7 +100,7 @@ async def query(
             for idx, c in enumerate(selected)
         ]
         answer_text = (
-            f"Grounded response for **{request.question}** based on retrieved documents."
+            f"Grounded response for **{clean_rag_query}** based on retrieved documents."
         )
     else:
         # Construct helpful mock grounded citations matching files in scope
@@ -121,7 +125,7 @@ async def query(
                 ),
             ]
             answer_text = (
-                f"Comparing the referenced materials for **{request.question}**:\n\n"
+                f"Comparing the referenced materials for **{clean_rag_query}**:\n\n"
                 f"- **Source 1** establishes the core foundational principles and definitions [1].\n"
                 f"- **Source 2** details the contrasting implementation patterns and trade-offs [2].\n\n"
                 f"You can click either citation pill below to view the source passage in context."
@@ -134,11 +138,11 @@ async def query(
                     course_id=conversation.course_id,
                     filename="Lecture 4.pdf",
                     page=1,
-                    quote=f"Key grounded evidence covering: {request.question[:80]}.",
+                    quote=f"Key grounded evidence covering: {clean_rag_query[:80]}.",
                 )
             ]
             answer_text = (
-                f"Based on the scoped document for **{request.question}** [1]:\n\n"
+                f"Based on the scoped document for **{clean_rag_query}** [1]:\n\n"
                 f"The material provides detailed explanations, specifications, and worked examples. "
                 f"Inspect the grounded citation badge below to jump directly to page 1."
             )
@@ -151,11 +155,11 @@ async def query(
                     course_id=conversation.course_id,
                     filename="Course Overview.pdf",
                     page=1,
-                    quote=f"Reference syllabus material covering: {request.question[:80]}.",
+                    quote=f"Reference syllabus material covering: {clean_rag_query[:80]}.",
                 )
             ]
             answer_text = (
-                f"Here is the grounded overview for **{request.question}** [1]. "
+                f"Here is the grounded overview for **{clean_rag_query}** [1]. "
                 f"You can ask follow-up questions or use `@` mentions to scope retrieval to specific lectures and lab handouts."
             )
 

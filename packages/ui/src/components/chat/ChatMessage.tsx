@@ -1,4 +1,5 @@
 import React from "react"
+import { MarkdownContent } from "./MarkdownContent"
 
 export interface CitationItem {
   f: string // file id
@@ -141,20 +142,22 @@ export const ChatMessageItem: React.FC<ChatMessageProps> = ({
     >
       {/* User Bubble or Assistant Full-width Text */}
       <div
-        className={`text-[13.5px] leading-relaxed ${
+        className={`text-[13.5px] leading-relaxed select-text ${
           isMe
             ? "max-w-[85%] rounded-lg rounded-tr-xs border border-[rgba(var(--acc-rgb,82,168,234),0.25)] bg-[rgba(var(--acc-rgb,82,168,234),0.12)] px-3 py-2 text-(--acc-tx-soft,#A8D4F2)"
             : "w-full py-0.5 text-justify text-(--tx,#DCE3EA)"
         } ${isOptimistic ? "animate-pulse opacity-70" : ""}`}
       >
         {isMe ? (
-          <div className="whitespace-pre-wrap">
+          <div className="whitespace-pre-wrap select-text">
             {renderMentionized(rawText)}
           </div>
         ) : (
-          <div
-            className="prose prose-invert max-w-none text-xs leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: rawText }}
+          <MarkdownContent
+            content={rawText}
+            citations={citations}
+            onCiteClick={onCiteClick}
+            className="select-text"
           />
         )}
 

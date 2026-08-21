@@ -58,7 +58,7 @@ export function parseMentions(promptText: string): {
       }
       return ""
     })
-    .replace(/\s+/g, " ")
+    .replace(/[^\S\r\n]+/g, " ")
     .trim()
 
   return {

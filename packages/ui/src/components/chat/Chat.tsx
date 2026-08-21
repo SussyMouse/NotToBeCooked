@@ -24,6 +24,7 @@ export interface ChatProps {
   // Controlled session history state
   sessions?: ChatSessionItem[]
   activeSessionId?: string | null
+  activeSessionTitle?: string | null
 
   // Loading & State
   isTyping?: boolean
@@ -69,6 +70,7 @@ export const Chat: React.FC<ChatProps> = ({
   initialMessages,
   sessions = [],
   activeSessionId,
+  activeSessionTitle,
   isTyping: controlledIsTyping,
   onSendMessage,
   onCiteClick,
@@ -104,6 +106,13 @@ export const Chat: React.FC<ChatProps> = ({
     if (controlledMessages !== undefined) return controlledMessages
     return localCourseMessagesMap[courseCode] ?? initialMessages ?? []
   }, [controlledMessages, localCourseMessagesMap, courseCode, initialMessages])
+
+  // Active conversation title lookup
+  const activeSession = useMemo(
+    () => sessions.find((s) => s.id === activeSessionId),
+    [sessions, activeSessionId]
+  )
+  const headerTitle = activeSessionTitle ?? activeSession?.title ?? ""
 
   const isTyping =
     controlledIsTyping !== undefined ? controlledIsTyping : localIsTyping
@@ -230,6 +239,15 @@ export const Chat: React.FC<ChatProps> = ({
     onClearChat?.()
   }
 
+  const handleDeleteCurrentConversation = () => {
+    if (activeSessionId && onDeleteSession) {
+      onDeleteSession(activeSessionId)
+      setSelectedCitation(null)
+    } else {
+      handleClear()
+    }
+  }
+
   const handleCitationClick = (cite: CitationItem) => {
     setSelectedCitation(cite)
     onCiteClick?.(cite)
@@ -260,12 +278,29 @@ export const Chat: React.FC<ChatProps> = ({
         className={`relative flex min-h-0 flex-col bg-(--bg-panel,#121A23) text-xs text-(--tx,#DCE3EA) select-none ${className}`}
       >
         {/* Top Header */}
-        <div className="flex h-10 flex-none items-center justify-between border-b border-(--line-soft,#1B2530) bg-(--bg-bar,#101821)/50 px-3">
-          <span className="font-mono text-xs text-(--tx-dim,#8B98A7)">
-            {courseCode} · {filesCount} files
+        <div className="flex h-10 flex-none items-center justify-between gap-2 border-b border-(--line-soft,#1B2530) bg-(--bg-bar,#101821)/50 px-3">
+          <span className="min-w-0 flex-1 truncate font-medium text-xs text-(--tx,#DCE3EA)">
+            {headerTitle}
           </span>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-none items-center gap-1.5">
+            {/* New Chat Button */}
+            <button
+              type="button"
+              onClick={handleNewChatClick}
+              title="Start new conversation"
+              className="cursor-pointer rounded p-1 text-(--tx-dim,#8B98A7) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
+            >
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                <path
+                  d="M7 2v10M2 7h10"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+
             {/* History Drawer Toggle Button */}
             <button
               type="button"
@@ -295,28 +330,15 @@ export const Chat: React.FC<ChatProps> = ({
               </svg>
             </button>
 
-            {/* New Chat Button */}
+            {/* Delete / Clear Chat Button */}
             <button
               type="button"
-              onClick={handleNewChatClick}
-              title="Start new conversation"
-              className="cursor-pointer rounded p-1 text-(--tx-dim,#8B98A7) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
-            >
-              <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                <path
-                  d="M7 2v10M2 7h10"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
-
-            {/* Clear Chat Button */}
-            <button
-              type="button"
-              onClick={handleClear}
-              title="Clear conversation"
+              onClick={handleDeleteCurrentConversation}
+              title={
+                activeSessionId
+                  ? "Delete current conversation"
+                  : "Clear conversation"
+              }
               className="cursor-pointer rounded p-1 text-(--tx-dim,#8B98A7) transition-colors hover:bg-destructive/10 hover:text-destructive"
             >
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
@@ -344,7 +366,7 @@ export const Chat: React.FC<ChatProps> = ({
         />
 
         {/* Messages Container */}
-        <div className="flex min-h-0 flex-1 scrollbar-thin [scrollbar-color:var(--line,#25313E)_transparent] flex-col overflow-y-auto p-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-(--line,#25313E) [&::-webkit-scrollbar-track]:bg-transparent">
+        <div className="flex min-h-0 flex-1 scrollbar-thin [scrollbar-width:thin] [scrollbar-color:var(--line,#25313E)_transparent] flex-col overflow-y-auto p-3 select-text [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-(--line,#25313E) [&::-webkit-scrollbar-track]:bg-transparent">
           {currentMessages.length === 0 ? (
             /* WELCOME HERO SCREEN */
             <div className="my-auto flex flex-1 animate-in flex-col items-center justify-center gap-3 p-3 text-center duration-300 fade-in">
