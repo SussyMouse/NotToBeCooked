@@ -337,10 +337,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         )}
 
         {/* Input Box with Dynamic Height Expansion and Circular Send Button */}
-        <div className="relative flex min-h-[42px] items-end gap-2 rounded-xl border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-3 py-2 transition-colors focus-within:border-(--acc-deep,#1D5D8A)">
+        <div className="relative flex min-h-10.5 items-end gap-2 rounded-xl border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-3 py-2 transition-colors focus-within:border-(--acc-deep,#1D5D8A)">
           <div className="relative min-w-0 flex-1">
             {isEmpty && (
-              <div className="pointer-events-none absolute inset-x-0 top-0 py-0 text-[13.5px] leading-[24px] text-(--tx-faint,#5C6976) select-none truncate">
+              <div className="pointer-events-none absolute inset-x-0 top-0 py-0 text-[13.5px] leading-6 text-(--tx-faint,#5C6976) select-none truncate">
                 {isTyping ? "Assistant is thinking…" : placeholder}
               </div>
             )}
@@ -350,7 +350,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               onInput={handleEditorInput}
               onKeyDown={handleEditorKeyDown}
               onKeyUp={handleEditorInput}
-              className="min-h-[24px] max-h-36 scrollbar-thin [scrollbar-width:thin] [scrollbar-color:var(--line,#25313E)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-(--line,#25313E) overflow-y-auto py-0 text-[13.5px] leading-[24px] wrap-break-word whitespace-pre-wrap text-(--tx,#DCE3EA) [outline:none] outline-none focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none"
+              className="min-h-6 max-h-36 scrollbar-thin [scrollbar-color:var(--line,#25313E)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-(--line,#25313E) overflow-y-auto py-0 text-[13.5px] leading-6 wrap-break-word whitespace-pre-wrap text-(--tx,#DCE3EA) [outline:none] outline-none focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none"
             />
           </div>
 

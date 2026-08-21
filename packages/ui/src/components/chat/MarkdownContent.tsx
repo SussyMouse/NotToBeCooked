@@ -183,7 +183,7 @@ function parseInline(
               ? `Jump to ${matchedCitation.l}`
               : `Citation [${markerNum}]`
           }
-          className="relative -top-[1.5px] mx-0.5 inline cursor-pointer p-0 font-mono text-[12px] font-semibold text-(--cite,#E3A63F) transition-colors hover:text-(--acc,#52A8EA) hover:underline underline-offset-2 select-none"
+          className="relative top-[-1.5px] mx-0.5 inline cursor-pointer p-0 font-mono text-[12px] font-semibold text-(--cite,#E3A63F) transition-colors hover:text-(--acc,#52A8EA) hover:underline underline-offset-2 select-none"
         >
           [{markerNum}]
         </button>

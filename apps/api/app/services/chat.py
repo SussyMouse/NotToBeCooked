@@ -83,6 +83,7 @@ async def get_or_create_conversation(
             session.add(target_course)
             await session.flush()
 
+    assert target_course.id is not None
     new_conversation = Conversation(
         id=uuid4(),
         course_id=target_course.id,

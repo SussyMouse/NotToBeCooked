@@ -366,7 +366,7 @@ export const Chat: React.FC<ChatProps> = ({
         />
 
         {/* Messages Container */}
-        <div className="flex min-h-0 flex-1 scrollbar-thin [scrollbar-width:thin] [scrollbar-color:var(--line,#25313E)_transparent] flex-col overflow-y-auto p-3 select-text [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-(--line,#25313E) [&::-webkit-scrollbar-track]:bg-transparent">
+        <div className="flex min-h-0 flex-1 scrollbar-thin [scrollbar-color:var(--line,#25313E)_transparent] flex-col overflow-y-auto p-3 select-text [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-(--line,#25313E) [&::-webkit-scrollbar-track]:bg-transparent">
           {currentMessages.length === 0 ? (
             /* WELCOME HERO SCREEN */
             <div className="my-auto flex flex-1 animate-in flex-col items-center justify-center gap-3 p-3 text-center duration-300 fade-in">
