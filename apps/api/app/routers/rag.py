@@ -164,6 +164,9 @@ async def query(
                 f"Here is the grounded overview for **{clean_rag_query}** [1]. "
                 f"You can ask follow-up questions or use `@` mentions to scope retrieval to specific lectures and lab handouts."
             )
+    else:
+        answer_text = "The supplied material does not cover this question."
+        citations = []
 
     # 4. Record Assistant turn in Message table
     assistant_message = Message(
