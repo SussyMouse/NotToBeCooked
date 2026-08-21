@@ -259,7 +259,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               type="button"
               disabled={isTyping || disabled}
               onClick={() => handleSubmit(q)}
-              className="cursor-pointer rounded-full border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2.5 py-0.5 text-[11px] text-(--tx-dim,#8B98A7) [outline:none] transition-colors outline-none hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA) focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              className="cursor-pointer rounded-full bg-(--bg-raise,#1C2833) px-2.5 py-0.5 text-[11px] text-(--tx-dim,#8B98A7) [outline:none] transition-colors outline-none hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA) focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             >
               {q}
             </button>
