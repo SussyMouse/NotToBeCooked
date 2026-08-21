@@ -286,7 +286,7 @@ export interface components {
             course_id: string;
             /**
              * Title
-             * @default Untitled Conversation
+             * @default New Chat
              */
             title: string;
             /**
@@ -467,7 +467,7 @@ export interface components {
              * Top K
              * @default 5
              */
-            top_k: number | null;
+            top_k: number;
         };
         /** RegisterRequest */
         RegisterRequest: {

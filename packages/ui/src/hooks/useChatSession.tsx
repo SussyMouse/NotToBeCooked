@@ -141,7 +141,7 @@ export const useChatSession = (
         course_id: scope.course_id ?? null,
         conversation_id: activeConversationId,
         file_ids: effectiveFileIds,
-        top_k: null, // use default 5
+        top_k: 5,
       })
     },
     onMutate: async (text: string) => {

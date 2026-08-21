@@ -696,7 +696,7 @@
           "title": {
             "type": "string",
             "title": "Title",
-            "default": "Untitled Conversation"
+            "default": "New Chat"
           },
           "created_at": {
             "type": "string",
@@ -1030,16 +1030,9 @@
             "description": "Explicit @-mention scope. May cross courses. When set, overrides course_id."
           },
           "top_k": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "maximum": 20.0,
-                "minimum": 1.0
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
             "title": "Top K",
             "default": 5
           }

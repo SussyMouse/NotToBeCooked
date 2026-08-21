@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.db.database import get_session
 from app.dependencies.auth import get_current_user
 from app.schemas.chat import ChatRole, Message
@@ -86,6 +87,8 @@ async def query(
     rag_request = request.model_copy(update={"question": clean_rag_query})
     chunks = await _retrieve(rag_request)
     _context, selected = build_context(chunks)
+    citations: list[Citation] = []
+    answer_text = ""
 
     if selected:
         citations = [
@@ -102,9 +105,8 @@ async def query(
         answer_text = (
             f"Grounded response for **{clean_rag_query}** based on retrieved documents."
         )
-    else:
+    elif settings.LLM_FAKE_MODE:
         # Construct helpful mock grounded citations matching files in scope
-        citations: list[Citation] = []
         if request.file_ids and len(request.file_ids) >= 2:
             citations = [
                 Citation(
@@ -170,7 +172,7 @@ async def query(
         scope_course_id=conversation.course_id,
         role=ChatRole.ASSISTANT,
         content=answer_text,
-        grounded=True,
+        grounded=False,
         citations=[c.model_dump(mode="json") for c in citations],
         mentioned_file_ids=request.file_ids,
         created_at=datetime.now(UTC),
@@ -185,7 +187,7 @@ async def query(
     return RagAnswer(
         answer=answer_text,
         citations=citations,
-        grounded=True,
+        grounded=False,
         used_chunks=len(citations),
         conversation_id=conversation.id,
     )
