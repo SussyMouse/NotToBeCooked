@@ -1,6 +1,7 @@
 import React from "react"
 import type { Tab } from "../../store/workspace"
 import { FileIcon } from "../explorer/FileItem"
+import { X } from "lucide-react"
 
 export interface TabItemProps {
   tab: Tab
@@ -35,23 +36,21 @@ export const TabItem: React.FC<TabItemProps> = React.memo(
         onClick={() => onSelect(tab)}
         onAuxClick={handleAuxClick}
         onMouseDown={handleMouseDown}
-        className={`group relative flex w-36 shrink-0 cursor-default select-none items-center gap-1.5 rounded-t-md pl-2 pr-1 py-1.5 text-xs transition-colors sm:w-44 ${
+        className={`group relative flex w-36 shrink-0 cursor-pointer items-center gap-1.5 rounded-none py-1.5 pr-1.5 pl-2.5 text-xs transition-colors select-none sm:w-44 ${
           isActive
-            ? "bg-(--tx-strong,#EDF2F6) font-semibold text-slate-900 shadow-sm"
-            : "bg-[#182432] text-(--tx-dim,#8B98A7) hover:bg-[#223347] hover:text-white shadow-xs"
+            ? "bg-(--bg-canvas,#161F29) font-semibold text-(--tx,#DCE3EA) shadow-xs before:absolute before:top-0 before:right-0 before:left-0 before:h-0.5 before:z-20 before:bg-(--acc,#52A8EA)"
+            : "bg-transparent text-(--tx-dim,#8B98A7) hover:bg-(--bg-raise,#1C2833)/70 hover:text-(--tx,#DCE3EA)"
         }`}
       >
         <FileIcon filename={tab.filename} className="h-3.5 w-3.5 shrink-0" />
 
-        {/* CRITICAL UX REQUIREMENT: Full-width label; extends under hover-only close overlay style must remains unchanged unless told */}
+        {/* Full-width label */}
         <span className="min-w-0 flex-1 truncate text-xs">{tab.filename}</span>
 
-        {/* CRITICAL UX REQUIREMENT: Hover-only close overlay; blends seamlessly into tab surface, style must remains unchanged unless told */}
+        {/* Hover-only close overlay; positioned below the top outline so it never covers the accent line */}
         <div
-          className={`absolute right-0 top-0 bottom-0 z-10 flex items-center justify-end pl-px pr-1.5 rounded-r-md opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100 ${
-            isActive
-              ? "bg-(--tx-strong,#EDF2F6)"
-              : "bg-[#223347]"
+          className={`pointer-events-none absolute top-0 right-0 bottom-0 z-10 flex items-center justify-end rounded-none pr-1.5 pl-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100 ${
+            isActive ? "bg-(--bg-canvas,#161F29)" : "bg-(--bg-raise,#1C2833)"
           }`}
         >
           <button
@@ -61,25 +60,9 @@ export const TabItem: React.FC<TabItemProps> = React.memo(
               e.stopPropagation()
               onClose(tab.fileId)
             }}
-            className={`pointer-events-auto flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full transition-colors ${
-              isActive
-                ? "text-slate-600 hover:bg-slate-300 hover:text-slate-900"
-                : "text-(--tx-faint,#5C6976) hover:bg-(--line,#25313E) hover:text-white"
-            }`}
+            className="pointer-events-auto flex h-4.5 w-4.5 shrink-0 cursor-pointer items-center justify-center rounded-full text-(--tx-faint,#5C6976) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
           >
-            <svg
-              width="9"
-              height="9"
-              viewBox="0 0 10 10"
-              fill="none"
-              className="stroke-current"
-            >
-              <path
-                d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5"
-                strokeWidth="1.3"
-                strokeLinecap="round"
-              />
-            </svg>
+            <X className="h-3 w-3 stroke-[2.2]" />
           </button>
         </div>
       </div>
@@ -88,3 +71,4 @@ export const TabItem: React.FC<TabItemProps> = React.memo(
 )
 
 TabItem.displayName = "TabItem"
+

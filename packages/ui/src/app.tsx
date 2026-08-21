@@ -4,6 +4,7 @@ import RegisterPage from "./pages/register"
 import LoginPage from "./pages/login"
 import DashboardPage from "./pages/dashboard"
 import { AuthProvider } from "./context/AuthContext"
+import { ThemeProvider } from "./context/ThemeContext"
 import ProtectedLayout from "./components/ProtectedLayout"
 import {
   BrowserRouter,
@@ -35,24 +36,26 @@ export function SharedMainApp({ platform }: { platform: "web" | "tauri" }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="dark min-h-screen bg-background font-sans text-foreground">
-        <Router>
-          <AuthProvider>
-            <Routes>
-              <Route path="*" element={<Navigate to="/register" replace />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/login" element={<LoginPage />} />
+      <ThemeProvider defaultTheme="midnight">
+        <div className="min-h-screen bg-background font-sans text-foreground">
+          <Router>
+            <AuthProvider>
+              <Routes>
+                <Route path="*" element={<Navigate to="/register" replace />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/login" element={<LoginPage />} />
 
-              <Route element={<ProtectedLayout />}>
-                <Route
-                  path="/dashboard"
-                  element={<DashboardPage platform={platform} />}
-                />
-              </Route>
-            </Routes>
-          </AuthProvider>
-        </Router>
-      </div>
+                <Route element={<ProtectedLayout />}>
+                  <Route
+                    path="/dashboard"
+                    element={<DashboardPage platform={platform} />}
+                  />
+                </Route>
+              </Routes>
+            </AuthProvider>
+          </Router>
+        </div>
+      </ThemeProvider>
     </QueryClientProvider>
   )
 }

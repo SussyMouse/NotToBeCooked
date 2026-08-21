@@ -1,5 +1,6 @@
 import { useState } from "react"
 import type { MockCourse } from "../../types/course"
+import { UserProfileDropdown } from "../profile/UserProfileDropdown"
 
 interface TopBarProps {
   platform?: string
@@ -16,7 +17,6 @@ const SEMESTERS = [1, 2]
 export function TopBar({
   currentCourse,
   courses,
-  userEmail,
   onSwitchCourse,
   onLogout,
 }: TopBarProps) {
@@ -59,7 +59,7 @@ export function TopBar({
               setOpenSemDropdown(false)
               setOpenCourseDropdown(false)
             }}
-            className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-(--line-soft,#1B2530) bg-(--bg-raise,#1C2833)/70 px-2.5 py-1.5 text-xs font-medium text-(--tx-dim,#8B98A7) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
+            className="flex cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-(--bg-raise,#1C2833)/70 px-2.5 py-1.5 text-xs font-medium text-(--tx-dim,#8B98A7) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
           >
             <span>Year {selectedYear}</span>
             <svg
@@ -80,7 +80,7 @@ export function TopBar({
           </button>
 
           {openYearDropdown && (
-            <div className="absolute top-full left-0 z-50 mt-1 flex w-32 flex-col rounded-lg border border-(--line,#25313E) bg-(--bg-panel,#121A23) p-1 shadow-2xl">
+            <div className="absolute top-full left-0 z-50 mt-1 flex w-32 flex-col rounded-lg border-0 bg-(--bg-panel,#121A23) p-1 shadow-2xl backdrop-blur-md">
               {YEARS.map((yr) => (
                 <button
                   key={yr}
@@ -116,7 +116,7 @@ export function TopBar({
               setOpenYearDropdown(false)
               setOpenCourseDropdown(false)
             }}
-            className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-(--line-soft,#1B2530) bg-(--bg-raise,#1C2833)/70 px-2.5 py-1.5 text-xs font-medium text-(--tx-dim,#8B98A7) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
+            className="flex cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-(--bg-raise,#1C2833)/70 px-2.5 py-1.5 text-xs font-medium text-(--tx-dim,#8B98A7) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
           >
             <span>Sem {selectedSem}</span>
             <svg
@@ -137,7 +137,7 @@ export function TopBar({
           </button>
 
           {openSemDropdown && (
-            <div className="absolute top-full left-0 z-50 mt-1 flex w-32 flex-col rounded-lg border border-(--line,#25313E) bg-(--bg-panel,#121A23) p-1 shadow-2xl">
+            <div className="absolute top-full left-0 z-50 mt-1 flex w-32 flex-col rounded-lg border-0 bg-(--bg-panel,#121A23) p-1 shadow-2xl backdrop-blur-md">
               {SEMESTERS.map((sm) => (
                 <button
                   key={sm}
@@ -177,7 +177,7 @@ export function TopBar({
               setOpenYearDropdown(false)
               setOpenSemDropdown(false)
             }}
-            className="flex max-w-72 cursor-pointer items-center gap-2 rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-3 py-1.5 text-xs text-(--tx,#DCE3EA) shadow-sm transition-colors hover:border-(--acc,#52A8EA)/40 hover:bg-(--bg-hover,#213040)"
+            className="flex max-w-72 cursor-pointer items-center gap-2 rounded-lg border-0 bg-(--bg-raise,#1C2833)/80 px-3 py-1.5 text-xs text-(--tx,#DCE3EA) shadow-xs transition-colors hover:bg-(--bg-hover,#213040)"
           >
             <span className="font-bold text-(--acc,#52A8EA)">
               {currentCourse.code}
@@ -203,7 +203,7 @@ export function TopBar({
           </button>
 
           {openCourseDropdown && (
-            <div className="absolute top-full left-0 z-50 mt-1 flex w-80 flex-col rounded-lg border border-(--line,#25313E) bg-(--bg-panel,#121A23) p-1.5 shadow-2xl">
+            <div className="absolute top-full left-0 z-50 mt-1 flex w-80 flex-col rounded-lg border-0 bg-(--bg-panel,#121A23) p-1.5 shadow-2xl backdrop-blur-md">
               <div className="px-2.5 py-1.5 font-mono text-[11px] font-semibold tracking-wider text-(--tx-faint,#5C6976) uppercase">
                 Enrolled Courses · Year {selectedYear} Sem {selectedSem}
               </div>
@@ -279,19 +279,7 @@ export function TopBar({
           </kbd>
         </div>
 
-        {userEmail && (
-          <span className="hidden text-xs font-medium text-(--tx-dim,#8B98A7) xl:inline">
-            {userEmail}
-          </span>
-        )}
-
-        <button
-          type="button"
-          onClick={onLogout}
-          className="cursor-pointer rounded-lg border border-(--line-soft,#1B2530) bg-(--bg-raise,#1C2833) px-3 py-1.5 text-xs font-medium text-(--tx-dim,#8B98A7) transition-colors hover:border-destructive hover:text-white"
-        >
-          Log Out
-        </button>
+        <UserProfileDropdown onLogout={onLogout} />
       </div>
     </header>
   )

@@ -48,6 +48,7 @@
     "./globals.css": "./src/styles/globals.css",
     "./lib/*": "./src/lib/*.ts",
     "./components/*": "./src/components/*.tsx",
+    "./context/*": "./src/context/*",
     "./hooks/*": "./src/hooks/*.ts",
     "./app": "./src/app.tsx",
     "./store/*": "./src/store/*.ts"
