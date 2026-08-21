@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react"
+import { Clock, Plus, X, Search, MessageSquare, Trash2 } from "lucide-react"
 
 export interface ChatSessionItem {
   id: string
@@ -73,33 +74,12 @@ export const History: React.FC<HistoryProps> = ({
       {/* Header */}
       <div className="flex h-10 flex-none items-center justify-between border-b border-(--line-soft,#1B2530) px-3">
         <div className="flex items-center gap-2">
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            className="text-(--acc,#52A8EA)"
-          >
-            <path
-              d="M8 3.5v4.5l3 2"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <circle
-              cx="8"
-              cy="8"
-              r="6"
-              stroke="currentColor"
-              strokeWidth="1.4"
-            />
-          </svg>
+          <Clock className="h-3.5 w-3.5 text-(--acc,#52A8EA)" />
           <span className="text-xs font-semibold text-(--tx,#DCE3EA)">
             Chat History
           </span>
-          <span className="py-0.2 rounded border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-1.5 font-mono text-[10px] text-(--tx-faint,#5C6976)">
-            {sessions.length}
+          <span className="text-[11px] text-(--tx-faint,#5C6976)">
+            {sessions.length} chats
           </span>
         </div>
 
@@ -112,17 +92,9 @@ export const History: React.FC<HistoryProps> = ({
                 onClose()
               }}
               title="Start New Chat"
-              className="flex cursor-pointer items-center gap-1 rounded p-1 text-[11px] text-(--tx-dim,#8B98A7) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--acc,#52A8EA)"
+              className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-(--tx-dim,#8B98A7) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--acc,#52A8EA)"
             >
-              <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                <path
-                  d="M7 2v10M2 7h10"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-              <span>New</span>
+              <Plus className="h-4 w-4" />
             </button>
           )}
 
@@ -130,16 +102,9 @@ export const History: React.FC<HistoryProps> = ({
             type="button"
             onClick={onClose}
             title="Close History"
-            className="cursor-pointer rounded p-1 text-(--tx-dim,#8B98A7) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
+            className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-(--tx-dim,#8B98A7) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
           >
-            <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-              <path
-                d="M3 3l8 8M11 3l-8 8"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-              />
-            </svg>
+            <X className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -147,20 +112,7 @@ export const History: React.FC<HistoryProps> = ({
       {/* Search Bar */}
       <div className="border-b border-(--line-soft,#1B2530) p-2">
         <div className="flex items-center gap-1.5 rounded border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2 py-1 text-xs text-(--tx,#DCE3EA)">
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 16 16"
-            fill="none"
-            className="shrink-0 text-(--tx-faint,#5C6976)"
-          >
-            <path
-              d="M7 12A5 5 0 107 2a5 5 0 000 10zM14 14l-3.5-3.5"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-            />
-          </svg>
+          <Search className="h-3 w-3 shrink-0 text-(--tx-faint,#5C6976)" />
           <input
             type="text"
             value={searchTerm}
@@ -174,7 +126,7 @@ export const History: React.FC<HistoryProps> = ({
               onClick={() => setSearchTerm("")}
               className="text-xs text-(--tx-faint,#5C6976) hover:text-(--tx,#DCE3EA)"
             >
-              ✕
+              <X className="h-3 w-3" />
             </button>
           )}
         </div>
@@ -184,19 +136,7 @@ export const History: React.FC<HistoryProps> = ({
       <div className="flex min-h-0 flex-1 scrollbar-thin [scrollbar-color:var(--line,#25313E)_transparent] flex-col gap-1 overflow-y-auto p-2">
         {filteredSessions.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 p-4 text-center text-(--tx-faint,#5C6976)">
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              className="opacity-40"
-            >
-              <path
-                d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              />
-            </svg>
+            <MessageSquare className="h-6 w-6 opacity-40" />
             <p className="text-xs">No conversations found</p>
           </div>
         ) : (
@@ -232,7 +172,7 @@ export const History: React.FC<HistoryProps> = ({
                         <button
                           type="button"
                           onClick={(e) => handleDeleteConfirm(e, s.id)}
-                          className="text-destructive-foreground rounded bg-destructive px-1.5 py-0.5 text-[10px] hover:opacity-90"
+                          className="text-destructive-foreground rounded bg-destructive px-1.5 py-0.5 text-[10px] hover:opacity-90 cursor-pointer"
                         >
                           Delete
                         </button>
@@ -242,9 +182,9 @@ export const History: React.FC<HistoryProps> = ({
                             e.stopPropagation()
                             setSessionToDelete(null)
                           }}
-                          className="p-1 text-(--tx-faint,#5C6976) hover:text-(--tx,#DCE3EA)"
+                          className="p-1 text-(--tx-faint,#5C6976) hover:text-(--tx,#DCE3EA) cursor-pointer"
                         >
-                          ✕
+                          <X className="h-3 w-3" />
                         </button>
                       </div>
                     ) : (
@@ -255,22 +195,9 @@ export const History: React.FC<HistoryProps> = ({
                           setSessionToDelete(s.id)
                         }}
                         title="Delete conversation"
-                        className="rounded p-1 text-(--tx-faint,#5C6976) opacity-0 transition-all group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
+                        className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-(--tx-faint,#5C6976) opacity-0 transition-all group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
                       >
-                        <svg
-                          width="12"
-                          height="12"
-                          viewBox="0 0 14 14"
-                          fill="none"
-                        >
-                          <path
-                            d="M3 4h8M5.6 4V2.8h2.8V4M4.2 4l.5 7.2h4.6L9.8 4"
-                            stroke="currentColor"
-                            strokeWidth="1.2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     )}
                   </div>

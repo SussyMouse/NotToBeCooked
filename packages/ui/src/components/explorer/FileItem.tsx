@@ -1,4 +1,5 @@
 import type { MockDocumentFile } from "../../types/course"
+import { FileText } from "lucide-react"
 
 interface FileItemProps {
   file: MockDocumentFile
@@ -60,27 +61,7 @@ export function FileIcon({
     case "txt":
     case "md":
     case "markdown":
-      return (
-        <svg
-          viewBox="0 0 16 16"
-          fill="none"
-          className={`${defaultClasses} text-blue-400/90`}
-        >
-          <path
-            d="M4 2h5.5L13 5.5V14H4V2z"
-            stroke="currentColor"
-            strokeWidth="1.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M6 7h4M6 9.5h4M6 12h2.5"
-            stroke="currentColor"
-            strokeWidth="1.2"
-            strokeLinecap="round"
-          />
-        </svg>
-      )
+      return <FileText className={`${defaultClasses} text-blue-400/90`} />
 
     case "doc":
     case "docx":

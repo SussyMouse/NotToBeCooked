@@ -38,7 +38,7 @@ export const TabItem: React.FC<TabItemProps> = React.memo(
         onMouseDown={handleMouseDown}
         className={`group relative flex w-36 shrink-0 cursor-pointer items-center gap-1.5 rounded-none py-1.5 pr-1.5 pl-2.5 text-xs transition-colors select-none sm:w-44 ${
           isActive
-            ? "bg-(--bg-canvas,#161F29) font-semibold text-(--tx,#DCE3EA) shadow-xs before:absolute before:top-0 before:right-0 before:left-0 before:h-0.5 before:z-20 before:bg-(--acc,#52A8EA)"
+            ? "bg-(--bg-canvas,#161F29) font-semibold text-(--tx,#DCE3EA) shadow-xs before:absolute before:top-0 before:right-0 before:left-0 before:z-20 before:h-0.5 before:bg-(--acc,#52A8EA)"
             : "bg-transparent text-(--tx-dim,#8B98A7) hover:bg-(--bg-raise,#1C2833)/70 hover:text-(--tx,#DCE3EA)"
         }`}
       >
@@ -71,4 +71,3 @@ export const TabItem: React.FC<TabItemProps> = React.memo(
 )
 
 TabItem.displayName = "TabItem"
-

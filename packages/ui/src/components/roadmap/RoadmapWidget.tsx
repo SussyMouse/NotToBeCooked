@@ -1,3 +1,5 @@
+import { TrendingUp } from "lucide-react"
+
 interface RoadmapWidgetProps {
   week: number
   weeks: number
@@ -20,20 +22,7 @@ export function RoadmapWidget({
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-xs font-medium text-(--tx,#DCE3EA)">
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 14 14"
-            fill="none"
-            className="text-(--ok,#38A169)"
-          >
-            <path
-              d="M2 11.5V8.2M5.7 11.5V4.5M9.3 11.5V6.4M13 11.5V2.5"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
+          <TrendingUp className="h-3.5 w-3.5 text-(--ok,#38A169)" />
           <span>Course Roadmap</span>
         </div>
         <div className="flex items-center gap-1 font-mono text-xs">

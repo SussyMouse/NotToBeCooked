@@ -13,6 +13,7 @@ import { RoadmapModal } from "../components/roadmap/RoadmapModal"
 import { UploadModal } from "../components/upload/UploadModal"
 import { TabBar } from "../components/tabs"
 import { DocumentViewer } from "../components/workspace/DocumentViewer"
+import { Maximize2, Minimize2, FileText } from "lucide-react"
 import type { MockCourse, MockDocumentFile } from "../types/course"
 
 export interface DashboardPageProps {
@@ -601,25 +602,11 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
                       : "text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040) hover:text-white"
                   }`}
                 >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                    {isWorkspaceFullscreen ? (
-                      <path
-                        d="M6 2v4H2M10 2v4h4M6 14v-4H2M10 14v-4h4"
-                        stroke="currentColor"
-                        strokeWidth="1.4"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    ) : (
-                      <path
-                        d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"
-                        stroke="currentColor"
-                        strokeWidth="1.4"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    )}
-                  </svg>
+                  {isWorkspaceFullscreen ? (
+                    <Minimize2 className="h-3.5 w-3.5" />
+                  ) : (
+                    <Maximize2 className="h-3.5 w-3.5" />
+                  )}
                 </button>
               }
             />
@@ -677,28 +664,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
                             className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3.5 py-2 text-left transition-colors hover:bg-(--bg-hover,#213040)/50"
                           >
                             <div className="flex min-w-0 flex-1 items-center gap-2.5">
-                              <svg
-                                width="14"
-                                height="14"
-                                viewBox="0 0 16 16"
-                                fill="none"
-                                className="shrink-0 text-(--tx-faint,#5C6976) group-hover:text-(--acc,#52A8EA)"
-                              >
-                                <path
-                                  d="M4 2h5.5L13 5.5V14H4V2z"
-                                  stroke="currentColor"
-                                  strokeWidth="1.2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                                <path
-                                  d="M9 2v4h4"
-                                  stroke="currentColor"
-                                  strokeWidth="1.2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
+                              <FileText className="h-3.5 w-3.5 shrink-0 text-(--tx-faint,#5C6976) group-hover:text-(--acc,#52A8EA)" />
                               <span className="truncate text-xs font-medium text-(--tx-dim,#8B98A7) group-hover:text-(--tx,#DCE3EA)">
                                 {file.name}
                               </span>

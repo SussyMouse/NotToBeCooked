@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react"
 import type { MockDocumentFile } from "../../types/course"
 import { FolderItem } from "./FolderItem"
 import { FileItem } from "./FileItem"
+import { Folder, Search } from "lucide-react"
 import { RoadmapWidget } from "../roadmap/RoadmapWidget"
 import { UploadDock } from "../upload/UploadDock"
 
@@ -101,19 +102,7 @@ export function FileExplorer({
         <div className="flex flex-col gap-2 border-b border-(--line-soft,#1B2530) p-3">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-2 text-xs font-semibold tracking-wider text-(--tx-dim,#8B98A7) uppercase">
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 16 16"
-                fill="none"
-                className="text-(--acc,#52A8EA)"
-              >
-                <path
-                  d="M2 4a1 1 0 011-1h3l1.5 2H13a1 1 0 011 1v6a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"
-                  stroke="currentColor"
-                  strokeWidth="1.3"
-                />
-              </svg>
+              <Folder className="h-3.5 w-3.5 text-(--acc,#52A8EA)" />
               Explorer
             </span>
             <span className="font-mono text-xs text-(--tx-faint,#5C6976)">
@@ -123,20 +112,7 @@ export function FileExplorer({
 
           {/* Minimalist Search Box */}
           <div className="flex items-center gap-2 rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833)/80 px-2.5 py-1.5 text-xs">
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              className="text-(--tx-faint,#5C6976)"
-            >
-              <path
-                d="M7 12A5 5 0 107 2a5 5 0 000 10zM14 14l-3.5-3.5"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-              />
-            </svg>
+            <Search className="h-3.5 w-3.5 text-(--tx-faint,#5C6976)" />
             <input
               type="text"
               value={searchQuery}

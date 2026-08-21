@@ -1,5 +1,6 @@
 import React, { useState } from "react"
 import type { CitationItem } from "./ChatMessage"
+import { Check, X, ExternalLink } from "lucide-react"
 
 export interface CitationDrawerProps {
   citation: CitationItem | null
@@ -32,15 +33,7 @@ export const CitationDrawer: React.FC<CitationDrawerProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 font-mono text-[11px] font-semibold text-(--cite,#E3A63F)">
-          <svg width="11" height="11" viewBox="0 0 10 10" fill="none">
-            <path
-              d="M2 5.2l2 2 4-4.4"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <Check className="h-3 w-3" />
           <span>Grounded Citation: {citation.l}</span>
         </div>
 
@@ -50,7 +43,7 @@ export const CitationDrawer: React.FC<CitationDrawerProps> = ({
           title="Close citation preview"
           className="cursor-pointer rounded p-1 text-(--tx-faint,#5C6976) transition-colors hover:text-(--tx,#DCE3EA)"
         >
-          ✕
+          <X className="h-3.5 w-3.5" />
         </button>
       </div>
 
@@ -81,10 +74,10 @@ export const CitationDrawer: React.FC<CitationDrawerProps> = ({
           <button
             type="button"
             onClick={() => onOpenDocument(citation.f, citation.p)}
-            className="inline-flex cursor-pointer items-center gap-1 rounded bg-(--cite,#E3A63F) px-2.5 py-1 text-[11px] font-semibold text-black shadow-xs transition-opacity hover:opacity-90"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded bg-(--cite,#E3A63F) px-2.5 py-1 text-[11px] font-semibold text-black shadow-xs transition-opacity hover:opacity-90"
           >
             <span>Open Document (p.{citation.p})</span>
-            <span>↗</span>
+            <ExternalLink className="h-3 w-3" />
           </button>
         )}
       </div>

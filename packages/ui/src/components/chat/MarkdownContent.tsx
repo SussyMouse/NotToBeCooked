@@ -1,5 +1,6 @@
 import React from "react"
 import type { CitationItem } from "./ChatMessage"
+import { FileText, Folder } from "lucide-react"
 
 export interface MarkdownContentProps {
   content: string
@@ -85,44 +86,9 @@ function parseInline(
           className="mx-0.5 inline-flex items-center gap-1 font-medium text-(--acc,#52A8EA) select-none"
         >
           {isPdf ? (
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              className="inline-block shrink-0 align-sub text-(--acc,#52A8EA)"
-            >
-              <path
-                d="M3.5 2A1.5 1.5 0 002 3.5v9A1.5 1.5 0 003.5 14h9a1.5 1.5 0 001.5-1.5v-6.5L9.5 2h-6z"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M9 2v4h4"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <FileText className="inline-block shrink-0 align-sub h-3.5 w-3.5 text-(--acc,#52A8EA)" />
           ) : (
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              className="inline-block shrink-0 align-sub text-(--acc,#52A8EA)"
-            >
-              <path
-                d="M2 4a1 1 0 011-1h3.5L8 4.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <Folder className="inline-block shrink-0 align-sub h-3.5 w-3.5 text-(--acc,#52A8EA)" />
           )}
           <span>{label}</span>
         </span>
@@ -137,28 +103,7 @@ function parseInline(
           key={idx}
           className="mx-0.5 inline-flex items-center gap-1 font-medium text-(--acc,#52A8EA) select-none"
         >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 16 16"
-            fill="none"
-            className="inline-block shrink-0 align-sub text-(--acc,#52A8EA)"
-          >
-            <path
-              d="M3.5 2A1.5 1.5 0 002 3.5v9A1.5 1.5 0 003.5 14h9a1.5 1.5 0 001.5-1.5v-6.5L9.5 2h-6z"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M9 2v4h4"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <FileText className="inline-block shrink-0 align-sub h-3.5 w-3.5 text-(--acc,#52A8EA)" />
           <span>{label}</span>
         </span>
       )

@@ -7,6 +7,7 @@ import {
 import { ChatInput, type ChatFile } from "./ChatInput"
 import { History, type ChatSessionItem } from "./History"
 import { CitationDrawer } from "./CitationDrawer"
+import { Plus, Clock, Trash2 } from "lucide-react"
 
 export type { CitationItem, ChatMessage, ChatFile, ChatSessionItem }
 
@@ -283,22 +284,15 @@ export const Chat: React.FC<ChatProps> = ({
             {headerTitle}
           </span>
 
-          <div className="flex flex-none items-center gap-1.5">
+          <div className="flex flex-none items-center gap-1">
             {/* New Chat Button */}
             <button
               type="button"
               onClick={handleNewChatClick}
               title="Start new conversation"
-              className="cursor-pointer rounded p-1 text-(--tx-dim,#8B98A7) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
+              className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-(--tx-dim,#8B98A7) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
             >
-              <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                <path
-                  d="M7 2v10M2 7h10"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
+              <Plus className="h-4 w-4" />
             </button>
 
             {/* History Drawer Toggle Button */}
@@ -306,28 +300,13 @@ export const Chat: React.FC<ChatProps> = ({
               type="button"
               onClick={() => setHistoryOpen(!historyOpen)}
               title="Toggle Chat History"
-              className={`relative cursor-pointer rounded p-1 transition-colors ${
+              className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded transition-colors ${
                 historyOpen
                   ? "bg-(--bg-hover,#213040) text-(--acc,#52A8EA)"
                   : "text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
               }`}
             >
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                <path
-                  d="M8 3.5v4.5l3 2"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <circle
-                  cx="8"
-                  cy="8"
-                  r="6"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                />
-              </svg>
+              <Clock className="h-4 w-4" />
             </button>
 
             {/* Delete / Clear Chat Button */}
@@ -339,17 +318,9 @@ export const Chat: React.FC<ChatProps> = ({
                   ? "Delete current conversation"
                   : "Clear conversation"
               }
-              className="cursor-pointer rounded p-1 text-(--tx-dim,#8B98A7) transition-colors hover:bg-destructive/10 hover:text-destructive"
+              className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-(--tx-dim,#8B98A7) transition-colors hover:bg-destructive/10 hover:text-destructive"
             >
-              <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                <path
-                  d="M3 4h8M5.6 4V2.8h2.8V4M4.2 4l.5 7.2h4.6L9.8 4"
-                  stroke="currentColor"
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <Trash2 className="h-4 w-4" />
             </button>
           </div>
         </div>

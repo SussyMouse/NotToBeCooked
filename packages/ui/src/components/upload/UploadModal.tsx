@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Upload, X, UploadCloud } from "lucide-react"
 
 interface UploadModalProps {
   isOpen: boolean
@@ -48,21 +49,7 @@ export function UploadModal({
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-(--line-soft,#1B2530) p-4">
           <div className="flex items-center gap-2">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              className="text-(--acc,#52A8EA)"
-            >
-              <path
-                d="M8 11V3M8 3L5 6M8 3l3 3M3 11v1.5A1.5 1.5 0 004.5 14h7a1.5 1.5 0 001.5-1.5V11"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <Upload className="h-4 w-4 text-(--acc,#52A8EA)" />
             <h3 className="text-sm font-bold text-(--tx,#DCE3EA)">
               {isDirectFolderUpload
                 ? `Upload to ${selectedCategory}`
@@ -74,7 +61,7 @@ export function UploadModal({
             onClick={handleClose}
             className="cursor-pointer rounded-lg p-1 text-(--tx-faint,#5C6976) hover:bg-(--bg-raise,#1C2833) hover:text-white"
           >
-            ✕
+            <X className="h-4 w-4" />
           </button>
         </div>
 
@@ -102,21 +89,7 @@ export function UploadModal({
             onClick={handleSimulatedUpload}
             className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-(--line,#25313E) bg-(--bg-raise,#1C2833)/40 p-6 text-center transition-colors hover:border-(--acc,#52A8EA) hover:bg-(--bg-hover,#213040)/30"
           >
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              fill="none"
-              className="text-(--acc,#52A8EA)"
-            >
-              <path
-                d="M12 16V5M12 5L7.5 9.5M12 5l4.5 4.5M4 16.5V18a2.5 2.5 0 002.5 2.5h11A2.5 2.5 0 0020 18v-1.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <UploadCloud className="h-7 w-7 text-(--acc,#52A8EA)" />
             <span className="text-xs font-medium text-(--tx,#DCE3EA)">
               Click or drag files here to upload
             </span>

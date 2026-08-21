@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react"
+import { ArrowUp } from "lucide-react"
 
 export interface ChatFile {
   id: string
@@ -362,15 +363,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               title="Send Message (Enter)"
               className="flex h-6 w-6 flex-none cursor-pointer items-center justify-center rounded-full bg-(--acc,#52A8EA) text-[#0B1118] shadow-sm transition-all hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                <path
-                  d="M8 12.5V3.5M3.5 8L8 3.5l4.5 4.5"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <ArrowUp className="h-3.5 w-3.5" strokeWidth={2.5} />
             </button>
           )}
         </div>

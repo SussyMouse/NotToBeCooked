@@ -1,5 +1,6 @@
 import React from "react"
 import { MarkdownContent } from "./MarkdownContent"
+import { FileText, Folder, Check } from "lucide-react"
 
 export interface CitationItem {
   f: string // file id
@@ -45,44 +46,9 @@ export function renderMentionized(text: string): React.ReactNode {
           className="mx-0.5 inline-flex items-center gap-1 font-medium text-(--acc,#52A8EA) select-none"
         >
           {isPdf ? (
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              className="inline-block shrink-0 align-sub text-(--acc,#52A8EA)"
-            >
-              <path
-                d="M3.5 2A1.5 1.5 0 002 3.5v9A1.5 1.5 0 003.5 14h9a1.5 1.5 0 001.5-1.5v-6.5L9.5 2h-6z"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M9 2v4h4"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <FileText className="inline-block shrink-0 align-sub h-3.5 w-3.5 text-(--acc,#52A8EA)" />
           ) : (
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              className="inline-block shrink-0 align-sub text-(--acc,#52A8EA)"
-            >
-              <path
-                d="M2 4a1 1 0 011-1h3.5L8 4.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <Folder className="inline-block shrink-0 align-sub h-3.5 w-3.5 text-(--acc,#52A8EA)" />
           )}
           <span>{label}</span>
         </span>
@@ -94,28 +60,7 @@ export function renderMentionized(text: string): React.ReactNode {
           key={i}
           className="mx-0.5 inline-flex items-center gap-1 font-medium text-(--acc,#52A8EA) select-none"
         >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 16 16"
-            fill="none"
-            className="inline-block shrink-0 align-sub text-(--acc,#52A8EA)"
-          >
-            <path
-              d="M3.5 2A1.5 1.5 0 002 3.5v9A1.5 1.5 0 003.5 14h9a1.5 1.5 0 001.5-1.5v-6.5L9.5 2h-6z"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M9 2v4h4"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <FileText className="inline-block shrink-0 align-sub h-3.5 w-3.5 text-(--acc,#52A8EA)" />
           <span>{label}</span>
         </span>
       )
@@ -171,15 +116,7 @@ export const ChatMessageItem: React.FC<ChatMessageProps> = ({
                 onClick={() => onCiteClick?.(cite)}
                 className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-(--cite-line,rgba(227,166,63,0.38)) bg-(--cite-bg,rgba(227,166,63,0.09)) px-2 py-0.5 font-mono text-[10.5px] text-(--cite,#E3A63F) [outline:none] transition-colors outline-none hover:bg-[rgba(227,166,63,0.19)] focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none"
               >
-                <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
-                  <path
-                    d="M2 5.2l2 2 4-4.4"
-                    stroke="currentColor"
-                    strokeWidth="1.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                <Check className="h-2.5 w-2.5" />
                 <span>{cite.l}</span>
               </button>
             ))}

@@ -1,9 +1,10 @@
 import { useState } from "react"
 import type { MockCourse } from "../../types/course"
 import { UserProfileDropdown } from "../profile/UserProfileDropdown"
+import { ChevronDown, Search } from "lucide-react"
 
-interface TopBarProps {
-  platform?: string
+export interface TopBarProps {
+  platform?: "web" | "tauri"
   currentCourse: MockCourse
   courses: MockCourse[]
   userEmail?: string
@@ -25,14 +26,12 @@ export function TopBar({
   const [openCourseDropdown, setOpenCourseDropdown] = useState(false)
   const [globalSearch, setGlobalSearch] = useState("")
 
-  const selectedYear = currentCourse.year
-  const selectedSem = currentCourse.semester
+  const selectedYear = currentCourse.year || 1
+  const selectedSem = currentCourse.semester || 1
 
-  const availableCoursesForScope = courses.filter(
+  const displayedCourses = courses.filter(
     (c) => c.year === selectedYear && c.semester === selectedSem
   )
-  const displayedCourses =
-    availableCoursesForScope.length > 0 ? availableCoursesForScope : courses
 
   const closeAllDropdowns = () => {
     setOpenYearDropdown(false)
@@ -43,7 +42,7 @@ export function TopBar({
   return (
     <header
       onClick={closeAllDropdowns}
-      className="relative z-20 flex h-12 flex-none items-center justify-between border-b border-(--line,#25313E) bg-(--bg-bar,#101821) px-3.5 text-sm"
+      className="relative flex h-12 w-full flex-none items-center justify-between border-b border-(--line,#25313E) bg-(--bg-bar,#101821) px-4 text-xs select-none"
     >
       {/* Left: Scope Selectors (Year, Sem, Course) */}
       <div
@@ -62,21 +61,7 @@ export function TopBar({
             className="flex cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-(--bg-raise,#1C2833)/70 px-2.5 py-1.5 text-xs font-medium text-(--tx-dim,#8B98A7) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
           >
             <span>Year {selectedYear}</span>
-            <svg
-              width="9"
-              height="9"
-              viewBox="0 0 10 10"
-              fill="none"
-              className="text-(--tx-faint,#5C6976)"
-            >
-              <path
-                d="M2 4l3 3 3-3"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <ChevronDown className="h-3 w-3 text-(--tx-faint,#5C6976)" />
           </button>
 
           {openYearDropdown && (
@@ -87,7 +72,11 @@ export function TopBar({
                   type="button"
                   onClick={() => {
                     const target =
-                      courses.find((c) => c.year === yr) || courses[0]!
+                      courses.find(
+                        (c) => c.year === yr && c.semester === selectedSem
+                      ) ||
+                      courses.find((c) => c.year === yr) ||
+                      courses[0]!
                     onSwitchCourse(target.id)
                     setOpenYearDropdown(false)
                   }}
@@ -119,21 +108,7 @@ export function TopBar({
             className="flex cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-(--bg-raise,#1C2833)/70 px-2.5 py-1.5 text-xs font-medium text-(--tx-dim,#8B98A7) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
           >
             <span>Sem {selectedSem}</span>
-            <svg
-              width="9"
-              height="9"
-              viewBox="0 0 10 10"
-              fill="none"
-              className="text-(--tx-faint,#5C6976)"
-            >
-              <path
-                d="M2 4l3 3 3-3"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <ChevronDown className="h-3 w-3 text-(--tx-faint,#5C6976)" />
           </button>
 
           {openSemDropdown && (
@@ -185,21 +160,7 @@ export function TopBar({
             <span className="truncate font-medium text-(--tx-dim,#8B98A7)">
               {currentCourse.name}
             </span>
-            <svg
-              width="9"
-              height="9"
-              viewBox="0 0 10 10"
-              fill="none"
-              className="shrink-0 text-(--tx-faint,#5C6976)"
-            >
-              <path
-                d="M2 4l3 3 3-3"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <ChevronDown className="h-3 w-3 shrink-0 text-(--tx-faint,#5C6976)" />
           </button>
 
           {openCourseDropdown && (
@@ -217,19 +178,23 @@ export function TopBar({
                       onSwitchCourse(c.id)
                       setOpenCourseDropdown(false)
                     }}
-                    className={`flex w-full cursor-pointer items-center justify-between rounded-md px-2.5 py-2 text-left text-xs transition-colors ${
+                    className={`flex w-full cursor-pointer items-center justify-between rounded px-2.5 py-2 text-left text-xs transition-colors ${
                       isSelected
                         ? "bg-(--acc,#52A8EA)/15 font-semibold text-(--acc,#52A8EA)"
                         : "text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA)"
                     }`}
                   >
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold">{c.code}</span>
-                      <span className="truncate text-[11px] text-(--tx-faint,#5C6976)">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-mono font-bold">{c.code}</span>
+                      <span className="text-[11px] text-(--tx-dim,#8B98A7)">
                         {c.name}
                       </span>
                     </div>
-                    {isSelected && <span className="text-xs font-bold">✓</span>}
+                    {isSelected && (
+                      <span className="font-mono text-xs font-bold text-(--acc,#52A8EA)">
+                        ACTIVE
+                      </span>
+                    )}
                   </button>
                 )
               })}
@@ -238,7 +203,7 @@ export function TopBar({
         </div>
       </div>
 
-      {/* Center: Brand Logo & Title (Moved to middle) */}
+      {/* Center: Brand Logo & Title */}
       <div className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 items-center gap-2 sm:pointer-events-auto">
         <img
           src="/ntbc-logo.png"
@@ -250,23 +215,10 @@ export function TopBar({
         </span>
       </div>
 
-      {/* Right: Horizontally Expanded Search Bar & Actions */}
+      {/* Right: Search Bar & User Profile */}
       <div className="flex items-center gap-3">
         <div className="flex w-64 items-center gap-2 rounded-lg border border-(--line-soft,#1B2530) bg-(--bg-raise,#1C2833)/70 px-3 py-1.5 text-xs text-(--tx-faint,#5C6976) transition-colors focus-within:border-(--acc,#52A8EA)/50 focus-within:bg-(--bg-raise,#1C2833) md:w-80 lg:w-96">
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 16 16"
-            fill="none"
-            className="shrink-0 text-(--tx-faint,#5C6976)"
-          >
-            <path
-              d="M7 12A5 5 0 107 2a5 5 0 000 10zM14 14l-3.5-3.5"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-            />
-          </svg>
+          <Search className="h-3.5 w-3.5 shrink-0 text-(--tx-faint,#5C6976)" />
           <input
             type="text"
             value={globalSearch}

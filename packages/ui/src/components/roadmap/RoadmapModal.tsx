@@ -1,4 +1,5 @@
 import type { Milestone, MockCourse } from "../../types/course"
+import { Clock } from "lucide-react"
 
 interface RoadmapModalProps {
   isOpen: boolean
@@ -154,28 +155,7 @@ export function RoadmapModal({
 
         {/* Target Footer */}
         <div className="flex items-center gap-2 border-t border-(--line-soft,#1B2530) bg-(--bg-bar,#101821) p-3 text-xs text-(--tx-dim,#8B98A7)">
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            className="shrink-0 text-(--acc,#52A8EA)"
-          >
-            <circle
-              cx="8"
-              cy="8"
-              r="6"
-              stroke="currentColor"
-              strokeWidth="1.3"
-            />
-            <path
-              d="M8 5v3.5l2.5 1.5"
-              stroke="currentColor"
-              strokeWidth="1.3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <Clock className="h-3.5 w-3.5 shrink-0 text-(--acc,#52A8EA)" />
           <span className="truncate text-xs">
             This week:{" "}
             <strong className="text-(--tx,#DCE3EA)">{course.target}</strong>
