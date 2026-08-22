@@ -351,7 +351,10 @@ column — which sub-decision 2 of item 03 voted against for a still-valid reaso
 
 ## Folded into the first Alembic migration
 
-- **R17** — `UNIQUE (user_id, code, year, sem)` on `COURSE`
+R5 is **not** on this list, though the summary table carried it here until 22 Aug.
+It is a query condition rather than a constraint; see its row for why.
+
+- **R17** — `UNIQUE (user_id, code, year, sem)` on `COURSE` — **done 22 Aug**
 - **R18** — `UNIQUE (ingestion_run_id, chunk_index)` on `CHUNK`
 - **R19** — `is_active = true` implies `status = 'ready'`; an active run must not
   be a failed or in-progress one
@@ -396,6 +399,44 @@ retrieval query. `file_id` is what a citation needs without a join. Meeting item
 
 The review's own closing section allows denormalisation for performance provided
 the redundancy is constrained. That is R4, and R4 is scheduled. The columns stay.
+
+### R26 — the ERD drew one of `CHUNK`'s three foreign keys
+
+**Fixed 23 August.** `erd.mmd` carried a single relationship into `CHUNK`:
+
+```
+INGESTION_RUN ||--o{ CHUNK : "produced"
+```
+
+while the schema has three, each with `ON DELETE CASCADE`:
+
+```
+chunk_ingestion_run_id_fkey  -> ingestion_run    drawn
+chunk_file_id_fkey           -> file             not drawn
+chunk_course_id_fkey         -> course           not drawn
+```
+
+Both undrawn columns are annotated `FK` in the `CHUNK` block and described as
+denormalised, which is why the gap survived the 16 August review: the columns
+were visible, only the edges were missing. Denormalisation explains why a column
+exists; it does not stop the column being a foreign key.
+
+The reading it produced is wrong in a way that matters. Deleting a course looks
+like it reaches `CHUNK` along `COURSE -> FOLDER -> FILE -> INGESTION_RUN -> CHUNK`,
+four cascades deep, when there is also a direct edge. Anyone changing
+`ON DELETE` at the `FILE` level to preserve chunks would find they are deleted
+anyway, and nothing in the diagram would explain why.
+
+Added:
+
+```
+FILE   ||--o{ CHUNK : "cited as"
+COURSE ||--o{ CHUNK : "scopes"
+```
+
+`fk_chunk_run_file_agree` — R4's composite foreign key, added 22 August — points
+at `INGESTION_RUN` like the first one and gets no separate edge; it is recorded
+in the `file_id` annotation instead.
 
 ### R24 — a full folder tree
 
@@ -525,13 +566,14 @@ SQLAlchemy's default, not anybody's mistake.
 | R10 | `MESSAGE` has no `sequence_no` | **Deferred** — accepted v1 defect, order implied by `created_at` |
 | R16 | Soft delete on `COURSE` / `FILE` | **Declined 18 Aug** — and so **v1 has no delete-course feature**, see R16 |
 | R4 | `CHUNK` FKs can contradict each other | Open — first migration. **Unblocked 20 Aug**: all three columns now exist |
-| R5 | Vector scan not filtered by embedding model | Open — first migration. **Unblocked 20 Aug**: `INGESTION_RUN.embedding_model` and `CHUNK.ingestion_run_id` both exist |
+| R5 | Vector scan not filtered by embedding model | Open — **retrieval layer, not the migration**. Reclassified 22 Aug: a constraint rejects a row that is itself invalid, and a chunk embedded by an older model is a perfectly valid row. What is wrong is comparing it against a query embedded by a different one, and no constraint sees a comparison. It belongs in `_vector_similarity_search` in `db/vector_ops.py` as a join to `INGESTION_RUN` filtering on `is_active` and `embedding_model`. `KNOWN_ISSUES` already said as much in the R21 entry — "R5 fixes that at the query" — while this row said first migration; the two contradicted each other until now. **Unassigned.** |
 | R8 | `is_active` needs a partial unique index | Open — first migration. **Unblocked 20 Aug** |
-| R17 | `UNIQUE (user_id, code, year, sem)` | Open — first migration |
+| R17 | `UNIQUE (user_id, code, year, sem)` | **Done 22 Aug** — declared on `Course.__table_args__` and created in the initial migration as `uq_course_user_code_year_sem`. Verified from an empty database: a duplicate raises `UniqueViolationError`, while a second semester, a second year and a second user all insert. |
 | R18 | `UNIQUE (ingestion_run_id, chunk_index)` | Open — first migration. **Unblocked 20 Aug** |
 | R19 | `is_active` implies `status = 'ready'` | Open — first migration. **Write it lowercase**: see R25 |
 | R20 | Supporting index set | Open — first migration. `COURSE(user_id)` is redundant once R17 lands — a UNIQUE builds its own index and `user_id` is its leftmost column |
 | R25 | PostgreSQL enums were going to store member NAMES | **Fixed 20 Aug** — see below |
+| R26 | The ERD drew one of CHUNK's three foreign keys | **Fixed 23 Aug** — `erd.mmd` had `INGESTION_RUN ||--o{ CHUNK` and nothing for `file_id` or `course_id`, though both are real foreign keys with `ON DELETE CASCADE`. Found by the Lead reading the rendered diagram against the constraint list. Two lines added, `erd.png` regenerated |
 | R21 | `EMBEDDING_PROFILE` entity | Declined for v1 — see R5 |
 | R22 | `STORED_OBJECT` split | Declined for v1 |
 | R23 | Remove `CHUNK.file_id` / `course_id` | Declined — item 04, see R4 |
