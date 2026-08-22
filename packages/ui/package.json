@@ -6,7 +6,8 @@
   "scripts": {
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test src/test/*.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -47,6 +48,7 @@
     "./globals.css": "./src/styles/globals.css",
     "./lib/*": "./src/lib/*.ts",
     "./components/*": "./src/components/*.tsx",
+    "./context/*": "./src/context/*",
     "./hooks/*": "./src/hooks/*.ts",
     "./app": "./src/app.tsx",
     "./store/*": "./src/store/*.ts"

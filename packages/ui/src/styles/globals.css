@@ -61,27 +61,65 @@
 }
 
 /* ============================================================
-   THEMES
+   THEMES (derived from apps/concept/workspace.html)
 
-   Three themes on two axes, so the stock shadcn light/dark
-   contract keeps working untouched:
-
-     :root                       DAYLIGHT   (light)
-     .dark                       MIDNIGHT   (default dark)
-     .dark[data-theme="carbon"]  CARBON     (second dark)
-
-   Carbon layers on top of .dark, so anything it does not
-   redefine inherits Midnight rather than falling back to light.
-
-   Derived from the workspace UI concept:
-   https://claude.ai/code/artifact/67472991-e554-4a2f-966d-0cef4effe5dc
+   1. MIDNIGHT  (default dark) : .dark, [data-pal="midnight"], [data-theme="midnight"]
+   2. AMETHYST  (violet dark)  : .dark[data-pal="violet"], .dark[data-theme="violet"]
+   3. DEEP SEA  (teal dark)    : .dark[data-pal="teal"], .dark[data-theme="teal"]
+   4. CARBON    (neutral dark) : .dark[data-pal="carbon"], .dark[data-theme="carbon"]
+   5. DAYLIGHT  (light)        : :root, [data-pal="light"], [data-theme="light"]
    ============================================================ */
 
-/* ---------- DAYLIGHT — light ---------- */
-:root {
+/* ---------- 5 · DAYLIGHT — light ---------- */
+:root,
+[data-pal="light"],
+[data-theme="light"] {
+    /* Concept variables */
+    --bg-bar: #EFF2F5;
+    --bg-panel: #F5F7F9;
+    --bg-canvas: #FFFFFF;
+    --bg-raise: #FFFFFF;
+    --bg-hover: #E6EBF1;
+    --line: #D7DEE6;
+    --line-soft: #E7ECF1;
+    --line-hover: #BCC7D2;
+    --tx: #1B2530;
+    --tx-dim: #55636F;
+    --tx-faint: #8493A1;
+    --tx-strong: #0E1620;
+    --acc: #1F6FB0;
+    --acc-rgb: 31, 111, 176;
+    --acc-deep: #1B6098;
+    --acc-deep-h: #154F7E;
+    --acc-btn-line: #175E93;
+    --on-acc: #F2F8FD;
+    --on-acc-bright: #FFFFFF;
+    --acc-tx: #124A78;
+    --acc-tx-soft: #1A5E93;
+    --acc-tx-mute: #2A6A9E;
+    --cite: #9A6A0E;
+    --cite-rgb: 154, 106, 14;
+    --cite-tx: #5C4108;
+    --cite-bg: rgba(154, 106, 14, 0.11);
+    --cite-line: rgba(154, 106, 14, 0.44);
+    --ok: #2C7D57;
+    --ok-rgb: 44, 125, 87;
+    --on-ok: #FFFFFF;
+    --bar-track: #DEE4EA;
+    --danger: #C4453F;
+    --danger-rgb: 196, 69, 63;
+    --danger-tx: #93302B;
+    --pdf-bg: #FBE9E8;
+    --pdf-fg: #C4453F;
+    --pdf-line: #F0D2D0;
+    --md-bg: #E6F0F9;
+    --md-fg: #1F6FB0;
+    --md-line: #CCE0F0;
+
+    /* shadcn tokens */
     --background: oklch(1 0 0);
     --foreground: oklch(0.26 0.025 251.2);
-    --card: oklch(1 0 0);
+    --card: oklch(0.99 0.002 248);
     --card-foreground: oklch(0.26 0.025 251.2);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.26 0.025 251.2);
@@ -111,15 +149,59 @@
     --sidebar-accent-foreground: oklch(0.26 0.025 251.2);
     --sidebar-border: oklch(0.941 0.009 247.9);
     --sidebar-ring: oklch(0.528 0.126 248.1);
-    /* evidence + progress */
-    --cite: oklch(0.561 0.113 76.3);
+    --cite-color: oklch(0.561 0.113 76.3);
     --cite-foreground: oklch(1 0 0);
     --success: oklch(0.53 0.099 159.6);
     --success-foreground: oklch(1 0 0);
 }
 
-/* ---------- MIDNIGHT — default dark ---------- */
-.dark {
+/* ---------- 1 · MIDNIGHT — default dark ---------- */
+.dark,
+.dark[data-pal="midnight"],
+.dark[data-theme="midnight"] {
+    /* Concept variables */
+    --bg-bar: #101821;
+    --bg-panel: #121A23;
+    --bg-canvas: #161F29;
+    --bg-raise: #1C2833;
+    --bg-hover: #213040;
+    --line: #25313E;
+    --line-soft: #1B2530;
+    --line-hover: #31404F;
+    --tx: #DCE3EA;
+    --tx-dim: #8B98A7;
+    --tx-faint: #5C6976;
+    --tx-strong: #EDF2F6;
+    --acc: #52A8EA;
+    --acc-rgb: 82, 168, 234;
+    --acc-deep: #1D5D8A;
+    --acc-deep-h: #246C9E;
+    --acc-btn-line: #2A73A6;
+    --on-acc: #EAF5FD;
+    --on-acc-bright: #08131C;
+    --acc-tx: #CFE6F8;
+    --acc-tx-soft: #A8D4F2;
+    --acc-tx-mute: #CBDDEB;
+    --cite: #E3A63F;
+    --cite-rgb: 227, 166, 63;
+    --cite-tx: #EADCC2;
+    --cite-bg: rgba(227, 166, 63, 0.09);
+    --cite-line: rgba(227, 166, 63, 0.38);
+    --ok: #4FB07C;
+    --ok-rgb: 79, 176, 124;
+    --on-ok: #0B1A12;
+    --bar-track: #0E1720;
+    --danger: #E0625C;
+    --danger-rgb: 224, 98, 92;
+    --danger-tx: #F0A19D;
+    --pdf-bg: #2A1A1C;
+    --pdf-fg: #E0625C;
+    --pdf-line: #3A2326;
+    --md-bg: #152430;
+    --md-fg: #52A8EA;
+    --md-line: #1E3646;
+
+    /* shadcn tokens */
     --background: oklch(0.235 0.023 251.5);
     --foreground: oklch(0.913 0.012 248);
     --card: oklch(0.214 0.021 251.8);
@@ -151,17 +233,196 @@
     --sidebar-accent-foreground: oklch(0.913 0.012 248);
     --sidebar-border: oklch(0.26 0.025 251.2);
     --sidebar-ring: oklch(0.707 0.128 244.3);
-    /* evidence + progress */
-    --cite: oklch(0.765 0.136 76.8);
+    --cite-color: oklch(0.765 0.136 76.8);
     --cite-foreground: oklch(0.215 0.039 79.1);
     --success: oklch(0.685 0.121 157.5);
     --success-foreground: oklch(0.201 0.026 159.5);
 }
 
-/* ---------- CARBON — second dark.
-   Navigation is deliberately desaturated so that citations and
-   progress stay the only saturated colours on screen. ---------- */
+/* ---------- 2 · AMETHYST — violet dark ---------- */
+.dark[data-pal="violet"],
+.dark[data-theme="violet"] {
+    /* Concept variables */
+    --bg-bar: #15121D;
+    --bg-panel: #181523;
+    --bg-canvas: #1D1A2A;
+    --bg-raise: #252134;
+    --bg-hover: #2F2942;
+    --line: #332C48;
+    --line-soft: #241F33;
+    --line-hover: #413859;
+    --tx: #E2DEEC;
+    --tx-dim: #9A93AF;
+    --tx-faint: #6B6482;
+    --tx-strong: #F0EDF7;
+    --acc: #A78BFA;
+    --acc-rgb: 167, 139, 250;
+    --acc-deep: #5B3FA8;
+    --acc-deep-h: #6B4BC4;
+    --acc-btn-line: #7355C9;
+    --on-acc: #F3EEFE;
+    --on-acc-bright: #150B2B;
+    --acc-tx: #DACEFB;
+    --acc-tx-soft: #C4B2F7;
+    --acc-tx-mute: #CFC3F2;
+    --cite: #E3A63F;
+    --cite-rgb: 227, 166, 63;
+    --cite-tx: #EEDCB9;
+    --cite-bg: rgba(227, 166, 63, 0.09);
+    --cite-line: rgba(227, 166, 63, 0.38);
+    --ok: #5CC08D;
+    --ok-rgb: 92, 192, 141;
+    --on-ok: #0A1C13;
+    --bar-track: #130F1C;
+    --danger: #E86A7C;
+    --danger-rgb: 232, 106, 124;
+    --danger-tx: #F5A8B4;
+    --pdf-bg: #2C1620;
+    --pdf-fg: #E86A7C;
+    --pdf-line: #3D1F2C;
+    --md-bg: #221B39;
+    --md-fg: #A78BFA;
+    --md-line: #332A52;
+
+    /* shadcn tokens */
+    --background: oklch(0.24 0.03 290);
+    --foreground: oklch(0.92 0.015 290);
+    --card: oklch(0.22 0.028 290);
+    --card-foreground: oklch(0.92 0.015 290);
+    --popover: oklch(0.27 0.032 290);
+    --popover-foreground: oklch(0.92 0.015 290);
+    --primary: oklch(0.72 0.16 295);
+    --primary-foreground: oklch(0.18 0.03 295);
+    --secondary: oklch(0.28 0.03 290);
+    --secondary-foreground: oklch(0.92 0.015 290);
+    --muted: oklch(0.28 0.03 290);
+    --muted-foreground: oklch(0.68 0.03 290);
+    --accent: oklch(0.31 0.04 290);
+    --accent-foreground: oklch(0.92 0.015 290);
+    --border: oklch(0.32 0.035 290);
+    --input: oklch(0.32 0.035 290);
+    --ring: oklch(0.72 0.16 295);
+    --sidebar: oklch(0.22 0.028 290);
+    --sidebar-foreground: oklch(0.92 0.015 290);
+    --sidebar-primary: oklch(0.72 0.16 295);
+    --sidebar-primary-foreground: oklch(0.18 0.03 295);
+}
+
+/* ---------- 3 · DEEP SEA — teal dark ---------- */
+.dark[data-pal="teal"],
+.dark[data-theme="teal"] {
+    /* Concept variables */
+    --bg-bar: #0C1719;
+    --bg-panel: #0F1B1E;
+    --bg-canvas: #132125;
+    --bg-raise: #1A2C31;
+    --bg-hover: #21393F;
+    --line: #22383D;
+    --line-soft: #182A2E;
+    --line-hover: #2E4A50;
+    --tx: #DAE7E9;
+    --tx-dim: #87A1A6;
+    --tx-faint: #5A7175;
+    --tx-strong: #ECF5F6;
+    --acc: #2DD4BF;
+    --acc-rgb: 45, 212, 191;
+    --acc-deep: #12706A;
+    --acc-deep-h: #178780;
+    --acc-btn-line: #1D8F87;
+    --on-acc: #E4FBF8;
+    --on-acc-bright: #04201D;
+    --acc-tx: #A8EDE4;
+    --acc-tx-soft: #8FE5DA;
+    --acc-tx-mute: #B4E4DE;
+    --cite: #E9A83A;
+    --cite-rgb: 233, 168, 58;
+    --cite-tx: #EEDCB4;
+    --cite-bg: rgba(233, 168, 58, 0.09);
+    --cite-line: rgba(233, 168, 58, 0.38);
+    --ok: #9BCB5B;
+    --ok-rgb: 155, 203, 91;
+    --on-ok: #16210A;
+    --bar-track: #0B1618;
+    --danger: #E76A62;
+    --danger-rgb: 231, 106, 98;
+    --danger-tx: #F3A69F;
+    --pdf-bg: #2A1719;
+    --pdf-fg: #E76A62;
+    --pdf-line: #3A2124;
+    --md-bg: #12292C;
+    --md-fg: #2DD4BF;
+    --md-line: #1C3E41;
+
+    /* shadcn tokens */
+    --background: oklch(0.23 0.03 195);
+    --foreground: oklch(0.92 0.015 195);
+    --card: oklch(0.21 0.028 195);
+    --card-foreground: oklch(0.92 0.015 195);
+    --popover: oklch(0.26 0.03 195);
+    --popover-foreground: oklch(0.92 0.015 195);
+    --primary: oklch(0.78 0.14 175);
+    --primary-foreground: oklch(0.18 0.03 175);
+    --secondary: oklch(0.27 0.03 195);
+    --secondary-foreground: oklch(0.92 0.015 195);
+    --muted: oklch(0.27 0.03 195);
+    --muted-foreground: oklch(0.67 0.03 195);
+    --accent: oklch(0.30 0.035 195);
+    --accent-foreground: oklch(0.92 0.015 195);
+    --border: oklch(0.31 0.035 195);
+    --input: oklch(0.31 0.035 195);
+    --ring: oklch(0.78 0.14 175);
+    --sidebar: oklch(0.21 0.028 195);
+    --sidebar-foreground: oklch(0.92 0.015 195);
+    --sidebar-primary: oklch(0.78 0.14 175);
+    --sidebar-primary-foreground: oklch(0.18 0.03 175);
+}
+
+/* ---------- 4 · CARBON — neutral dark ---------- */
+.dark[data-pal="carbon"],
 .dark[data-theme="carbon"] {
+    /* Concept variables */
+    --bg-bar: #141618;
+    --bg-panel: #17191C;
+    --bg-canvas: #1C1F22;
+    --bg-raise: #24282C;
+    --bg-hover: #2E3338;
+    --line: #31363B;
+    --line-soft: #232729;
+    --line-hover: #3E444A;
+    --tx: #E0E3E6;
+    --tx-dim: #969BA0;
+    --tx-faint: #6A6F74;
+    --tx-strong: #F2F4F6;
+    --acc: #9FB3C8;
+    --acc-rgb: 159, 179, 200;
+    --acc-deep: #4A5762;
+    --acc-deep-h: #5A6874;
+    --acc-btn-line: #616F7C;
+    --on-acc: #F0F4F8;
+    --on-acc-bright: #14181C;
+    --acc-tx: #D2DCE6;
+    --acc-tx-soft: #BCCAD8;
+    --acc-tx-mute: #C8D2DC;
+    --cite: #E8A33A;
+    --cite-rgb: 232, 163, 58;
+    --cite-tx: #EFDCB6;
+    --cite-bg: rgba(232, 163, 58, 0.09);
+    --cite-line: rgba(232, 163, 58, 0.38);
+    --ok: #5FB584;
+    --ok-rgb: 95, 181, 132;
+    --on-ok: #0C1D14;
+    --bar-track: #121416;
+    --danger: #DE6660;
+    --danger-rgb: 222, 102, 96;
+    --danger-tx: #EFA39E;
+    --pdf-bg: #2A1D1E;
+    --pdf-fg: #DE6660;
+    --pdf-line: #3A2829;
+    --md-bg: #242A30;
+    --md-fg: #9FB3C8;
+    --md-line: #333B43;
+
+    /* shadcn tokens */
     --background: oklch(0.237 0.007 248.1);
     --foreground: oklch(0.914 0.005 247.9);
     --card: oklch(0.213 0.007 258.4);
@@ -180,24 +441,10 @@
     --border: oklch(0.33 0.011 248.2);
     --input: oklch(0.33 0.011 248.2);
     --ring: oklch(0.758 0.038 249.6);
-    --chart-1: oklch(0.758 0.038 249.6);
-    --chart-2: oklch(0.765 0.142 73.5);
-    --chart-3: oklch(0.706 0.111 157);
-    --chart-4: oklch(0.736 0.07 299.9);
-    --chart-5: oklch(0.655 0.152 25);
     --sidebar: oklch(0.213 0.007 258.4);
     --sidebar-foreground: oklch(0.914 0.005 247.9);
     --sidebar-primary: oklch(0.758 0.038 249.6);
     --sidebar-primary-foreground: oklch(0.207 0.01 248.3);
-    --sidebar-accent: oklch(0.318 0.011 248.2);
-    --sidebar-accent-foreground: oklch(0.914 0.005 247.9);
-    --sidebar-border: oklch(0.27 0.007 229.1);
-    --sidebar-ring: oklch(0.758 0.038 249.6);
-    /* evidence + progress */
-    --cite: oklch(0.765 0.142 73.5);
-    --cite-foreground: oklch(0.215 0.039 79.1);
-    --success: oklch(0.706 0.111 157);
-    --success-foreground: oklch(0.212 0.029 159.4);
 }
 
 @layer base {

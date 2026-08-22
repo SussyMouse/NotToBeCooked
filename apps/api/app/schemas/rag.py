@@ -31,6 +31,9 @@ class RagQueryRequest(SQLModel):
     course_id: UUID | None = Field(
         default=None, description="The turn's home course. Ignored when file_ids is set."
     )
+    conversation_id: UUID | None = Field(
+        default=None, description="The turn's conversation"
+    )
     file_ids: list[UUID] | None = Field(
         default=None,
         description="Explicit @-mention scope. May cross courses. When set, overrides course_id.",
@@ -119,6 +122,10 @@ class RagAnswer(SQLModel):
         ge=0,
         description="How many chunks were actually put into the prompt, after selection. "
         "0 means there was no material and the layer should have refused to answer.",
+    )
+    conversation_id: UUID | None = Field(
+        default=None,
+        description="The active or newly created conversation ID.",
     )
 
 

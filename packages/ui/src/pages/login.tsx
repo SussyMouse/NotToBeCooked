@@ -1,11 +1,11 @@
-import React from "react";
-import z from "zod";
+import React from "react"
+import z from "zod"
 
-import { api, schemas, isApiClientError } from "@workspace/contracts";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router";
-import { useAuth } from "../context/auth-context";
+import { api, schemas, isApiClientError } from "@workspace/contracts"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Controller, useForm } from "react-hook-form"
+import { Link, useNavigate } from "react-router"
+import { useAuth } from "../context/auth-context"
 
 import {
   Card,
@@ -14,20 +14,24 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@workspace/ui/components/card";
+} from "@workspace/ui/components/card"
 import {
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@workspace/ui/components/field";
-import { Input } from "@workspace/ui/components/input";
-import { Button } from "@workspace/ui/components/button";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "../components/input-group";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
-import devToast from "../lib/alerts";
+} from "@workspace/ui/components/field"
+import { Input } from "@workspace/ui/components/input"
+import { Button } from "@workspace/ui/components/button"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "../components/input-group"
+import { EyeIcon, EyeOffIcon } from "lucide-react"
+import devToast from "../lib/alerts"
 
-const loginFormSchema = schemas.LoginRequest;
+const loginFormSchema = schemas.LoginRequest
 
 export function LoginPage() {
   const [showPassword, setShowPassword] = React.useState(false)
@@ -41,7 +45,7 @@ export function LoginPage() {
       email: "",
       password: "",
     },
-  });
+  })
 
   const onSubmit = async (data: z.infer<typeof loginFormSchema>) => {
     try {
@@ -66,23 +70,29 @@ export function LoginPage() {
         err.detail.forEach((issue) => {
           const fieldName = issue.loc[1] as "email" | "password"
           form.setError(fieldName, { message: issue.msg })
-        });
+        })
       } else {
         form.setError("root", { message: err.message })
       }
       devToast(err)
     }
-  };
+  }
 
-  const rootError = form.formState.errors.root?.message;
+  const rootError = form.formState.errors.root?.message
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4 text-foreground">
-      <Card className="w-full max-w-md shadow-xl border border-border">
-        <CardHeader className="text-center space-y-2 flex flex-col items-center">
-          <img src="/ntbc-logo.png" alt="NotToBeCooked Logo" className="w-12 h-12 object-contain rounded-xl shadow-md" />
+      <Card className="w-full max-w-md border border-border shadow-xl">
+        <CardHeader className="flex flex-col items-center space-y-2 text-center">
+          <img
+            src="/ntbc-logo.png"
+            alt="NotToBeCooked Logo"
+            className="h-12 w-12 rounded-xl object-contain shadow-md"
+          />
           <div>
-            <CardTitle className="text-2xl font-bold tracking-tight">Welcome Back</CardTitle>
+            <CardTitle className="text-2xl font-bold tracking-tight">
+              Welcome Back
+            </CardTitle>
             <CardDescription>
               Sign in to access your RAG study workspace
             </CardDescription>
@@ -92,12 +102,19 @@ export function LoginPage() {
         <CardContent className="space-y-4">
           {/* Global/Server Error Banner */}
           {rootError && (
-            <div role="alert" className="rounded-lg bg-destructive/15 p-3.5 text-sm font-medium text-destructive border border-destructive/20">
+            <div
+              role="alert"
+              className="rounded-lg border border-destructive/20 bg-destructive/15 p-3.5 text-sm font-medium text-destructive"
+            >
               {rootError}
             </div>
           )}
 
-          <form id="form-login" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form
+            id="form-login"
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4"
+          >
             <FieldGroup>
               {/* Email Field */}
               <Controller
@@ -114,7 +131,9 @@ export function LoginPage() {
                       placeholder="example@gmail.com"
                       autoComplete="email"
                     />
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
                   </Field>
                 )}
               />
@@ -130,11 +149,11 @@ export function LoginPage() {
                       <InputGroupInput
                         {...field}
                         id={field.name}
-                        type={ showPassword ? "text" : "password" }
+                        type={showPassword ? "text" : "password"}
                         aria-invalid={fieldState.invalid}
                         placeholder="••••••••"
                         autoComplete="current-password"
-                       />
+                      />
                       <InputGroupAddon align="inline-end">
                         <button
                           type="button"
@@ -144,7 +163,9 @@ export function LoginPage() {
                         </button>
                       </InputGroupAddon>
                     </InputGroup>
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
                   </Field>
                 )}
               />
@@ -167,7 +188,7 @@ export function LoginPage() {
             Don't have an account?{" "}
             <Link
               to="/register"
-              className="font-semibold text-primary underline underline-offset-4 hover:text-primary/80 transition-colors"
+              className="font-semibold text-primary underline underline-offset-4 transition-colors hover:text-primary/80"
             >
               Sign up
             </Link>
@@ -175,7 +196,7 @@ export function LoginPage() {
         </CardFooter>
       </Card>
     </div>
-  );
+  )
 }
 
-export default LoginPage;
+export default LoginPage

@@ -7,6 +7,10 @@ import {
     type HTTPValidationError,
     type ValidationIssue,
     schemas,
+    type Conversation,
+    type ConversationDetail,
+    type RagAnswer,
+    type RagQueryRequest,
 } from "./index.js"
 
 /**
@@ -21,7 +25,8 @@ export interface ApiClientError extends ApiError {
 /** Narrow an unknown caught value to what this client throws. */
 export function isApiClientError(e: unknown): e is ApiClientError {
     return (
-        typeof e === "object" && e !== null &&
+        typeof e === "object" &&
+        e !== null &&
         typeof (e as ApiError).code === "string" &&
         typeof (e as ApiError).message === "string"
     )
@@ -34,7 +39,7 @@ export interface ApiClientConfig {
     onTokenRefreshed?: (newToken: string, user: UserRead) => void
 }
 
-type RefreshSubscriber = (err?: unknown) => void;
+type RefreshSubscriber = (err?: unknown) => void
 
 export class ApiClient {
     private baseUrl: string
@@ -43,8 +48,8 @@ export class ApiClient {
     private onTokenRefreshed?: (newToken: string, user: UserRead) => void
 
     // Race-condition control variables
-    private isRefreshing: boolean = false;
-    private refreshSubscribers: RefreshSubscriber[] = [];
+    private isRefreshing: boolean = false
+    private refreshSubscribers: RefreshSubscriber[] = []
 
     constructor(config: ApiClientConfig = {}) {
         this.baseUrl = config.baseUrl || this.resolveBaseUrl()
@@ -109,14 +114,21 @@ export class ApiClient {
             headers,
         })
 
-        if (response.status === 401 && endpoint !== "/auth/login" && endpoint !== "/auth/refresh") {
+        if (
+            response.status === 401 &&
+            endpoint !== "/auth/login" &&
+            endpoint !== "/auth/refresh"
+        ) {
             if (!this.isRefreshing) {
                 this.isRefreshing = true
 
                 try {
                     const refreshResult = await this.auth.refresh()
                     this.isRefreshing = false
-                    this.onTokenRefreshed?.(refreshResult.access_token, refreshResult.user)
+                    this.onTokenRefreshed?.(
+                        refreshResult.access_token,
+                        refreshResult.user
+                    )
                     this.onRefreshSubscribers()
                     return this.request<T>(endpoint, options)
                 } catch (refreshErr: any) {
@@ -133,13 +145,10 @@ export class ApiClient {
                         reject(err)
                         return
                     }
-                    this.request<T>(endpoint, options)
-                        .then(resolve)
-                        .catch(reject)
+                    this.request<T>(endpoint, options).then(resolve).catch(reject)
                 })
             })
         }
-
 
         if (!response.ok) {
             let errorData: ApiClientError
@@ -152,14 +161,22 @@ export class ApiClient {
                     // FastAPI's 422 body is {detail: [{loc, msg, type}, ...]}. Keeping the
                     // issues in their own field is what lets a form map them back onto
                     // individual inputs; folding them into `message` stringifies an array.
-                    const detail: unknown = (rawJson as HTTPValidationError | undefined)?.detail
+                    const detail: unknown = (rawJson as HTTPValidationError | undefined)
+                        ?.detail
                     if (Array.isArray(detail)) {
-                        errorData = { code: "VALIDATION_ERROR", message: "Some fields are invalid", detail }
+                        errorData = {
+                            code: "VALIDATION_ERROR",
+                            message: "Some fields are invalid",
+                            detail,
+                        }
                     } else if (typeof detail === "string") {
                         errorData = { code: "HTTP_ERROR", message: detail }
                     } else {
                         const nested = (detail as ApiError | undefined)?.message
-                        errorData = { code: "HTTP_ERROR", message: nested ?? response.statusText }
+                        errorData = {
+                            code: "HTTP_ERROR",
+                            message: nested ?? response.statusText,
+                        }
                     }
                 }
             } catch {
@@ -189,13 +206,55 @@ export class ApiClient {
 
         refresh: (): Promise<TokenResponse> => {
             return this.request<TokenResponse>("/auth/refresh", {
-                method: "POST"
+                method: "POST",
             })
         },
 
         logout: (): Promise<{ status: string }> => {
             return this.request<{ status: string }>("/auth/logout", {
-                method: "POST"
+                method: "POST",
+            })
+        },
+    }
+
+    public chat = {
+        // get a list of Conversation via course_id
+        sessions: (
+            course_id?: string,
+            offset: number = 0,
+            limit: number = 10
+        ): Promise<Conversation[]> => {
+            const searchParams = new URLSearchParams({
+                offset: offset.toString(),
+                limit: limit.toString()
+            })
+
+            if (course_id) {
+                searchParams.set("course_id", course_id)
+            }
+
+            return this.request<Conversation[]>(`/chat/sessions?${searchParams.toString()}`, {
+                method: "GET"
+            })
+        },
+
+        // get ConversationDetail via session_id
+        messages: (session_id: string): Promise<ConversationDetail> => {
+            return this.request<ConversationDetail>(`/chat/sessions/${session_id}`, {
+                method: "GET"
+            })
+        },
+
+        delete_session: (session_id: string): Promise<{ status: "ok" }> => {
+            return this.request<{ status: "ok" }>(`/chat/sessions/${session_id}`, {
+                method: "DELETE"
+            })
+        },
+
+        query: (payload: RagQueryRequest): Promise<RagAnswer> => {
+            return this.request<RagAnswer>("/rag/query", {
+                method: "POST",
+                body: JSON.stringify(payload)
             })
         }
     }

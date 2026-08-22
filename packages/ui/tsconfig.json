@@ -8,12 +8,13 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node"],
     "paths": {
       "@workspace/ui/*": ["./src/*"],
       "@lib/*": ["./src/lib/*"],
       "@components/*": ["./src/components/*"]
     }
-
   },
   "include": ["."],
   "exclude": ["node_modules", "dist"]
