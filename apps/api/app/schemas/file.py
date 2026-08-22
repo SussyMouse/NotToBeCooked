@@ -37,7 +37,7 @@ class File(SQLModel, table=True):
     # Reading a file's course now costs one join. Retrieval does not pay it:
     # CHUNK carries its own denormalised `course_id`, which is exactly what that
     # column is for.
-    folder_id: UUID = Field(foreign_key="folder.id", ondelete="CASCADE")
+    folder_id: UUID = Field(foreign_key="folder.id", ondelete="CASCADE", index=True)
     filename: str
     storage_key: str = Field(
         unique=True,
@@ -46,6 +46,11 @@ class File(SQLModel, table=True):
     )
     sha256: str | None = Field(
         default=None,
+        # R20. Indexed, non-unique. Its job is "has this account uploaded this
+        # content already" -- a lookup, not a rule. R7 is why it must not be
+        # unique: a global UNIQUE would reject the second student to upload the
+        # same lecture slides.
+        index=True,
         description="Content checksum. Deliberately NOT unique -- finding R7: a global "
         "UNIQUE would reject the second student to upload the same lecture slides.",
     )

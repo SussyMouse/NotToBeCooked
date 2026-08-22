@@ -3,7 +3,14 @@ from uuid import UUID, uuid4
 
 from pgvector.sqlalchemy import Vector
 from pydantic import BaseModel
-from sqlalchemy import Computed, DateTime, ForeignKey, Index
+from sqlalchemy import (
+    Computed,
+    DateTime,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Index,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import TypeDecorator
@@ -36,6 +43,33 @@ class Chunk(Base):
             "content_tsv",
             postgresql_using="gin",
         ),
+        # R18. chunk_index is the chunk's position within its run, so it is only
+        # meaningful paired with the run. UNIQUE on chunk_index alone would allow
+        # one chunk number 0 in the whole table; scoping it to the run is what
+        # makes "re-index a file" produce a second complete set rather than a
+        # collision.
+        UniqueConstraint("ingestion_run_id", "chunk_index", name="uq_chunk_run_index"),
+        # R4, the half a foreign key can enforce. The three foreign keys below
+        # are each valid on their own while together describing something
+        # impossible -- a chunk attributed to a run of a different file. Pointing
+        # (ingestion_run_id, file_id) at INGESTION_RUN's own (id, file_id) makes
+        # that combination unrepresentable rather than merely discouraged.
+        #
+        # The other half -- file_id agreeing with course_id -- is NOT enforced
+        # here and cannot be with a foreign key. FILE reaches its course through
+        # FOLDER, so there is no single row carrying both, and a composite key
+        # needs one. That half needs a trigger or a denormalised
+        # FILE.course_id; both are decisions, not implementation. Still open.
+        ForeignKeyConstraint(
+            ["ingestion_run_id", "file_id"],
+            ["ingestion_run.id", "ingestion_run.file_id"],
+            ondelete="CASCADE",
+            name="fk_chunk_run_file_agree",
+        ),
+        # R20 lists CHUNK(ingestion_run_id). Deliberately not added: the UNIQUE
+        # above builds its own index and ingestion_run_id is its leftmost column,
+        # so a lookup by run alone already uses it. Same reasoning retires
+        # COURSE(user_id) under R17.
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
