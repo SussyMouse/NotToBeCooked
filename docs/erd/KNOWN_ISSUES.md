@@ -579,13 +579,13 @@ SQLAlchemy's default, not anybody's mistake.
 | R6 | `mentioned_file_ids` has no FK; folders unrepresented | **Not reached — proceeds on the recommendation: JSONB stays in v1.** Folder @-mentions → next meeting |
 | R10 | `MESSAGE` has no `sequence_no` | **Deferred** — accepted v1 defect, order implied by `created_at` |
 | R16 | Soft delete on `COURSE` / `FILE` | **Declined 18 Aug** — and so **v1 has no delete-course feature**, see R16 |
-| R4 | `CHUNK` FKs can contradict each other | Open — first migration. **Unblocked 20 Aug**: all three columns now exist |
-| R5 | Vector scan not filtered by embedding model | Open — **retrieval layer, not the migration**. Reclassified 22 Aug: a constraint rejects a row that is itself invalid, and a chunk embedded by an older model is a perfectly valid row. What is wrong is comparing it against a query embedded by a different one, and no constraint sees a comparison. It belongs in `_vector_similarity_search` in `db/vector_ops.py` as a join to `INGESTION_RUN` filtering on `is_active` and `embedding_model`. `KNOWN_ISSUES` already said as much in the R21 entry — "R5 fixes that at the query" — while this row said first migration; the two contradicted each other until now. **Unassigned.** |
-| R8 | `is_active` needs a partial unique index | Open — first migration. **Unblocked 20 Aug** |
+| R4 | `CHUNK` FKs can contradict each other | **Half done 22 Aug** (`efda7a3`) — `fk_chunk_run_file_agree` makes a chunk's run and file agree, backed by `uq_ingestion_run_id_file`. The `file_id`/`course_id` half is **not enforceable by a foreign key** (FILE carries no `course_id`) and is **open, on the 25 Aug agenda** |
+| R5 | Vector scan not filtered by embedding model | Open, **unassigned — on the 25 Aug agenda**. **Retrieval layer, not the migration**. Reclassified 22 Aug: a constraint rejects a row that is itself invalid, and a chunk embedded by an older model is a perfectly valid row. What is wrong is comparing it against a query embedded by a different one, and no constraint sees a comparison. It belongs in `_vector_similarity_search` in `db/vector_ops.py` as a join to `INGESTION_RUN` filtering on `is_active` and `embedding_model`. `KNOWN_ISSUES` already said as much in the R21 entry — "R5 fixes that at the query" — while this row said first migration; the two contradicted each other until now. **Unassigned.** |
+| R8 | `is_active` needs a partial unique index | **Done 22 Aug** (`efda7a3`) — `ix_ingestion_run_one_active` UNIQUE on `(file_id) WHERE is_active`. Verified from empty: a second active run raises `UniqueViolation`, further inactive runs are accepted |
 | R17 | `UNIQUE (user_id, code, year, sem)` | **Done 22 Aug** — declared on `Course.__table_args__` and created in the initial migration as `uq_course_user_code_year_sem`. Verified from an empty database: a duplicate raises `UniqueViolationError`, while a second semester, a second year and a second user all insert. |
-| R18 | `UNIQUE (ingestion_run_id, chunk_index)` | Open — first migration. **Unblocked 20 Aug** |
-| R19 | `is_active` implies `status = 'ready'` | Open — first migration. **Write it lowercase**: see R25 |
-| R20 | Supporting index set | Open — first migration. `COURSE(user_id)` is redundant once R17 lands — a UNIQUE builds its own index and `user_id` is its leftmost column |
+| R18 | `UNIQUE (ingestion_run_id, chunk_index)` | **Done 22 Aug** (`efda7a3`) — `uq_chunk_run_index`. Verified: a second chunk 0 in one run is rejected; chunk 0 in a re-index run is accepted |
+| R19 | `is_active` implies `status = 'ready'` | **Done 22 Aug** (`efda7a3`) — `ck_ingestion_run_active_is_ready`, written `NOT is_active OR status = 'ready'`, lower case per R25. Verified: `is_active` with `processing` is rejected |
+| R20 | Supporting index set | **Done 22 Aug** (`efda7a3`) — five indexes created. `COURSE(user_id)` and `CHUNK(ingestion_run_id)` deliberately **not** created: each is the leftmost column of a UNIQUE declared above, and a UNIQUE builds its own index. `INGESTION_RUN(file_id)` **is** created despite R8's index starting with the same column — R8's is partial, and a partial index only answers a query whose own predicate implies its `WHERE` |
 | R25 | PostgreSQL enums were going to store member NAMES | **Fixed 20 Aug** — see below |
 | R26 | The ERD drew one of CHUNK's three foreign keys | **Fixed 23 Aug** — `erd.mmd` had `INGESTION_RUN ||--o{ CHUNK` and nothing for `file_id` or `course_id`, though both are real foreign keys with `ON DELETE CASCADE`. Found by the Lead reading the rendered diagram against the constraint list. Two lines added, `erd.png` regenerated |
 | R21 | `EMBEDDING_PROFILE` entity | Declined for v1 — see R5 |
@@ -593,8 +593,15 @@ SQLAlchemy's default, not anybody's mistake.
 | R23 | Remove `CHUNK.file_id` / `course_id` | Declined — item 04, see R4 |
 | R24 | Full folder tree | Declined — item 04, see R9 |
 
-**Nothing on this list is marked "Open — 18 Aug" any more.** Everything is decided,
-declined, deferred with its cost stated, or folded into the first migration (Gantt
-**r41**, 19–22 Aug). The one bucket still carrying real risk is that migration bucket:
-**R4, R5, R8, R17, R18, R19, R20** are seven constraint-and-index decisions scheduled
-inside the same four days as the migration itself.
+**Status of the r41 bucket, 24 August.** The seven constraint-and-index findings
+scheduled into the first migration — R4, R5, R8, R17, R18, R19, R20 — have resolved
+as follows:
+
+| | Where it stands |
+|---|---|
+| **R8 · R17 · R18 · R19 · R20** | **Done 22 Aug**, on `dev` in `8767fc7` and `efda7a3`, each verified by rebuilding the database from empty and probing it |
+| **R4** | **Half done.** The foreign key holds a chunk's run and file together; the `file_id`/`course_id` half needs a trigger or a denormalised column and is **a decision on the 25 August agenda** |
+| **R5** | **Not a constraint.** Reclassified 22 Aug as a retrieval-layer query predicate, and **unassigned** — also on the 25 August agenda |
+
+**The two rows still open are both on that agenda, and neither is migration work
+any more.** Nothing on this list is marked "Open — 18 Aug".
