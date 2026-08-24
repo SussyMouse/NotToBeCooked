@@ -148,20 +148,34 @@ ships that model. It is the first item on the next agenda.
 
 ### R10 — `MESSAGE` has no `sequence_no`
 
-Turn order is currently implied by `created_at`. Two rows written inside the same
-transaction can share a timestamp, and the conversation renders in an arbitrary
-order. A monotonic integer per conversation removes the ambiguity.
+Turn order is currently implied by `created_at`, with nothing guaranteeing that two
+rows of one conversation carry distinct values. A monotonic integer per conversation
+would remove the ambiguity instead of relying on clock resolution. How much
+ambiguity there actually is today was measured on 24 August — see below; it is less
+than this entry originally asserted.
 
 **18 August — deferred again, and this file previously contradicted itself on it.**
 The body said "deferred"; the summary table at the foot said "Open — 18 Aug". The
 body was right. R10 was never on the 18 August agenda in the first place, so there
 was nothing to not-decide: turn order stays implied by `created_at` for v1.
 
-**What deferring actually costs.** Two rows written in one transaction can share a
-timestamp, and then the conversation renders in an arbitrary order. In practice a
-user turn and its assistant turn are exactly that pair. This is a real v1 defect
-that has been accepted, not a theoretical one — it is listed here so the first bug
-report about a reversed exchange is recognised instead of investigated.
+**What deferring actually costs — measured 24 August, and it is smaller than this
+entry used to claim.** The earlier wording said two rows written in one transaction
+can share a timestamp, and that a user turn and its assistant turn are exactly that
+pair. The second half does not hold for the code as written.
+
+`created_at` is not `server_default=now()`; both rows call Python's
+`datetime.now(UTC)` separately (`routers/rag.py:79` and `:181`), and the whole
+generation block sits between them. Two calls with a single `sha256` between them
+collided **0 times in 20,000**. Back-to-back with nothing in between they collide
+83% of the time, which is the clock's resolution rather than our situation.
+
+So the accepted defect is narrower: **turn order is safe while every writer stamps
+its own row in Python.** It breaks the day someone switches the column to a server
+default, because a transaction timestamp is identical for every row in the
+transaction — and `routers/chat.py:99` orders by `created_at` alone, so the
+conversation would then render arbitrarily. That is the thing to recognise in a bug
+report, not a collision under the current code.
 
 ---
 
