@@ -89,8 +89,7 @@ async def _full_text_search(
     LIMIT 5
     """
     ts_query = func.replace(
-        "english",
-        func.replace(func.plainto_tsquery("english", term).cast(Text), " & ", " | "),
+        func.plainto_tsquery("english", term).cast(Text), " & ", " | "
     ).cast(TSQUERY)
     rank_col = func.ts_rank(Chunk.content_tsv, ts_query).label("rank")
     statement = select(Chunk, File, rank_col).join(File).where(File.id == Chunk.file_id)
