@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from uuid import UUID
 
-from sqlalchemy import func
+from sqlalchemy import Text, func
 from sqlmodel import col, delete, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -80,14 +80,17 @@ async def _full_text_search(
     term: str, session: AsyncSession, file_ids: list[UUID] | None = None, top_k: int = 5
 ) -> Sequence[tuple[Chunk, File, float]]:
     """Performs
-    SELECT chunk.*, ts_rank(chunk.content_tsv, plainto_tsquery('english', term)) AS rank
+    SELECT chunk.*, ts_rank(chunk.content_tsv, to_tsquery('english', replace(plainto_tsquery('english', term)::text, ' & ', ' | '))) AS rank
     FROM chunk
     WHERE chunk.file_id IN file_ids
-    WHERE chunk.content_tsv @@ plainto_tsquery('english', term)
+    WHERE chunk.content_tsv @@ to_tsquery('english', replace(plainto_tsquery('english', term)::text, ' & ', ' | '))
     ORDER BY rank DESC
     LIMIT 5
     """
-    ts_query = func.plainto_tsquery("english", term)
+    ts_query = func.to_tsquery(
+        "english",
+        func.replace(func.plainto_tsquery("english", term).cast(Text), " & ", " | "),
+    )
     rank_col = func.ts_rank(Chunk.content_tsv, ts_query).label("rank")
     statement = select(Chunk, File, rank_col).join(File).where(File.id == Chunk.file_id)
     if file_ids:
