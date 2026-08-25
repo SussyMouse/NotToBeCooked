@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+import app.models  # noqa: F401 -- register every table with SQLModel.metadata
 from app.core.config import settings
 
 # 1. Create Async Engine (asyncpg)
