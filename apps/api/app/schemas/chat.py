@@ -28,7 +28,7 @@ class Conversation(SQLModel, table=True):
 
     id: UUID | None = Field(default_factory=uuid4, primary_key=True)
     course_id: UUID = Field(foreign_key="course.id", ondelete="CASCADE", index=True)
-    title: str
+    title: str = "New Chat"
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False),
         default_factory=lambda: datetime.now(UTC),
@@ -103,3 +103,7 @@ class ConversationDetail(SQLModel):
     created_at: datetime
     updated_at: datetime
     messages: list[MessageRead] = []
+
+
+class DeleteSessionResponse(SQLModel):
+    status: str = "ok"

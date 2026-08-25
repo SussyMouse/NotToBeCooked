@@ -280,6 +280,26 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session or course not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -391,28 +411,6 @@
             }
           }
         }
-      },
-      "post": {
-        "tags": [
-          "Chat"
-        ],
-        "summary": "Create Session",
-        "operationId": "create_session_chat_sessions_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
       }
     },
     "/chat/sessions/{session_id}": {
@@ -420,9 +418,9 @@
         "tags": [
           "Chat"
         ],
-        "summary": "Get Session By Id",
+        "summary": "Get Session By Session Id",
         "description": "Get session messages",
-        "operationId": "get_session_by_id_chat_sessions__session_id__get",
+        "operationId": "get_session_by_session_id_chat_sessions__session_id__get",
         "security": [
           {
             "HTTPBearer": []
@@ -511,7 +509,29 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteSessionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
               }
             }
           },
@@ -652,7 +672,7 @@
           "quote"
         ],
         "title": "Citation",
-        "description": "Outbound: generation -> frontend, and persisted into MESSAGE.citations.\n\nDeliberately anchored to file_id + page + quote and never to chunk_id:\nchunks are a regenerable intermediate product, while the file, the page and\nthe quoted text survive re-ingestion."
+        "description": "Outbound: generation -> frontend, and persisted into MESSAGE.citations.\n\nDeliberately anchored to file_id + page + quote and never to chunk_id:\nchunks are a regenerable intermediate product, while the file, the page and\nthe quoted text survive re-ingestion.\n\nFinding R14 asked for chunk-level provenance here. It goes in `ScopeSnapshot`\ninstead: that recovers the traceability without making a citation depend on an\nid that a re-index invalidates. Resolved 18 Aug."
       },
       "Conversation": {
         "properties": {
@@ -668,14 +688,15 @@
             ],
             "title": "Id"
           },
-          "user_id": {
+          "course_id": {
             "type": "string",
             "format": "uuid",
-            "title": "User Id"
+            "title": "Course Id"
           },
           "title": {
             "type": "string",
-            "title": "Title"
+            "title": "Title",
+            "default": "New Chat"
           },
           "created_at": {
             "type": "string",
@@ -690,9 +711,10 @@
         },
         "type": "object",
         "required": [
-          "title"
+          "course_id"
         ],
-        "title": "Conversation"
+        "title": "Conversation",
+        "description": "One conversation, one home course. Decision 1 (18 Aug), option A.\n\nOwnership derives through `course -> user`. The `user_id` column that used\nto sit here was never ratified -- finding R1, closed 16 Aug -- and the\n`conversationcourselink` junction table went with it. Multi-course already\nexists one level down, on `Message.scope_course_id` plus\n`mentioned_file_ids`; the junction was a second mechanism for the same job."
       },
       "ConversationDetail": {
         "properties": {
@@ -701,10 +723,10 @@
             "format": "uuid",
             "title": "Id"
           },
-          "user_id": {
+          "course_id": {
             "type": "string",
             "format": "uuid",
-            "title": "User Id"
+            "title": "Course Id"
           },
           "title": {
             "type": "string",
@@ -732,12 +754,23 @@
         "type": "object",
         "required": [
           "id",
-          "user_id",
+          "course_id",
           "title",
           "created_at",
           "updated_at"
         ],
         "title": "ConversationDetail"
+      },
+      "DeleteSessionResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "ok"
+          }
+        },
+        "type": "object",
+        "title": "DeleteSessionResponse"
       },
       "HTTPValidationError": {
         "properties": {
@@ -762,6 +795,7 @@
           "status": {
             "type": "string",
             "enum": [
+              "uploaded",
               "processing",
               "ready",
               "failed"
@@ -831,12 +865,21 @@
             "format": "uuid",
             "title": "Conversation Id"
           },
+          "scope_course_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Scope Course Id"
+          },
           "role": {
             "$ref": "#/components/schemas/ChatRole"
           },
           "content": {
             "type": "string",
             "title": "Content"
+          },
+          "grounded": {
+            "type": "boolean",
+            "title": "Grounded"
           },
           "citations": {
             "anyOf": [
@@ -878,8 +921,10 @@
         "required": [
           "id",
           "conversation_id",
+          "scope_course_id",
           "role",
           "content",
+          "grounded",
           "citations",
           "mentioned_file_ids",
           "created_at"
@@ -909,6 +954,19 @@
             "minimum": 0.0,
             "title": "Used Chunks",
             "description": "How many chunks were actually put into the prompt, after selection. 0 means there was no material and the layer should have refused to answer."
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id",
+            "description": "The active or newly created conversation ID."
           }
         },
         "additionalProperties": false,
@@ -941,6 +999,19 @@
             ],
             "title": "Course Id",
             "description": "The turn's home course. Ignored when file_ids is set."
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id",
+            "description": "The turn's conversation"
           },
           "file_ids": {
             "anyOf": [

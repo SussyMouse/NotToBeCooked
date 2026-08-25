@@ -233,6 +233,7 @@ async def register(
         display_name=body.display_name,
     )
     session.add(user)
+    await session.flush()
     session.add(build_unsorted_course(user_id))
     await session.commit()
     await session.refresh(user)

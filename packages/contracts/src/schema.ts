@@ -151,8 +151,7 @@ export interface paths {
          */
         get: operations["get_sessions_chat_sessions_get"];
         put?: never;
-        /** Create Session */
-        post: operations["create_session_chat_sessions_post"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -167,10 +166,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Session By Id
+         * Get Session By Session Id
          * @description Get session messages
          */
-        get: operations["get_session_by_id_chat_sessions__session_id__get"];
+        get: operations["get_session_by_session_id_chat_sessions__session_id__get"];
         put?: never;
         post?: never;
         /** Delete Session */
@@ -237,6 +236,10 @@ export interface components {
          *     Deliberately anchored to file_id + page + quote and never to chunk_id:
          *     chunks are a regenerable intermediate product, while the file, the page and
          *     the quoted text survive re-ingestion.
+         *
+         *     Finding R14 asked for chunk-level provenance here. It goes in `ScopeSnapshot`
+         *     instead: that recovers the traceability without making a citation depend on an
+         *     id that a re-index invalidates. Resolved 18 Aug.
          */
         Citation: {
             /** Marker */
@@ -263,16 +266,28 @@ export interface components {
              */
             quote: string;
         };
-        /** Conversation */
+        /**
+         * Conversation
+         * @description One conversation, one home course. Decision 1 (18 Aug), option A.
+         *
+         *     Ownership derives through `course -> user`. The `user_id` column that used
+         *     to sit here was never ratified -- finding R1, closed 16 Aug -- and the
+         *     `conversationcourselink` junction table went with it. Multi-course already
+         *     exists one level down, on `Message.scope_course_id` plus
+         *     `mentioned_file_ids`; the junction was a second mechanism for the same job.
+         */
         Conversation: {
             /** Id */
             id?: string | null;
             /**
-             * User Id
+             * Course Id
              * Format: uuid
              */
-            user_id?: string;
-            /** Title */
+            course_id: string;
+            /**
+             * Title
+             * @default New Chat
+             */
             title: string;
             /**
              * Created At
@@ -293,10 +308,10 @@ export interface components {
              */
             id: string;
             /**
-             * User Id
+             * Course Id
              * Format: uuid
              */
-            user_id: string;
+            course_id: string;
             /** Title */
             title: string;
             /**
@@ -315,6 +330,14 @@ export interface components {
              */
             messages: components["schemas"]["MessageRead"][];
         };
+        /** DeleteSessionResponse */
+        DeleteSessionResponse: {
+            /**
+             * Status
+             * @default ok
+             */
+            status: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -331,7 +354,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "processing" | "ready" | "failed";
+            status: "uploaded" | "processing" | "ready" | "failed";
             /** Chunk Count */
             chunk_count?: number | null;
             /** Error */
@@ -362,9 +385,16 @@ export interface components {
              * Format: uuid
              */
             conversation_id: string;
+            /**
+             * Scope Course Id
+             * Format: uuid
+             */
+            scope_course_id: string;
             role: components["schemas"]["ChatRole"];
             /** Content */
             content: string;
+            /** Grounded */
+            grounded: boolean;
             /** Citations */
             citations: {
                 [key: string]: unknown;
@@ -393,6 +423,11 @@ export interface components {
              * @description How many chunks were actually put into the prompt, after selection. 0 means there was no material and the layer should have refused to answer.
              */
             used_chunks: number;
+            /**
+             * Conversation Id
+             * @description The active or newly created conversation ID.
+             */
+            conversation_id?: string | null;
         };
         /**
          * RagQueryRequest
@@ -418,6 +453,11 @@ export interface components {
              * @description The turn's home course. Ignored when file_ids is set.
              */
             course_id?: string | null;
+            /**
+             * Conversation Id
+             * @description The turn's conversation
+             */
+            conversation_id?: string | null;
             /**
              * File Ids
              * @description Explicit @-mention scope. May cross courses. When set, overrides course_id.
@@ -712,6 +752,24 @@ export interface operations {
                     "application/json": components["schemas"]["RagAnswer"];
                 };
             };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Session or course not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -766,27 +824,7 @@ export interface operations {
             };
         };
     };
-    create_session_chat_sessions_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    get_session_by_id_chat_sessions__session_id__get: {
+    get_session_by_session_id_chat_sessions__session_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -852,7 +890,25 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["DeleteSessionResponse"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Session not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
             /** @description Validation Error */

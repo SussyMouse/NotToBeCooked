@@ -148,20 +148,34 @@ ships that model. It is the first item on the next agenda.
 
 ### R10 — `MESSAGE` has no `sequence_no`
 
-Turn order is currently implied by `created_at`. Two rows written inside the same
-transaction can share a timestamp, and the conversation renders in an arbitrary
-order. A monotonic integer per conversation removes the ambiguity.
+Turn order is currently implied by `created_at`, with nothing guaranteeing that two
+rows of one conversation carry distinct values. A monotonic integer per conversation
+would remove the ambiguity instead of relying on clock resolution. How much
+ambiguity there actually is today was measured on 24 August — see below; it is less
+than this entry originally asserted.
 
 **18 August — deferred again, and this file previously contradicted itself on it.**
 The body said "deferred"; the summary table at the foot said "Open — 18 Aug". The
 body was right. R10 was never on the 18 August agenda in the first place, so there
 was nothing to not-decide: turn order stays implied by `created_at` for v1.
 
-**What deferring actually costs.** Two rows written in one transaction can share a
-timestamp, and then the conversation renders in an arbitrary order. In practice a
-user turn and its assistant turn are exactly that pair. This is a real v1 defect
-that has been accepted, not a theoretical one — it is listed here so the first bug
-report about a reversed exchange is recognised instead of investigated.
+**What deferring actually costs — measured 24 August, and it is smaller than this
+entry used to claim.** The earlier wording said two rows written in one transaction
+can share a timestamp, and that a user turn and its assistant turn are exactly that
+pair. The second half does not hold for the code as written.
+
+`created_at` is not `server_default=now()`; both rows call Python's
+`datetime.now(UTC)` separately (`routers/rag.py:79` and `:181`), and the whole
+generation block sits between them. Two calls with a single `sha256` between them
+collided **0 times in 20,000**. Back-to-back with nothing in between they collide
+83% of the time, which is the clock's resolution rather than our situation.
+
+So the accepted defect is narrower: **turn order is safe while every writer stamps
+its own row in Python.** It breaks the day someone switches the column to a server
+default, because a transaction timestamp is identical for every row in the
+transaction — and `routers/chat.py:99` orders by `created_at` alone, so the
+conversation would then render arbitrarily. That is the thing to recognise in a bug
+report, not a collision under the current code.
 
 ---
 
@@ -351,7 +365,10 @@ column — which sub-decision 2 of item 03 voted against for a still-valid reaso
 
 ## Folded into the first Alembic migration
 
-- **R17** — `UNIQUE (user_id, code, year, sem)` on `COURSE`
+R5 is **not** on this list, though the summary table carried it here until 22 Aug.
+It is a query condition rather than a constraint; see its row for why.
+
+- **R17** — `UNIQUE (user_id, code, year, sem)` on `COURSE` — **done 22 Aug**
 - **R18** — `UNIQUE (ingestion_run_id, chunk_index)` on `CHUNK`
 - **R19** — `is_active = true` implies `status = 'ready'`; an active run must not
   be a failed or in-progress one
@@ -396,6 +413,44 @@ retrieval query. `file_id` is what a citation needs without a join. Meeting item
 
 The review's own closing section allows denormalisation for performance provided
 the redundancy is constrained. That is R4, and R4 is scheduled. The columns stay.
+
+### R26 — the ERD drew one of `CHUNK`'s three foreign keys
+
+**Fixed 23 August.** `erd.mmd` carried a single relationship into `CHUNK`:
+
+```
+INGESTION_RUN ||--o{ CHUNK : "produced"
+```
+
+while the schema has three, each with `ON DELETE CASCADE`:
+
+```
+chunk_ingestion_run_id_fkey  -> ingestion_run    drawn
+chunk_file_id_fkey           -> file             not drawn
+chunk_course_id_fkey         -> course           not drawn
+```
+
+Both undrawn columns are annotated `FK` in the `CHUNK` block and described as
+denormalised, which is why the gap survived the 16 August review: the columns
+were visible, only the edges were missing. Denormalisation explains why a column
+exists; it does not stop the column being a foreign key.
+
+The reading it produced is wrong in a way that matters. Deleting a course looks
+like it reaches `CHUNK` along `COURSE -> FOLDER -> FILE -> INGESTION_RUN -> CHUNK`,
+four cascades deep, when there is also a direct edge. Anyone changing
+`ON DELETE` at the `FILE` level to preserve chunks would find they are deleted
+anyway, and nothing in the diagram would explain why.
+
+Added:
+
+```
+FILE   ||--o{ CHUNK : "cited as"
+COURSE ||--o{ CHUNK : "scopes"
+```
+
+`fk_chunk_run_file_agree` — R4's composite foreign key, added 22 August — points
+at `INGESTION_RUN` like the first one and gets no separate edge; it is recorded
+in the `file_id` annotation instead.
 
 ### R24 — a full folder tree
 
@@ -524,21 +579,29 @@ SQLAlchemy's default, not anybody's mistake.
 | R6 | `mentioned_file_ids` has no FK; folders unrepresented | **Not reached — proceeds on the recommendation: JSONB stays in v1.** Folder @-mentions → next meeting |
 | R10 | `MESSAGE` has no `sequence_no` | **Deferred** — accepted v1 defect, order implied by `created_at` |
 | R16 | Soft delete on `COURSE` / `FILE` | **Declined 18 Aug** — and so **v1 has no delete-course feature**, see R16 |
-| R4 | `CHUNK` FKs can contradict each other | Open — first migration. **Unblocked 20 Aug**: all three columns now exist |
-| R5 | Vector scan not filtered by embedding model | Open — first migration. **Unblocked 20 Aug**: `INGESTION_RUN.embedding_model` and `CHUNK.ingestion_run_id` both exist |
-| R8 | `is_active` needs a partial unique index | Open — first migration. **Unblocked 20 Aug** |
-| R17 | `UNIQUE (user_id, code, year, sem)` | Open — first migration |
-| R18 | `UNIQUE (ingestion_run_id, chunk_index)` | Open — first migration. **Unblocked 20 Aug** |
-| R19 | `is_active` implies `status = 'ready'` | Open — first migration. **Write it lowercase**: see R25 |
-| R20 | Supporting index set | Open — first migration. `COURSE(user_id)` is redundant once R17 lands — a UNIQUE builds its own index and `user_id` is its leftmost column |
+| R4 | `CHUNK` FKs can contradict each other | **Half done 22 Aug** (`efda7a3`) — `fk_chunk_run_file_agree` makes a chunk's run and file agree, backed by `uq_ingestion_run_id_file`. The `file_id`/`course_id` half is **not enforceable by a foreign key** (FILE carries no `course_id`) and is **open, on the 25 Aug agenda** |
+| R5 | Vector scan not filtered by embedding model | Open, **unassigned — on the 25 Aug agenda**. **Retrieval layer, not the migration**. Reclassified 22 Aug: a constraint rejects a row that is itself invalid, and a chunk embedded by an older model is a perfectly valid row. What is wrong is comparing it against a query embedded by a different one, and no constraint sees a comparison. It belongs in `_vector_similarity_search` in `db/vector_ops.py` as a join to `INGESTION_RUN` filtering on `is_active` and `embedding_model`. `KNOWN_ISSUES` already said as much in the R21 entry — "R5 fixes that at the query" — while this row said first migration; the two contradicted each other until now. **Unassigned.** |
+| R8 | `is_active` needs a partial unique index | **Done 22 Aug** (`efda7a3`) — `ix_ingestion_run_one_active` UNIQUE on `(file_id) WHERE is_active`. Verified from empty: a second active run raises `UniqueViolation`, further inactive runs are accepted |
+| R17 | `UNIQUE (user_id, code, year, sem)` | **Done 22 Aug** — declared on `Course.__table_args__` and created in the initial migration as `uq_course_user_code_year_sem`. Verified from an empty database: a duplicate raises `UniqueViolationError`, while a second semester, a second year and a second user all insert. |
+| R18 | `UNIQUE (ingestion_run_id, chunk_index)` | **Done 22 Aug** (`efda7a3`) — `uq_chunk_run_index`. Verified: a second chunk 0 in one run is rejected; chunk 0 in a re-index run is accepted |
+| R19 | `is_active` implies `status = 'ready'` | **Done 22 Aug** (`efda7a3`) — `ck_ingestion_run_active_is_ready`, written `NOT is_active OR status = 'ready'`, lower case per R25. Verified: `is_active` with `processing` is rejected |
+| R20 | Supporting index set | **Done 22 Aug** (`efda7a3`) — five indexes created. `COURSE(user_id)` and `CHUNK(ingestion_run_id)` deliberately **not** created: each is the leftmost column of a UNIQUE declared above, and a UNIQUE builds its own index. `INGESTION_RUN(file_id)` **is** created despite R8's index starting with the same column — R8's is partial, and a partial index only answers a query whose own predicate implies its `WHERE` |
 | R25 | PostgreSQL enums were going to store member NAMES | **Fixed 20 Aug** — see below |
+| R26 | The ERD drew one of CHUNK's three foreign keys | **Fixed 23 Aug** — `erd.mmd` had `INGESTION_RUN ||--o{ CHUNK` and nothing for `file_id` or `course_id`, though both are real foreign keys with `ON DELETE CASCADE`. Found by the Lead reading the rendered diagram against the constraint list. Two lines added, `erd.png` regenerated |
 | R21 | `EMBEDDING_PROFILE` entity | Declined for v1 — see R5 |
 | R22 | `STORED_OBJECT` split | Declined for v1 |
 | R23 | Remove `CHUNK.file_id` / `course_id` | Declined — item 04, see R4 |
 | R24 | Full folder tree | Declined — item 04, see R9 |
 
-**Nothing on this list is marked "Open — 18 Aug" any more.** Everything is decided,
-declined, deferred with its cost stated, or folded into the first migration (Gantt
-**r41**, 19–22 Aug). The one bucket still carrying real risk is that migration bucket:
-**R4, R5, R8, R17, R18, R19, R20** are seven constraint-and-index decisions scheduled
-inside the same four days as the migration itself.
+**Status of the r41 bucket, 24 August.** The seven constraint-and-index findings
+scheduled into the first migration — R4, R5, R8, R17, R18, R19, R20 — have resolved
+as follows:
+
+| | Where it stands |
+|---|---|
+| **R8 · R17 · R18 · R19 · R20** | **Done 22 Aug**, on `dev` in `8767fc7` and `efda7a3`, each verified by rebuilding the database from empty and probing it |
+| **R4** | **Half done.** The foreign key holds a chunk's run and file together; the `file_id`/`course_id` half needs a trigger or a denormalised column and is **a decision on the 25 August agenda** |
+| **R5** | **Not a constraint.** Reclassified 22 Aug as a retrieval-layer query predicate, and **unassigned** — also on the 25 August agenda |
+
+**The two rows still open are both on that agenda, and neither is migration work
+any more.** Nothing on this list is marked "Open — 18 Aug".

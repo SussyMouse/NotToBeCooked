@@ -95,6 +95,8 @@ erDiagram
     FOLDER ||--o{ FILE : "contains"
     FILE ||--o{ INGESTION_RUN : "was processed by"
     INGESTION_RUN ||--o{ CHUNK : "produced"
+    FILE ||--o{ CHUNK : "cited as"
+    COURSE ||--o{ CHUNK : "scopes"
     CONVERSATION ||--o{ MESSAGE : "contains"
     COURSE ||--o{ MESSAGE : "scopes retrieval for"
 
@@ -171,9 +173,9 @@ erDiagram
 
     CHUNK {
         uuid id PK
-        uuid ingestion_run_id FK "provenance, which run produced this chunk"
-        uuid file_id FK "denormalised, a Citation needs it without a join"
-        uuid course_id FK "denormalised, this is the filter in front of the HNSW scan"
+        uuid ingestion_run_id FK "provenance. Also half of the composite FK below"
+        uuid file_id FK "denormalised, a Citation needs it without a join. Real FK to FILE, and paired with ingestion_run_id in a composite FK to INGESTION_RUN(id, file_id) so a chunk cannot claim a run of a different file — R4"
+        uuid course_id FK "denormalised, the filter in front of the HNSW scan. Real FK to COURSE with ON DELETE CASCADE, so deleting a course reaches CHUNK directly, not only through FILE"
         int chunk_index
         text content
         int token_count
