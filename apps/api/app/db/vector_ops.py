@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from sqlalchemy import Text, func
+from sqlalchemy.dialects.postgresql import TSQUERY
 from sqlmodel import col, delete, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -87,10 +88,10 @@ async def _full_text_search(
     ORDER BY rank DESC
     LIMIT 5
     """
-    ts_query = func.to_tsquery(
+    ts_query = func.replace(func.to_tsquery(
         "english",
         func.replace(func.plainto_tsquery("english", term).cast(Text), " & ", " | "),
-    )
+    )).cast(TSQUERY)
     rank_col = func.ts_rank(Chunk.content_tsv, ts_query).label("rank")
     statement = select(Chunk, File, rank_col).join(File).where(File.id == Chunk.file_id)
     if file_ids:
