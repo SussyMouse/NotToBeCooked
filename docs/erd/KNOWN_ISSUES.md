@@ -142,9 +142,21 @@ with no foreign key for v1, which is what the code already does. The frozen-reco
 property is the reason, not inertia: a dangling file ID is the historically correct
 answer to "what did the user ask for".
 
-**The second half is now a scheduled item, not a gap.** Decision 1 brought `FOLDER`
-into the build, so folder-level @-mentions stop being hypothetical the moment AI-2
-ships that model. It is the first item on the next agenda.
+**25 August — the second half is decided. Option A: the freeze is the point.**
+Mentioning a folder expands to that folder's file list at send time, and the array
+keeps those IDs. Adding a file to the folder afterwards does not reach back into an
+earlier turn.
+
+The alternative was storing folder IDs and expanding at retrieval time, which would
+mean "whatever is in this folder now". That reading is defensible on its own and
+wrong next to the first half of R6: `mentioned_file_ids` would then hold two kinds
+of time in one column, frozen for files and live for folders, with nothing in the
+schema saying which a given row is.
+
+**A does carry a condition, and it is not a database change.** A user who mentions
+a folder is picking a container and getting a list, and the difference only shows up
+later, when the list has gone stale. That has to be visible in the UI at the moment
+of mention — it cannot live only in a column comment. Logged against F2.
 
 ### R10 — `MESSAGE` has no `sequence_no`
 
@@ -185,6 +197,12 @@ These three are constraints and indexes. They do not appear on an ER diagram at
 all; they appear in the migration that builds the schema. Listed here so the
 diagram is not mistaken for the whole specification.
 
+**This heading is now historical for two of the three.** R4 closed on 26 August,
+across r41 and r42 rather than one migration. R5 was reclassified on 22 August as
+a retrieval-layer query predicate and never belonged in a migration at all; it is
+open and assigned. Only R20 was ever finished where this heading says it would be.
+The heading is kept rather than renamed so that older references to it still land.
+
 ### R4 — `CHUNK` holds three independently-valid foreign keys
 
 `ingestion_run_id`, `file_id` and `course_id` can each point at a legitimate row
@@ -196,6 +214,60 @@ without a join, and `course_id` is the filter in front of the vector scan.
 Keeping the denormalisation and enforcing consistency needs either a composite
 foreign key or a trigger.
 
+**Closed 26 August, in two halves and two migrations.**
+
+The first half shipped with r41 on 22 August: `CHUNK (ingestion_run_id, file_id)`
+points at `INGESTION_RUN (id, file_id)`, so a chunk can no longer claim a run
+belonging to a different file. That needed `uq_ingestion_run_id_file`, because
+PostgreSQL will not accept those two columns as a foreign key target unless some
+unique constraint covers exactly them — `id` being a primary key is not enough.
+
+The second half could not be written the same way, and that is why it waited. The
+agreement to enforce is between `CHUNK.course_id` and `CHUNK.file_id`, but a
+composite foreign key must point at real columns on one table, and no table
+carried both `file_id` and `course_id`. FILE reached its course through FOLDER.
+There was nothing to point at.
+
+**25 August meeting, Decision 02, option B — measured before the vote.** With
+nothing enforcing it, this row went in against a file that lives under CSC3105:
+
+```sql
+-- this file is under CSC3105; course_id says CSC3110
+INSERT INTO chunk(..., file_id, course_id, chunk_index, ...) VALUES (...);
+ chunk_index |   content
+-------------+--------------
+           8 | wrong course
+(1 row)
+```
+
+Three options were on the agenda: a trigger, denormalising `course_id` back onto
+FILE, or leaving it to `processor.py` and writing that down with a date. B carried.
+A trigger hides the logic somewhere neither code review nor `git log` shows it,
+which matters more with three people than with thirty.
+
+**Shipped as r42, 26 August (CR-31).** FILE regains `course_id`, and the
+constraint becomes a chain rather than a single link:
+
+```
+CHUNK (file_id, course_id)   -> FILE   (id, course_id)
+FILE  (folder_id, course_id) -> FOLDER (id, course_id)
+```
+
+FOLDER and FILE each carry `UNIQUE (id, course_id)` for the same reason
+INGESTION_RUN carries `uq_ingestion_run_id_file`: to be a legal target. Neither
+forbids anything new.
+
+Verified by `check_r42.py`, eleven cells over `upgrade -> downgrade -> upgrade`.
+Three of them are behavioural rather than structural: a file claiming a course
+its folder is not in is rejected, a chunk disagreeing with its file is rejected,
+and — the cell that matters most — a row where all three agree still goes in. A
+constraint that blocks everything passes the first two.
+
+**What this does not close.** The chain binds `course_id` to `file_id`, and r41
+bound `file_id` to `ingestion_run_id`. Both links are enforced, so all three keys
+now describe one consistent object. `processor.py` is no longer the only thing
+standing between a mislabelled chunk and the database.
+
 ### R5 — Nothing filters the vector scan by embedding model
 
 `INGESTION_RUN` records `embedding_model` and `embedding_dim`, which is what
@@ -206,6 +278,40 @@ answer.
 
 Retrieval must therefore constrain to the active run's model, not merely to
 `is_active`.
+
+**25 August meeting, Decision 3 — assigned to AI-1.** R5 left r41 on 22 August
+because it is a query condition, not a constraint, and it then sat in this file
+as the only entry that was neither decided nor owned. It now has a name.
+
+The work lands in `_vector_similarity_search`, which already takes an optional
+`file_ids` filter; "only this run" is the same shape of change in the same place.
+
+**Measured 25 August.** One file, two ingestion runs, two chunks each, one query
+vector. The old run is `is_active = false`:
+
+```
+current _vector_similarity_search
+  1. distance=0.0100  OLD RUN  chunk 0  (text-embedding-004)
+  2. distance=0.0500  OLD RUN  chunk 1  (text-embedding-004)
+  3. distance=0.1000  NEW RUN  chunk 0  (gemini-embedding-001)
+  4. distance=0.1500  NEW RUN  chunk 1  (gemini-embedding-001)
+
+with an is_active join
+  1. distance=0.1000  NEW RUN  chunk 0  (gemini-embedding-001)
+  2. distance=0.1500  NEW RUN  chunk 1  (gemini-embedding-001)
+```
+
+The superseded chunks take rank 1 and 2 and eat two of the five `top_k` slots.
+Nothing errors; the answer is simply built on text that was replaced.
+
+`ix_ingestion_run_one_active` (r41, partial unique on `file_id WHERE is_active`)
+guarantees at most one active run per file, so a join is enough within a file. It
+is not enough across files: two active runs can still name different
+`embedding_model` values. Whether to add that second filter now or when a second
+model is actually in use is AI-1's call, to be recorded here either way.
+
+`_full_text_search` has the same hole. Lexical ranking does not care which model
+produced the vectors, but it does return chunks from superseded runs.
 
 ### R8 — `INGESTION_RUN.is_active` is a boolean with no uniqueness guarantee
 
@@ -576,11 +682,11 @@ SQLAlchemy's default, not anybody's mistake.
 | R14 | `citations` JSONB carries no `chunk_id` | **Accepted 18 Aug — routed to `scope_snapshot`, not `citations`** |
 | R1 | `CONVERSATION.user_id` redundant | **Closed — the column was never ratified; removed** |
 | R15 | Required `course_id` blocks first-run onboarding | **Accepted 18 Aug — Unsorted course at signup** |
-| R6 | `mentioned_file_ids` has no FK; folders unrepresented | **Not reached — proceeds on the recommendation: JSONB stays in v1.** Folder @-mentions → next meeting |
+| R6 | `mentioned_file_ids` has no FK; folders unrepresented | **Closed 25 Aug — both halves.** JSONB stays in v1 (18 Aug, on the recommendation). Folder @-mentions expand to a file list at send time and stay frozen — Decision 5, option A, so one column carries one kind of time. The UI has to say so at the moment of mention; logged against F2 |
 | R10 | `MESSAGE` has no `sequence_no` | **Deferred** — accepted v1 defect, order implied by `created_at` |
 | R16 | Soft delete on `COURSE` / `FILE` | **Declined 18 Aug** — and so **v1 has no delete-course feature**, see R16 |
-| R4 | `CHUNK` FKs can contradict each other | **Half done 22 Aug** (`efda7a3`) — `fk_chunk_run_file_agree` makes a chunk's run and file agree, backed by `uq_ingestion_run_id_file`. The `file_id`/`course_id` half is **not enforceable by a foreign key** (FILE carries no `course_id`) and is **open, on the 25 Aug agenda** |
-| R5 | Vector scan not filtered by embedding model | Open, **unassigned — on the 25 Aug agenda**. **Retrieval layer, not the migration**. Reclassified 22 Aug: a constraint rejects a row that is itself invalid, and a chunk embedded by an older model is a perfectly valid row. What is wrong is comparing it against a query embedded by a different one, and no constraint sees a comparison. It belongs in `_vector_similarity_search` in `db/vector_ops.py` as a join to `INGESTION_RUN` filtering on `is_active` and `embedding_model`. `KNOWN_ISSUES` already said as much in the R21 entry — "R5 fixes that at the query" — while this row said first migration; the two contradicted each other until now. **Unassigned.** |
+| R4 | `CHUNK` FKs can contradict each other | **Closed 26 Aug, in two migrations.** r41 (`efda7a3`, 22 Aug) tied a chunk's run to its file via `fk_chunk_run_file_agree`. r42 (`2a22d57`, 26 Aug) tied `course_id` to `file_id`: Decision 02 option B put `course_id` back on FILE so a composite FK had something to point at, making it a chain — `CHUNK(file_id, course_id)` → `FILE(id, course_id)` → and `FILE(folder_id, course_id)` → `FOLDER(id, course_id)`. CR-31. Verified 11/11 by `check_r42.py`, including that a row where all three agree still inserts |
+| R5 | Vector scan not filtered by embedding model | **Assigned 25 Aug to AI-1 (Decision 3)** — still open, now owned. Measured 25 Aug: with two runs over one file, the superseded run's chunks take rank 1 and 2 and eat two of five `top_k` slots, silently. `_full_text_search` has the same hole. **Retrieval layer, not the migration**. Reclassified 22 Aug: a constraint rejects a row that is itself invalid, and a chunk embedded by an older model is a perfectly valid row. What is wrong is comparing it against a query embedded by a different one, and no constraint sees a comparison. It belongs in `_vector_similarity_search` in `db/vector_ops.py` as a join to `INGESTION_RUN` filtering on `is_active` and `embedding_model`. `KNOWN_ISSUES` already said as much in the R21 entry — "R5 fixes that at the query" — while this row said first migration; the two contradicted each other until now. **Unassigned.** |
 | R8 | `is_active` needs a partial unique index | **Done 22 Aug** (`efda7a3`) — `ix_ingestion_run_one_active` UNIQUE on `(file_id) WHERE is_active`. Verified from empty: a second active run raises `UniqueViolation`, further inactive runs are accepted |
 | R17 | `UNIQUE (user_id, code, year, sem)` | **Done 22 Aug** — declared on `Course.__table_args__` and created in the initial migration as `uq_course_user_code_year_sem`. Verified from an empty database: a duplicate raises `UniqueViolationError`, while a second semester, a second year and a second user all insert. |
 | R18 | `UNIQUE (ingestion_run_id, chunk_index)` | **Done 22 Aug** (`efda7a3`) — `uq_chunk_run_index`. Verified: a second chunk 0 in one run is rejected; chunk 0 in a re-index run is accepted |
@@ -600,8 +706,9 @@ as follows:
 | | Where it stands |
 |---|---|
 | **R8 · R17 · R18 · R19 · R20** | **Done 22 Aug**, on `dev` in `8767fc7` and `efda7a3`, each verified by rebuilding the database from empty and probing it |
-| **R4** | **Half done.** The foreign key holds a chunk's run and file together; the `file_id`/`course_id` half needs a trigger or a denormalised column and is **a decision on the 25 August agenda** |
+| **R4** | **Closed 26 Aug.** The 25 August meeting chose the denormalised column over a trigger (Decision 02, option B), and r42 shipped it as a two-link chain. A trigger would have hidden the rule where neither code review nor `git log` shows it |
 | **R5** | **Not a constraint.** Reclassified 22 Aug as a retrieval-layer query predicate, and **unassigned** — also on the 25 August agenda |
 
-**The two rows still open are both on that agenda, and neither is migration work
-any more.** Nothing on this list is marked "Open — 18 Aug".
+**One row is still open, and it is not migration work.** R4 closed on 26 August in
+r42 (`2a22d57`); R5 is open and owned by AI-1 since the 25 August meeting. Nothing
+on this list is marked "Open — 18 Aug", and nothing is unassigned.

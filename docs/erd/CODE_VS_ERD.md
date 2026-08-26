@@ -1,5 +1,15 @@
 # Code vs ERD — field-by-field diff, 17 Aug 2026 · re-run 19 Aug 2026
 
+> **Superseded in part, 26 August 2026.** This document is a snapshot of the
+> 17 August divergence and is kept as one. Two of its findings have since moved:
+> `FILE.course_id` was removed on 18 August (Decision 1, option A) and then
+> restored on 26 August by r42 — not as a reversal of that decision, but because
+> R4's second half needs a composite foreign key and a composite key must point at
+> real columns on one table. `FILE.folder_id` stayed; the file still belongs to a
+> folder, and `course_id` now rides alongside it under a constraint that keeps the
+> two in agreement. `COURSE.status` gained a value set the same day. See
+> `KNOWN_ISSUES.md` R4 and the `erd.mmd` header for the current position.
+
 > ## Status — 20 August 2026
 >
 > **Re-run after AI-2's models landed. Seven of eight tables now match the ERD
