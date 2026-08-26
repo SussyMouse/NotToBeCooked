@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col, select
 
 from app.schemas.chat import Conversation
-from app.schemas.course import Course
+from app.schemas.course import Course, CourseStatus
 
 
 async def get_or_create_conversation(
@@ -60,7 +60,7 @@ async def get_or_create_conversation(
             name="Course Workspace",
             year=1,
             sem=1,
-            status="active",
+            status=CourseStatus.ACTIVE,
         )
         session.add(target_course)
         await session.flush()
@@ -78,7 +78,7 @@ async def get_or_create_conversation(
                 name="Unsorted",
                 year=0,
                 sem=0,
-                status="active",
+                status=CourseStatus.ACTIVE,
             )
             session.add(target_course)
             await session.flush()

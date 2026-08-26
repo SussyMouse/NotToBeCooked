@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.db.database import get_session
 from app.dependencies.auth import get_current_user
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
-from app.schemas.course import Course
+from app.schemas.course import Course, CourseStatus
 from app.schemas.errors import ApiError
 from app.schemas.user import User, UserRead
 
@@ -302,5 +302,5 @@ def build_unsorted_course(user_id: UUID) -> Course:
         # `Course.status` is free text: the column was ratified on 27 Jul but its
         # value set never was. "active" is the obvious reading and is written here
         # without claiming to settle it.
-        status="active",
+        status=CourseStatus.ACTIVE,
     )

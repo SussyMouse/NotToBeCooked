@@ -1,9 +1,17 @@
 from datetime import UTC, datetime
+from enum import StrEnum
 from uuid import UUID, uuid4
 
 from sqlalchemy import Column, UniqueConstraint
+from sqlalchemy import Enum as SAEnum
 from sqlmodel import DateTime, Field, SQLModel
 
+from app.schemas.file import _enum_values
+
+
+class CourseStatus(StrEnum):
+    ACTIVE = "active"
+    ARCHIVED = "archived"
 
 class Course(SQLModel, table=True):
     __table_args__ = (
@@ -21,7 +29,13 @@ class Course(SQLModel, table=True):
     name: str
     year: int
     sem: int
-    status: str
+    status: CourseStatus = Field(
+        default=CourseStatus.ACTIVE,
+        sa_column=Column(
+            SAEnum(CourseStatus, values_callable=_enum_values, name="coursestatus"),
+            nullable=False,
+        ),
+    )
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False),
         default_factory=lambda: datetime.now(UTC),
