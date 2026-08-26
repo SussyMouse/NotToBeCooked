@@ -1,6 +1,7 @@
-import asyncio
 from unittest.mock import AsyncMock, patch
 from uuid import UUID, uuid4
+
+import pytest
 
 from app.schemas.chunk import ChunkCreate
 from app.services.processing import process_file
@@ -20,14 +21,15 @@ def make_chunk_create(file_id: UUID) -> ChunkCreate:
     return test
 
 
+# global variable
 test_file_id = uuid4()
 test_chunk_create = make_chunk_create(test_file_id)
-
 
 fake_embedding = [0.0] * 1024
 
 
-async def run_test():
+@pytest.mark.asyncio
+async def test_process_file_creates_and_save_chunks():
 
     with patch(
         "app.services.processing.ingest_document",
@@ -66,7 +68,7 @@ async def run_test():
                         assert mock_create.call_count == 1
                         assert mock_embed.call_count == 1
                         assert mock_add.await_count == 1
-                        mock_add.assert_awaited_once() #我要求 mock_add 必须刚好被 await 一次
+                        mock_add.assert_awaited_once()  # 我要求 mock_add 必须刚好被 await 一次
 
                         assert mock_add.await_args is not None
                         database_chunks, received_session = mock_add.await_args.args
@@ -80,5 +82,68 @@ async def run_test():
                         assert len(database_chunk.embedding) == 1024
                         assert received_session is fake_session
 
+                        mock_ingest.assert_called_once_with("abc.pdf")
+                        mock_extract.assert_called_once_with("fake_document")
+                        mock_create.assert_called_once_with("fake_extract_text", test_file_id)
+                        mock_embed.assert_called_once_with([test_chunk_create.content])
+                        mock_add.assert_awaited_once_with(database_chunks, fake_session)
 
-asyncio.run(run_test())
+
+@pytest.mark.asyncio
+async def test_process_file_raises_when_embedding_count_does_not_match_chunks():
+    second_chunk = ChunkCreate(
+        file_id=test_file_id,
+        chunk_index=2,
+        page_start=2,
+        page_end=2,
+        heading="testing heading 2",
+        content="testing content 2",
+        token_count=30,
+    )
+
+    course_id = uuid4()
+    ingestion_run_id = uuid4()
+    fake_session = AsyncMock()
+
+    with (
+        patch(
+            "app.services.processing.ingest_document",
+            return_value="fake_document",
+        ),
+        patch(
+            "app.services.processing.extract_text",
+            return_value="fake_extract_text",
+        ),
+        patch(
+            "app.services.processing.create_chunk",
+            return_value=[test_chunk_create, second_chunk],
+        ),
+        patch(
+            "app.services.processing.embed_text",
+            return_value=[fake_embedding],
+        ) as mock_embed,
+        patch(
+            "app.services.processing.add_chunks",
+            new_callable=AsyncMock,
+        ) as mock_add,
+    ):
+        with pytest.raises(ValueError):
+            await process_file(
+                file_id=test_file_id,
+                course_id=course_id,
+                ingestion_run_id=ingestion_run_id,
+                file_path="abc.pdf",
+                session=fake_session,
+            )
+
+    mock_embed.assert_called_once_with(
+        [
+            test_chunk_create.content,
+            second_chunk.content,
+        ]
+    )
+
+    mock_add.assert_not_awaited()
+
+
+#assert= this condition must be true

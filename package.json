@@ -13,8 +13,8 @@
     "lint": "turbo lint",
     "format": "turbo format",
     "typecheck": "turbo typecheck",
-    "test": "pnpm --filter @workspace/ui test",
-    "verify": "turbo typecheck lint build",
+    "test": "turbo test",
+    "verify": "turbo typecheck lint build test",
     "schema:update": "cd apps/api && uv run python scripts/generate_openapi.py && pnpm --filter @workspace/contracts generate",
     "codegen": "pnpm schema:update"
   },
