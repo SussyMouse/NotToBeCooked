@@ -81,10 +81,10 @@ async def _full_text_search(
     term: str, session: AsyncSession, file_ids: list[UUID] | None = None, top_k: int = 5
 ) -> Sequence[tuple[Chunk, File, float]]:
     """Performs
-    SELECT chunk.*, ts_rank(chunk.content_tsv, to_tsquery('english', replace(plainto_tsquery('english', term)::text, ' & ', ' | '))) AS rank
+    SELECT chunk.*, ts_rank(chunk.content_tsv, replace(plainto_tsquery('english', term)::text, ' & ', ' | ')::tsquery) AS rank
     FROM chunk
     WHERE chunk.file_id IN file_ids
-    WHERE chunk.content_tsv @@ to_tsquery('english', replace(plainto_tsquery('english', term)::text, ' & ', ' | '))
+    WHERE chunk.content_tsv @@ replace(plainto_tsquery('english', term)::text, ' & ', ' | ')::tsquery
     ORDER BY rank DESC
     LIMIT 5
     """
