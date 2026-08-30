@@ -11,6 +11,8 @@ const LoginRequest = z.object({ email: z.string().email(), password: z.string().
 const ValidationError = z.object({ loc: z.array(z.union([z.string(), z.number()])), msg: z.string(), type: z.string(), input: z.unknown().optional(), ctx: z.object({}).partial().passthrough().optional() }).passthrough();
 const HTTPValidationError = z.object({ detail: z.array(ValidationError) }).partial().passthrough();
 const RegisterRequest = z.object({ display_name: z.string(), email: z.string().email(), password: z.string().min(8) }).passthrough();
+const Body_upload_file_files_post = z.object({ folder_id: z.string().uuid(), upload: z.string() }).passthrough();
+const FileRead = z.object({ id: z.string().uuid(), folder_id: z.string().uuid(), filename: z.string(), storage_key: z.string(), sha256: z.union([z.string(), z.null()]).optional(), mime_type: z.string(), size_bytes: z.number().int(), page_count: z.union([z.number(), z.null()]).optional(), status: z.enum(["uploaded", "processing", "ready", "failed"]), error_message: z.union([z.string(), z.null()]).optional(), uploaded_at: z.string().datetime({ offset: true }), indexed_at: z.union([z.string(), z.null()]).optional() }).passthrough();
 const IngestionResponse = z.object({ file_id: z.string().uuid(), status: z.enum(["uploaded", "processing", "ready", "failed"]), chunk_count: z.union([z.number(), z.null()]).optional(), error: z.union([z.string(), z.null()]).optional() }).passthrough();
 const RagQueryRequest = z.object({ question: z.string().min(1).max(2000), course_id: z.union([z.string(), z.null()]).optional(), conversation_id: z.union([z.string(), z.null()]).optional(), file_ids: z.union([z.array(z.string().uuid()), z.null()]).optional(), top_k: z.number().int().gte(1).lte(20).optional().default(5) });
 const Citation = z.object({ marker: z.number().int().gte(1), file_id: z.string().uuid(), course_id: z.string().uuid(), filename: z.string().min(1), page: z.union([z.number(), z.null()]).optional(), page_end: z.union([z.number(), z.null()]).optional(), quote: z.string().min(1) });
@@ -30,6 +32,8 @@ export const schemas = {
 	ValidationError,
 	HTTPValidationError,
 	RegisterRequest,
+	Body_upload_file_files_post,
+	FileRead,
 	IngestionResponse,
 	RagQueryRequest,
 	Citation,
@@ -235,6 +239,38 @@ const endpoints = makeApi([
 				description: `Session not found`,
 				schema: ApiError
 			},
+			{
+				status: 422,
+				description: `Validation Error`,
+				schema: HTTPValidationError
+			},
+		]
+	},
+	{
+		method: "post",
+		path: "/files",
+		alias: "upload_file_files_post",
+		description: `Store an uploaded file and record it. Does not index it.
+
+Upload and ingestion are two endpoints on purpose, which is why &#x60;uploaded&#x60;
+exists as a FileStatus value (restored 18 Aug). This one returns as soon as
+the bytes are safe; &#x60;POST /files/{file_id}/ingest&#x60; is what turns them into
+chunks.
+
+&#x60;course_id&#x60; is read from the folder, never from the request. The client
+could send one, and a client that sends the wrong one would be writing a row
+that r42&#x27;s composite foreign key rejects -- so the correct value is already
+known server-side, and asking for it only creates a way to be wrong.`,
+		requestFormat: "form-data",
+		parameters: [
+			{
+				name: "body",
+				type: "Body",
+				schema: Body_upload_file_files_post
+			},
+		],
+		response: FileRead,
+		errors: [
 			{
 				status: 422,
 				description: `Validation Error`,
