@@ -45,7 +45,7 @@ npx mmdc -i docs/erd/erd.mmd -o docs/erd/erd.png -c cfg.json -p pp.json -b white
 { "args": ["--no-sandbox", "--disable-setuid-sandbox"] }
 ```
 
-Current output is 2352 × 2691, ~295 KB. If a render comes out several megabytes,
+Current output is 2352 × 2466, ~350 KB. If a render comes out several megabytes,
 `-s 3` has been raised — three is enough to read every annotation at 100%.
 
 ## Three traps, all hit for real

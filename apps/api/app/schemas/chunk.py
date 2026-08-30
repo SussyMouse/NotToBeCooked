@@ -70,6 +70,12 @@ class Chunk(Base):
         # above builds its own index and ingestion_run_id is its leftmost column,
         # so a lookup by run alone already uses it. Same reasoning retires
         # COURSE(user_id) under R17.
+        ForeignKeyConstraint(
+            ["file_id", "course_id"],
+            ["file.id", "file.course_id"],
+            ondelete="CASCADE",
+            name="fk_chunk_file_course_agree",
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)

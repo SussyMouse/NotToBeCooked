@@ -1,11 +1,14 @@
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column
+from sqlalchemy import Column, UniqueConstraint
 from sqlmodel import DateTime, Field, SQLModel
 
 
 class Folder(SQLModel, table=True):
+    
+    __table_args__ = (UniqueConstraint("id", "course_id", name="uq_folder_id_course"),)
+
     id: UUID | None = Field(default_factory=uuid4, primary_key=True)
 
     # R20. PostgreSQL does not index a foreign key for you. Listing a course's

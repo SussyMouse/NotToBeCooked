@@ -1,6 +1,6 @@
 %% NotToBeCooked — Entity Relationship Diagram
-%% Source of record. Ratified 27 Jul 2026, amended 4 Aug (CR-23) and 15 Aug 2026
-%% (CR-24, CR-25, CR-26, CR-27).
+%% Source of record. Ratified 27 Jul 2026, amended 4 Aug (CR-23), 15 Aug 2026
+%% (CR-24, CR-25, CR-26, CR-27) and 25 Aug 2026 (CR-31, CR-32).
 %% ---
 %% 9 entities. Declaration order below is deliberate: it controls how dagre ranks
 %% the nodes, and reordering will reintroduce edge crossings.
@@ -48,7 +48,9 @@
 %% Superseded rather than dropped, recorded so the absence is not read as an
 %% oversight:
 %%   FILE.category    -> FOLDER (CR-25). A free-text label became a real entity
-%%   FILE.course_id   -> folder_id (CR-25). Course is derived through the folder
+%%   FILE.course_id   -> folder_id (CR-25), and back again (CR-31, 25 Aug). Deriving
+%%                       the course through the folder was correct as a reading path
+%%                       and useless as a foreign key target — see the 25 Aug block
 %%   FILE.storage_path-> storage_key. Object-store key, not a filesystem path
 %%   USER.password_hash -> hashed_password. Project Lead call: the code already
 %%                       uses hashed_password (schemas/user.py, routers/auth.py),
@@ -68,6 +70,25 @@
 %%   D3  CR-28 approved. The active embedding dimension is 1024, not 1536
 %%   Lead call 2  USER gains display_name. The column has existed in the code since
 %%       the first commit; the diagram was the side that was wrong
+%% ---
+%% 25 Aug 2026 meeting. Two decisions change this diagram, both shipped as r42:
+%%   CR-31  FILE regains course_id, denormalised from FOLDER. Not for convenience:
+%%       R4's second half needs CHUNK.course_id to agree with CHUNK.file_id, and a
+%%       composite foreign key must point at real columns on one table. No column
+%%       carried both file_id and course_id, so there was nothing to point at.
+%%       Two links now, and each is a real constraint rather than a convention:
+%%           CHUNK (file_id, course_id)   -> FILE   (id, course_id)
+%%           FILE  (folder_id, course_id) -> FOLDER (id, course_id)
+%%       FOLDER and FILE each carry UNIQUE (id, course_id) to be those targets.
+%%       Neither forbids anything new -- id is already a primary key on both --
+%%       exactly as INGESTION_RUN carries uq_ingestion_run_id_file for R4's first
+%%       half. Reading a file's course still costs no join; that was never the
+%%       question. Closes R4
+%%   CR-32  COURSE.status becomes an enum of active and archived. Ratified 27 Jul
+%%       with no value set ever defined, and the code only ever wrote "active".
+%%       Two values because R16 declined soft delete and scope_course_id is
+%%       RESTRICT: a course used by any run can never be deleted, so archived is
+%%       the only way a user gets it out of the sidebar. Lowercase per R25
 %% Findings closed the same night:
 %%   R13 declined — no MESSAGE_SCOPE_COURSE junction table in v1. Reopens if US-12
 %%       produces an acceptance case that genuinely needs two courses on one turn
@@ -93,6 +114,7 @@ erDiagram
     COURSE ||--o{ MILESTONE : "planned as"
     COURSE ||--o{ CONVERSATION : "is home course of"
     FOLDER ||--o{ FILE : "contains"
+    COURSE ||--o{ FILE : "scopes"
     FILE ||--o{ INGESTION_RUN : "was processed by"
     INGESTION_RUN ||--o{ CHUNK : "produced"
     FILE ||--o{ CHUNK : "cited as"
@@ -115,7 +137,7 @@ erDiagram
         string name "Artificial Intelligence — the code alone is not readable"
         int year
         int sem
-        string status "ratified 27 Jul; the value set has never been defined"
+        enum status "active, archived — CR-32, 25 Aug. Ratified 27 Jul with no value set; r42 gave it one"
         timestamptz created_at
     }
 
@@ -145,7 +167,8 @@ erDiagram
 
     FILE {
         uuid id PK
-        uuid folder_id FK "course is derived through the folder, not stored again"
+        uuid folder_id FK "paired with course_id in a composite FK to FOLDER(id, course_id), so a file cannot claim a course its folder is not in — R4, CR-31"
+        uuid course_id FK "denormalised from FOLDER, restored 25 Aug. Real FK to COURSE, and the target CHUNK(file_id, course_id) points at — nothing else carried both columns"
         string filename "renameable, shown in the UI. Lead call 3 Aug: filename wins"
         string storage_key UK
         string sha256 "checksum, NOT globally unique — two users may upload one PDF"
@@ -174,8 +197,8 @@ erDiagram
     CHUNK {
         uuid id PK
         uuid ingestion_run_id FK "provenance. Also half of the composite FK below"
-        uuid file_id FK "denormalised, a Citation needs it without a join. Real FK to FILE, and paired with ingestion_run_id in a composite FK to INGESTION_RUN(id, file_id) so a chunk cannot claim a run of a different file — R4"
-        uuid course_id FK "denormalised, the filter in front of the HNSW scan. Real FK to COURSE with ON DELETE CASCADE, so deleting a course reaches CHUNK directly, not only through FILE"
+        uuid file_id FK "denormalised, a Citation needs it without a join. Real FK to FILE, and half of two composite FKs: with ingestion_run_id to INGESTION_RUN(id, file_id), with course_id to FILE(id, course_id) — R4, both halves closed 25 Aug"
+        uuid course_id FK "denormalised, the filter in front of the HNSW scan. Real FK to COURSE with ON DELETE CASCADE. Since r42 also half of the composite FK to FILE(id, course_id), so it can no longer disagree with file_id — R4"
         int chunk_index
         text content
         int token_count

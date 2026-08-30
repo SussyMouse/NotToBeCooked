@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Literal
 from uuid import UUID, uuid4
 
-from sqlalchemy import BigInteger, Column, DateTime
+from sqlalchemy import BigInteger, Column, DateTime, ForeignKeyConstraint, UniqueConstraint
 from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, SQLModel
 
@@ -28,15 +28,40 @@ class FileStatus(Enum):
 
 
 class File(SQLModel, table=True):
+
+    __table_args__ = (
+        UniqueConstraint("id", "course_id", name="uq_file_id_course"),
+
+        ForeignKeyConstraint(
+            ["folder_id", "course_id"],
+            ["folder.id", "folder.course_id"],
+            ondelete="CASCADE",
+            name="fk_file_folder_course_agree",
+        ),
+
+    )
+
     id: UUID | None = Field(primary_key=True, default_factory=uuid4)
-    # A file belongs to a folder, and its course is derived through that folder --
-    # Decision 1 option A, Decision 5, and the ratified ERD. It carried a direct
-    # `course_id` until 20 Aug only because FOLDER did not exist and a foreign key
-    # to a missing table breaks mapper configuration for the whole app.
+    # Denormalised from FOLDER, restored 25 Aug 2026 by Decision 02 option B.
     #
-    # Reading a file's course now costs one join. Retrieval does not pay it:
-    # CHUNK carries its own denormalised `course_id`, which is exactly what that
-    # column is for.
+    # The history is worth keeping straight, because this column has now been here
+    # twice. It existed until 20 Aug as a plain shortcut; it was removed when
+    # FOLDER arrived, on the grounds that a file's course is derivable through its
+    # folder and one join is cheap. The 25 Aug meeting put it back for a different
+    # reason, and that reason is not convenience.
+    #
+    # R4's second half needs CHUNK.course_id to agree with CHUNK.file_id, and a
+    # composite foreign key must point at real columns on one table. No column
+    # anywhere carried both `file_id` and `course_id`, so there was nothing for
+    # CHUNK to point at. This column is that target. The chain is:
+    #
+    #     CHUNK (file_id, course_id)   -> FILE   (id, course_id)
+    #     FILE  (folder_id, course_id) -> FOLDER (id, course_id)
+    #
+    # So the value here is not free to be whatever the caller passes. The second
+    # link above is the composite FK in __table_args__: a file claiming a course
+    # its folder does not belong to is rejected by the database, not by a comment.
+    course_id: UUID = Field(foreign_key="course.id", ondelete="CASCADE", index=True)
     folder_id: UUID = Field(foreign_key="folder.id", ondelete="CASCADE", index=True)
     filename: str
     storage_key: str = Field(
