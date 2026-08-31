@@ -40,3 +40,6 @@ __pycache__/
 venv
 .pytest_cache
 .ruff_cache
+
+# uploaded files (local object store stand-in)
+apps/api/storage/
