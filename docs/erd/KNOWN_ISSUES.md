@@ -291,15 +291,22 @@ vector. The old run is `is_active = false`:
 
 ```
 current _vector_similarity_search
-  1. distance=0.0100  OLD RUN  chunk 0  (text-embedding-004)
-  2. distance=0.0500  OLD RUN  chunk 1  (text-embedding-004)
-  3. distance=0.1000  NEW RUN  chunk 0  (gemini-embedding-001)
-  4. distance=0.1500  NEW RUN  chunk 1  (gemini-embedding-001)
+  1. distance=0.0100  OLD RUN  chunk 0  (superseded-model)
+  2. distance=0.0500  OLD RUN  chunk 1  (superseded-model)
+  3. distance=0.1000  NEW RUN  chunk 0  (jinaai/jina-embeddings-v5-text-small)
+  4. distance=0.1500  NEW RUN  chunk 1  (jinaai/jina-embeddings-v5-text-small)
 
 with an is_active join
-  1. distance=0.1000  NEW RUN  chunk 0  (gemini-embedding-001)
-  2. distance=0.1500  NEW RUN  chunk 1  (gemini-embedding-001)
+  1. distance=0.1000  NEW RUN  chunk 0  (jinaai/jina-embeddings-v5-text-small)
+  2. distance=0.1500  NEW RUN  chunk 1  (jinaai/jina-embeddings-v5-text-small)
 ```
+
+The model names in that output were **relabelled on 31 August**. The probe seeded
+two runs with two different `embedding_model` values to show the effect; the
+names originally written down were Gemini embedding models, which this project
+does not use. The embedder is the local `settings.MODEL_TYPE` model run through
+SentenceTransformer. `GEMINI_MODEL_NAME` is the generation LLM and has never been
+the embedder. The distances are unchanged -- they were seeded, not computed.
 
 The superseded chunks take rank 1 and 2 and eat two of the five `top_k` slots.
 Nothing errors; the answer is simply built on text that was replaced.

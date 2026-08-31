@@ -51,18 +51,6 @@ class Settings(BaseSettings):
     # LLM Calls Settings
     LLM_FAKE_MODE: bool = Field(default=True)
 
-    # File Storage Settings
-    #
-    # STORAGE_DIR is a local directory today and an object-store bucket later.
-    # FILE.storage_key is documented as "an object-store key, not a filesystem
-    # path" for that reason -- the key is stable across the move, only the thing
-    # that resolves it changes. See app/services/storage.py.
-    STORAGE_DIR: Path = _ENV_FILE.parent / "storage"
-
-    # Enforced while streaming, not after. Reading a 4 GB upload into memory to
-    # discover it is too large is the failure this guards against.
-    MAX_UPLOAD_BYTES: int = 50 * 1024 * 1024
-
     # Load from .env file automatically
     model_config = SettingsConfigDict(
         env_file=(_ENV_FILE, ".env"), env_file_encoding="utf-8", extra="ignore"
