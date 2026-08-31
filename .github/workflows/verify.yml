@@ -6,6 +6,17 @@ name: verify
 #
 # This is the same `pnpm verify` you run locally — if it passes on your machine
 # it passes here, and vice versa. Nothing CI-only lives in this file.
+#
+# One exception, and it is not a behaviour difference: `pnpm test` needs a
+# PostgreSQL with pgvector, because tests/test_upload.py checks that a stored row
+# and the bytes on disk agree, which cannot be mocked. Locally that comes from
+# apps/api/docker-compose.yml; here it comes from the service below. Both are
+# pgvector/pgvector:pg16.
+#
+# The tests never use the database named in DATABASE_URL — tests/conftest.py
+# appends `_test` to it and refuses to run if the two ever resolve to the same
+# place. So DATABASE_URL here names the database the app would use, exactly as it
+# does on a developer's machine, and the suffix does the rest.
 
 on:
   push:
@@ -23,6 +34,26 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: not_to_be_cooked
+        ports:
+          - 5432:5432
+        # Without this the job races the container: uv sync finishes in seconds
+        # and pytest connects before Postgres is accepting connections.
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:password@localhost:5432/not_to_be_cooked
 
     steps:
       - uses: actions/checkout@v4

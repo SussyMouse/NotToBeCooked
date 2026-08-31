@@ -169,6 +169,29 @@ async def ingest_file(
             error="This PDF has no selectable text (usually a scan or images only).",
         )
 
+    except Exception:
+        # Every other failure. run_ingestion marks the INGESTION_RUN failed for
+        # these too, but without this the FILE row keeps saying `uploaded` -- which
+        # is indistinguishable from a file that was never ingested at all. The
+        # caller re-queues it, waits out another parse, and fails again, and none
+        # of those attempts leave a trace they can see.
+        #
+        # Measured 31 Aug 2026, with a broken cv2 making Docling raise:
+        #
+        #   file_status | run_status | run.error_message
+        #   uploaded    | failed     | File processing failed
+        #
+        # The message is deliberately generic: whatever went wrong here is ours,
+        # not something the caller can act on, and the exception text can carry
+        # filesystem paths. The detail is already on the INGESTION_RUN row.
+        #
+        # `raise` is not optional. This is bookkeeping before the error goes up,
+        # not a way to swallow it -- the response is still a 500.
+        file_row.status = FileStatus.FAILED
+        file_row.error_message = "Ingestion failed. Please try again or contact support."
+        await session.commit()
+        raise
+
     # Deactivate before activate, never the other way round.
     # ix_ingestion_run_one_active is a partial UNIQUE on file_id WHERE is_active, so
     # the two runs must not both be active for even one statement. Setting

@@ -31,10 +31,15 @@ PDF = b"%PDF-1.4\nnot a real pdf, but real bytes\n"
 
 
 @pytest_asyncio.fixture
-async def ctx(tmp_path, monkeypatch):
-    """A database built from the models, a temp storage dir, and one signed-in user."""
+async def ctx(tmp_path, monkeypatch, test_database_url):
+    """A database built from the models, a temp storage dir, and one signed-in user.
+
+    `test_database_url` rather than `settings.DATABASE_URL`: the two lines below
+    drop every table, and pointed at the development database that is `pnpm test`
+    deleting the developer's work with no warning. See tests/conftest.py.
+    """
     monkeypatch.setattr(settings, "STORAGE_DIR", tmp_path)
-    engine = create_async_engine(settings.DATABASE_URL)
+    engine = create_async_engine(test_database_url)
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.drop_all)
         await conn.run_sync(SQLModel.metadata.create_all)
