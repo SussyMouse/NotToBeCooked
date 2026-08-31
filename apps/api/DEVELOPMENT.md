@@ -183,3 +183,69 @@ async def login(body: LoginRequest):
 ## 🧪 5. Testing Your Endpoints
 - **Swagger Docs**: Open `http://localhost:8000/docs` to test endpoints interactively.
 - **REST Client**: Use `test_auth.http` inside your IDE to execute requests directly.
+
+---
+
+## 🧩 6. Local Setup Gotcha — `opencv-python` breaks Docling
+
+**Symptom.** Any call to `POST /files/{file_id}/ingest` returns 500, and the
+server log ends with:
+
+```
+File ".../docling_ibm_models/tableformer/data_management/functional.py", line 9
+    cv2.setNumThreads(0)
+AttributeError: module 'cv2' has no attribute 'setNumThreads'
+```
+
+or, once opencv is reinstalled:
+
+```
+ImportError: libgthread-2.0.so.0: cannot open shared object file
+```
+
+**Cause.** Nothing here chose opencv. `docling` pulls
+`docling-slim[standard]` → `rapidocr` → `opencv-python`, and
+`docling_ibm_models`' table-structure model imports `cv2` without declaring it.
+The `opencv-python` wheel is the GUI build: it links against X11
+(`libxcb.so.1`) and glib (`libgthread-2.0.so.0`). A machine without those
+system libraries cannot import it, so every PDF parse dies.
+
+**Fix — the same swap the Dockerfile already does** (see `Dockerfile`, the
+comment above the `uv pip install opencv-python-headless` line):
+
+```bash
+uv pip uninstall opencv-python
+uv pip install opencv-python-headless==5.0.0.93
+```
+
+Verify:
+
+```bash
+uv run --no-sync python -c "import cv2; print(cv2.__version__, hasattr(cv2, 'setNumThreads'))"
+# 5.0.0 True
+```
+
+**Redo this after every `uv sync`.** `uv` cannot substitute one distribution
+for another inside the lock file, so a sync puts `opencv-python` back and
+ingestion breaks again. Use `uv run --no-sync` while working on ingestion if
+you want to be sure a stray sync has not undone it.
+
+**Why this was not caught earlier.** `tests/test_processing.py` patches
+`ingest_document`, `extract_text`, `create_chunk`, `embed_text` and
+`add_chunks` — every real call in the pipeline. The suite is green whether or
+not Docling can load. Until `POST /files/{file_id}/ingest` landed on 31 Aug
+2026, nothing outside those tests called `run_ingestion` at all, so Docling had
+never actually run in this project.
+
+### How long ingestion takes
+
+Measured 31 Aug 2026 on a 4.5 MB, 55-slide lecture PDF, first end-to-end run:
+
+```
+POST /files          upload     0.02 s
+POST /files/{id}/ingest       430.84 s      -> 42 chunks
+POST /rag/query                 0.03 s
+```
+
+Parsing dominates by four orders of magnitude. Plan any change to the ingest
+endpoint around seven minutes of work per file, not seconds.
