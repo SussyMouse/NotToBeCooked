@@ -104,6 +104,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload File
+         * @description Store an uploaded file and record it. Does not index it.
+         *
+         *     Upload and ingestion are two endpoints on purpose, which is why `uploaded`
+         *     exists as a FileStatus value (restored 18 Aug). This one returns as soon as
+         *     the bytes are safe; `POST /files/{file_id}/ingest` is what turns them into
+         *     chunks.
+         *
+         *     `course_id` is read from the folder, never from the request. The client
+         *     could send one, and a client that sends the wrong one would be writing a row
+         *     that r42's composite foreign key rejects -- so the correct value is already
+         *     known server-side, and asking for it only creates a way to be wrong.
+         */
+        post: operations["upload_file_files_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files/{file_id}/ingest": {
         parameters: {
             query?: never;
@@ -224,6 +254,16 @@ export interface components {
             /** Message */
             message: string;
         };
+        /** Body_upload_file_files_post */
+        Body_upload_file_files_post: {
+            /**
+             * Folder Id
+             * Format: uuid
+             */
+            folder_id: string;
+            /** Upload */
+            upload: string;
+        };
         /**
          * ChatRole
          * @enum {string}
@@ -337,6 +377,48 @@ export interface components {
              * @default ok
              */
             status: string;
+        };
+        /**
+         * FileRead
+         * @description Outbound shape for a file.
+         */
+        FileRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Folder Id
+             * Format: uuid
+             */
+            folder_id: string;
+            /** Filename */
+            filename: string;
+            /** Storage Key */
+            storage_key: string;
+            /** Sha256 */
+            sha256?: string | null;
+            /** Mime Type */
+            mime_type: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /** Page Count */
+            page_count?: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "uploaded" | "processing" | "ready" | "failed";
+            /** Error Message */
+            error_message?: string | null;
+            /**
+             * Uploaded At
+             * Format: date-time
+             */
+            uploaded_at: string;
+            /** Indexed At */
+            indexed_at?: string | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -699,6 +781,39 @@ export interface operations {
             };
         };
     };
+    upload_file_files_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_file_files_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     ingest_file_files__file_id__ingest_post: {
         parameters: {
             query?: never;
@@ -711,7 +826,7 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Successful Response */
-            202: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

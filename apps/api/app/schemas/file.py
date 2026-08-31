@@ -1,5 +1,5 @@
 from datetime import datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Literal
 from uuid import UUID, uuid4
 
@@ -13,8 +13,20 @@ def _enum_values(enum_cls: type[Enum]) -> list[str]:
     return [m.value for m in enum_cls]
 
 
-class FileStatus(Enum):
+class FileStatus(StrEnum):
     """`uploaded` restored 18 Aug.
+
+    StrEnum rather than Enum, matching IngestionRunStatus and CourseStatus. A
+    plain Enum member is not a str, so FastAPI could not serialise a File row
+    through FileRead -- whose `status` is a Literal of strings -- and every
+    response raised ResponseValidationError:
+
+        {'type': 'literal_error', 'loc': ('response', 'status'),
+         'input': <FileStatus.UPLOADED: 'uploaded'>}
+
+    Nothing had returned a FileRead before, so the mismatch had never been
+    exercised. The database side is unaffected: values_callable already stores
+    the lowercase value either way (R25).
 
     Upload and ingestion are separate endpoints, so a file that has been stored
     but not yet queued had no state to sit in and was being mislabelled

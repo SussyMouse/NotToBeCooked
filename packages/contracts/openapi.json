@@ -204,6 +204,53 @@
         }
       }
     },
+    "/files": {
+      "post": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Upload File",
+        "description": "Store an uploaded file and record it. Does not index it.\n\nUpload and ingestion are two endpoints on purpose, which is why `uploaded`\nexists as a FileStatus value (restored 18 Aug). This one returns as soon as\nthe bytes are safe; `POST /files/{file_id}/ingest` is what turns them into\nchunks.\n\n`course_id` is read from the folder, never from the request. The client\ncould send one, and a client that sends the wrong one would be writing a row\nthat r42's composite foreign key rejects -- so the correct value is already\nknown server-side, and asking for it only creates a way to be wrong.",
+        "operationId": "upload_file_files_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_file_files_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/files/{file_id}/ingest": {
       "post": {
         "tags": [
@@ -229,7 +276,7 @@
           }
         ],
         "responses": {
-          "202": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -601,6 +648,26 @@
         ],
         "title": "ApiError"
       },
+      "Body_upload_file_files_post": {
+        "properties": {
+          "folder_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Folder Id"
+          },
+          "upload": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Upload"
+          }
+        },
+        "type": "object",
+        "required": [
+          "folder_id",
+          "upload"
+        ],
+        "title": "Body_upload_file_files_post"
+      },
       "ChatRole": {
         "type": "string",
         "enum": [
@@ -771,6 +838,109 @@
         },
         "type": "object",
         "title": "DeleteSessionResponse"
+      },
+      "FileRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "folder_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Folder Id"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "storage_key": {
+            "type": "string",
+            "title": "Storage Key"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          },
+          "mime_type": {
+            "type": "string",
+            "title": "Mime Type"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "title": "Size Bytes"
+          },
+          "page_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Count"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "uploaded",
+              "processing",
+              "ready",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "uploaded_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Uploaded At"
+          },
+          "indexed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Indexed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "folder_id",
+          "filename",
+          "storage_key",
+          "mime_type",
+          "size_bytes",
+          "status",
+          "uploaded_at"
+        ],
+        "title": "FileRead",
+        "description": "Outbound shape for a file."
       },
       "HTTPValidationError": {
         "properties": {
