@@ -41,12 +41,10 @@ async def get_or_create_conversation(
 
     # TODO: remove course auto-correction. this is intended only for development
     # Determine or ensure valid Course record in database
-    target_course: Course | None = None  # 
+    target_course: Course | None = None  #
     if course_id:
         statement = (
-            select(Course)
-            .where(col(Course.user_id) == uid)
-            .where(col(Course.id) == course_id)
+            select(Course).where(col(Course.user_id) == uid).where(col(Course.id) == course_id)
         )
         result = await session.execute(statement)
         target_course = result.scalar_one_or_none()

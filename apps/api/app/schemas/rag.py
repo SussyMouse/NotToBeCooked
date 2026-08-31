@@ -31,9 +31,7 @@ class RagQueryRequest(SQLModel):
     course_id: UUID | None = Field(
         default=None, description="The turn's home course. Ignored when file_ids is set."
     )
-    conversation_id: UUID | None = Field(
-        default=None, description="The turn's conversation"
-    )
+    conversation_id: UUID | None = Field(default=None, description="The turn's conversation")
     file_ids: list[UUID] | None = Field(
         default=None,
         description="Explicit @-mention scope. May cross courses. When set, overrides course_id.",

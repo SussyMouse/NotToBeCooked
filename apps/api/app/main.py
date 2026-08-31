@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.database import engine, init_db
 from app.dependencies.auth import get_current_user
-from app.routers import auth_router, chat_router, files_router, rag_router
+from app.routers import auth_router, chat_router, files_router, ingestion_runs_router, rag_router
 
 
 @asynccontextmanager
@@ -36,6 +36,11 @@ app.include_router(
 )
 app.include_router(
     chat_router, prefix="/chat", tags=["Chat"], dependencies=[Depends(get_current_user)]
+)
+app.include_router(
+    ingestion_runs_router,
+    prefix="/ingestion-runs",
+    tags=["Ingestion Runs"],
 )
 
 # CORS configuration for Web (any local port), Tauri (Desktop & Android), and Production

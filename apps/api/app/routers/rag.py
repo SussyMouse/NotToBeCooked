@@ -49,7 +49,9 @@ async def query(
         )
 
     # 1. Get or create conversation via services/chat.py
-    first_line = next((line.strip() for line in request.question.split("\n") if line.strip()), "New Chat")
+    first_line = next(
+        (line.strip() for line in request.question.split("\n") if line.strip()), "New Chat"
+    )
     clean_title = first_line[:40].strip() + ("..." if len(first_line) > 40 else "")
     conversation = await get_or_create_conversation(
         session=session,
@@ -62,7 +64,10 @@ async def query(
     if conversation.id is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"code": "SESSION_INIT_FAILED", "message": "Conversation ID was not initialized"},
+            detail={
+                "code": "SESSION_INIT_FAILED",
+                "message": "Conversation ID was not initialized",
+            },
         )
     conv_id: UUID = conversation.id
 
@@ -102,9 +107,7 @@ async def query(
             )
             for idx, c in enumerate(selected)
         ]
-        answer_text = (
-            f"Grounded response for **{clean_rag_query}** based on retrieved documents."
-        )
+        answer_text = f"Grounded response for **{clean_rag_query}** based on retrieved documents."
     elif settings.LLM_FAKE_MODE:
         # Construct helpful mock grounded citations matching files in scope
         if request.file_ids and len(request.file_ids) >= 2:

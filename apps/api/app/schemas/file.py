@@ -104,6 +104,7 @@ class IngestionRequest(SQLModel):
 
 class IngestionResponse(SQLModel):
     file_id: UUID
-    status: Literal["uploaded", "processing", "ready", "failed"]
+    ingestion_run_id: UUID
+    status: Literal["queued", "processing", "ready", "failed"]
     chunk_count: int | None = None
     error: str | None = None

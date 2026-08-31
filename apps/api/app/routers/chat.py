@@ -135,10 +135,7 @@ async def delete_session(
     statement = (
         select(Conversation)
         .join(Course, col(Course.id) == col(Conversation.course_id))
-        .where(
-            Course.user_id == user_id,
-            Conversation.id == session_id
-        )
+        .where(Course.user_id == user_id, Conversation.id == session_id)
     )
     result = await session.execute(statement)
     conversation = result.scalar_one_or_none()
