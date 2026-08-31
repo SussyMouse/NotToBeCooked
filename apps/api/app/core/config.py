@@ -28,6 +28,19 @@ class Settings(BaseSettings):
     BATCH_SIZE: int = 32
     EMBEDDINGS_DIM: int = 1024
     MODEL_TYPE: str = "jinaai/jina-embeddings-v5-text-small"
+    CHUNKER_VERSION: str = "chunker-1"
+
+    # File Storage Settings
+    #
+    # STORAGE_DIR is a local directory today and an object-store bucket later.
+    # FILE.storage_key is documented as "an object-store key, not a filesystem
+    # path" for that reason -- the key is stable across the move, only the thing
+    # that resolves it changes. See app/services/storage.py.
+    STORAGE_DIR: Path = _ENV_FILE.parent / "storage"
+
+    # Enforced while streaming, not after. Reading a 4 GB upload into memory to
+    # discover it is too large is the failure this guards against.
+    MAX_UPLOAD_BYTES: int = 50 * 1024 * 1024
 
     # Gemini Settings
     GEMINI_API_KEY: SecretStr = SecretStr("")
