@@ -10,6 +10,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.schemas.chunk import Chunk
 from app.schemas.file import File
+from app.schemas.ingestion_run import IngestionRun
 from app.schemas.rag import RetrievedChunk
 
 
@@ -56,8 +57,10 @@ async def _vector_similarity_search(
 ) -> Sequence[tuple[Chunk, File, float]]:
     """Performs
     SELECT chunk, file, chunk.embedding <=> cos(query_vector) AS distance
-    FROM chunk, file
+    FROM chunk, file, ingestion_run
     WHERE file.id == chunk.file_id
+    WHERE ingestion_run.id == chunk.ingestion_run_id
+    WHERE ingestion_run.is_active
     WHERE chunk.file_id in file_ids
     ORDER BY distance
     LIMIT 5
@@ -67,6 +70,8 @@ async def _vector_similarity_search(
         select(Chunk, File, distance_col)
         .join(File)
         .where(File.id == Chunk.file_id)
+        .join(IngestionRun, col(Chunk.ingestion_run_id) == col(IngestionRun.id))
+        .where(col(IngestionRun.is_active).is_(True))
         .order_by(distance_col)
     )
     if file_ids:
