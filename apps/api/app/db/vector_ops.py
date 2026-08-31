@@ -10,6 +10,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.schemas.chunk import Chunk
 from app.schemas.file import File
+from app.schemas.ingestion_run import IngestionRun
 from app.schemas.rag import RetrievedChunk
 
 
@@ -56,8 +57,10 @@ async def _vector_similarity_search(
 ) -> Sequence[tuple[Chunk, File, float]]:
     """Performs
     SELECT chunk, file, chunk.embedding <=> cos(query_vector) AS distance
-    FROM chunk, file
+    FROM chunk, file, ingestion_run
     WHERE file.id == chunk.file_id
+    WHERE ingestion_run.id == chunk.ingestion_run_id
+    WHERE ingestion_run.is_active
     WHERE chunk.file_id in file_ids
     ORDER BY distance
     LIMIT 5
@@ -65,8 +68,9 @@ async def _vector_similarity_search(
     distance_col = Chunk.embedding.cosine_distance(query_vector).label("distance")
     statement = (
         select(Chunk, File, distance_col)
-        .join(File)
-        .where(File.id == Chunk.file_id)
+        .join(File, col(Chunk.file_id) == col(File.id))
+        .join(IngestionRun, col(Chunk.ingestion_run_id) == col(IngestionRun.id))
+        .where(col(IngestionRun.is_active).is_(True))
         .order_by(distance_col)
     )
     if file_ids:
@@ -81,10 +85,12 @@ async def _full_text_search(
     term: str, session: AsyncSession, file_ids: list[UUID] | None = None, top_k: int = 5
 ) -> Sequence[tuple[Chunk, File, float]]:
     """Performs
-    SELECT chunk.*, ts_rank(chunk.content_tsv, to_tsquery('english', replace(plainto_tsquery('english', term)::text, ' & ', ' | '))) AS rank
-    FROM chunk
+    SELECT chunk.*, ts_rank(chunk.content_tsv, replace(plainto_tsquery('english', term)::text, ' & ', ' | ')::tsquery) AS rank
+    FROM chunk, ingestion_run
+    WHERE ingestion_run.id == chunk.ingestion_run_id
+    WHERE ingestion_run.is_active
     WHERE chunk.file_id IN file_ids
-    WHERE chunk.content_tsv @@ to_tsquery('english', replace(plainto_tsquery('english', term)::text, ' & ', ' | '))
+    WHERE chunk.content_tsv @@ replace(plainto_tsquery('english', term)::text, ' & ', ' | ')::tsquery
     ORDER BY rank DESC
     LIMIT 5
     """
@@ -92,7 +98,12 @@ async def _full_text_search(
         func.plainto_tsquery("english", term).cast(Text), " & ", " | "
     ).cast(TSQUERY)
     rank_col = func.ts_rank(Chunk.content_tsv, ts_query).label("rank")
-    statement = select(Chunk, File, rank_col).join(File).where(File.id == Chunk.file_id)
+    statement = (
+        select(Chunk, File, rank_col)
+        .join(File, col(Chunk.file_id) == col(File.id))
+        .join(IngestionRun, col(Chunk.ingestion_run_id) == col(IngestionRun.id))
+        .where(col(IngestionRun.is_active).is_(True))
+    )
     if file_ids:
         statement = statement.where(col(Chunk.file_id).in_(file_ids))
     statement = (
