@@ -14,9 +14,10 @@
     "format": "turbo format",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
-    "verify": "turbo typecheck lint build test",
-    "schema:update": "cd apps/api && uv run python scripts/generate_openapi.py && pnpm --filter @workspace/contracts generate",
-    "codegen": "pnpm schema:update"
+    "verify": "turbo typecheck lint build test && pnpm contracts:check",
+    "schema:update": "cd apps/api && uv run --no-sync python scripts/generate_openapi.py && pnpm --filter @workspace/contracts generate",
+    "codegen": "pnpm schema:update",
+    "contracts:check": "cd apps/api && uv run --no-sync python scripts/check_openapi.py"
   },
   "devDependencies": {
     "prettier": "^3.8.3",
