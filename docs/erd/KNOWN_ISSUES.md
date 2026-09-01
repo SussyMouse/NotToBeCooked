@@ -314,11 +314,44 @@ Nothing errors; the answer is simply built on text that was replaced.
 `ix_ingestion_run_one_active` (r41, partial unique on `file_id WHERE is_active`)
 guarantees at most one active run per file, so a join is enough within a file. It
 is not enough across files: two active runs can still name different
-`embedding_model` values. Whether to add that second filter now or when a second
-model is actually in use is AI-1's call, to be recorded here either way.
+`embedding_model` values.
 
-`_full_text_search` has the same hole. Lexical ranking does not care which model
+`_full_text_search` had the same hole. Lexical ranking does not care which model
 produced the vectors, but it does return chunks from superseded runs.
+
+**Closed 1 September 2026 — AI-1.** Both search paths now join `INGESTION_RUN`
+and filter on `is_active`:
+
+```python
+.join(IngestionRun, col(Chunk.ingestion_run_id) == col(IngestionRun.id))
+.where(col(IngestionRun.is_active).is_(True))
+```
+
+Decision 3 of 25 August named only `_vector_similarity_search`. `_full_text_search`
+was fixed in the same pass without being asked for, which is why the sentence
+above reads "had" rather than "has".
+
+### R5b — the cross-file half, deferred with a trigger
+
+The second filter — constraining to the active run's *model*, not merely to
+`is_active` — was deferred at the 1 September meeting. Recorded here rather than
+closed, because the reasoning is only true while a condition holds:
+
+> **Deferred while exactly one embedding model is in use anywhere in the system.**
+> `ix_ingestion_run_one_active` makes the `is_active` join sufficient within a
+> file, and with one model there is nothing for the cross-file case to get wrong.
+
+**Trigger — the day this must be done:**
+
+> The day `settings.MODEL_TYPE` changes without every existing chunk being
+> re-indexed.
+
+From that day, two files can each hold an active run under a different model, the
+join stops being sufficient, and cosine distance between the two spaces returns a
+number rather than an answer. **It raises nothing.** Retrieval simply mixes two
+coordinate systems and ranks them against each other.
+
+Whoever changes `settings.MODEL_TYPE` owns this entry from that moment.
 
 ### R8 — `INGESTION_RUN.is_active` is a boolean with no uniqueness guarantee
 
@@ -693,7 +726,8 @@ SQLAlchemy's default, not anybody's mistake.
 | R10 | `MESSAGE` has no `sequence_no` | **Deferred** — accepted v1 defect, order implied by `created_at` |
 | R16 | Soft delete on `COURSE` / `FILE` | **Declined 18 Aug** — and so **v1 has no delete-course feature**, see R16 |
 | R4 | `CHUNK` FKs can contradict each other | **Closed 26 Aug, in two migrations.** r41 (`efda7a3`, 22 Aug) tied a chunk's run to its file via `fk_chunk_run_file_agree`. r42 (`2a22d57`, 26 Aug) tied `course_id` to `file_id`: Decision 02 option B put `course_id` back on FILE so a composite FK had something to point at, making it a chain — `CHUNK(file_id, course_id)` → `FILE(id, course_id)` → and `FILE(folder_id, course_id)` → `FOLDER(id, course_id)`. CR-31. Verified 11/11 by `check_r42.py`, including that a row where all three agree still inserts |
-| R5 | Vector scan not filtered by embedding model | **Assigned 25 Aug to AI-1 (Decision 3)** — still open, now owned. Measured 25 Aug: with two runs over one file, the superseded run's chunks take rank 1 and 2 and eat two of five `top_k` slots, silently. `_full_text_search` has the same hole. **Retrieval layer, not the migration**. Reclassified 22 Aug: a constraint rejects a row that is itself invalid, and a chunk embedded by an older model is a perfectly valid row. What is wrong is comparing it against a query embedded by a different one, and no constraint sees a comparison. It belongs in `_vector_similarity_search` in `db/vector_ops.py` as a join to `INGESTION_RUN` filtering on `is_active` and `embedding_model`. `KNOWN_ISSUES` already said as much in the R21 entry — "R5 fixes that at the query" — while this row said first migration; the two contradicted each other until now. **Unassigned.** |
+| R5 | Vector scan not filtered by embedding model | **Closed 1 Sep by AI-1.** Both `_vector_similarity_search` and `_full_text_search` now join `INGESTION_RUN` and filter on `is_active`. Decision 3 of 25 Aug named only the vector path; the lexical one was fixed in the same pass unasked. Measured 25 Aug, before the fix: with two runs over one file, the superseded run's chunks took rank 1 and 2 and ate two of five `top_k` slots, silently. **Retrieval layer, not the migration** — reclassified 22 Aug, because a constraint rejects a row that is itself invalid, and a chunk embedded by an older model is a perfectly valid row; what is wrong is comparing it against a query embedded by a different one, and no constraint sees a comparison. **The cross-file half is R5b, deferred with a trigger.** |
+| R5b | Cross-file `embedding_model` filter | **Deferred 1 Sep, with a trigger.** The `is_active` join is sufficient within a file (`ix_ingestion_run_one_active`) and sufficient everywhere while one model is in use. **Trigger: the day `settings.MODEL_TYPE` changes without every existing chunk being re-indexed.** From that day two files can each hold an active run under a different model, and cosine distance across two vector spaces returns a number rather than an answer. It raises nothing. Whoever changes `MODEL_TYPE` owns this entry from that moment |
 | R8 | `is_active` needs a partial unique index | **Done 22 Aug** (`efda7a3`) — `ix_ingestion_run_one_active` UNIQUE on `(file_id) WHERE is_active`. Verified from empty: a second active run raises `UniqueViolation`, further inactive runs are accepted |
 | R17 | `UNIQUE (user_id, code, year, sem)` | **Done 22 Aug** — declared on `Course.__table_args__` and created in the initial migration as `uq_course_user_code_year_sem`. Verified from an empty database: a duplicate raises `UniqueViolationError`, while a second semester, a second year and a second user all insert. |
 | R18 | `UNIQUE (ingestion_run_id, chunk_index)` | **Done 22 Aug** (`efda7a3`) — `uq_chunk_run_index`. Verified: a second chunk 0 in one run is rejected; chunk 0 in a re-index run is accepted |
@@ -714,8 +748,10 @@ as follows:
 |---|---|
 | **R8 · R17 · R18 · R19 · R20** | **Done 22 Aug**, on `dev` in `8767fc7` and `efda7a3`, each verified by rebuilding the database from empty and probing it |
 | **R4** | **Closed 26 Aug.** The 25 August meeting chose the denormalised column over a trigger (Decision 02, option B), and r42 shipped it as a two-link chain. A trigger would have hidden the rule where neither code review nor `git log` shows it |
-| **R5** | **Not a constraint.** Reclassified 22 Aug as a retrieval-layer query predicate, and **unassigned** — also on the 25 August agenda |
+| **R5** | **Closed 1 Sep.** Never a constraint — reclassified 22 Aug as a retrieval-layer query predicate, assigned 25 Aug, fixed in `vector_ops.py` on both search paths. **R5b** carries the cross-file half, deferred with a written trigger |
 
-**One row is still open, and it is not migration work.** R4 closed on 26 August in
-r42 (`2a22d57`); R5 is open and owned by AI-1 since the 25 August meeting. Nothing
-on this list is marked "Open — 18 Aug", and nothing is unassigned.
+**Every row on this list is now closed.** R4 closed on 26 August in r42
+(`2a22d57`); R5 closed on 1 September in `vector_ops.py`. What remains is **R5b**,
+which is not a defect but a deferral with a condition attached: it is correct
+today and becomes wrong on a named day. Nothing on this list is marked
+"Open — 18 Aug", and nothing is unassigned.
