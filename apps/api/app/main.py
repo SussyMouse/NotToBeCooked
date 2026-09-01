@@ -27,12 +27,7 @@ app = FastAPI(
     version="0.0.1",
     lifespan=lifespan,
 )
-app.include_router(                                   
-    ingestion_runs_router,
-    prefix="/ingestion-runs",
-    tags=["Ingestion Runs"],
-    dependencies=[Depends(get_current_user)],
-)
+
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
 app.include_router(
     files_router, prefix="/files", tags=["Files"], dependencies=[Depends(get_current_user)]
@@ -42,6 +37,9 @@ app.include_router(
 )
 app.include_router(
     chat_router, prefix="/chat", tags=["Chat"], dependencies=[Depends(get_current_user)]
+)
+app.include_router(
+    ingestion_runs_router, prefix="/ingestion-runs", tags=["Ingestion Runs"], dependencies=[Depends(get_current_user)],
 )
 
 # CORS configuration for Web (any local port), Tauri (Desktop & Android), and Production
