@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.database import engine, init_db
 from app.dependencies.auth import get_current_user
-from app.routers import auth_router, chat_router, files_router, rag_router
+from app.routers import auth_router, chat_router, files_router,ingestion_runs_router,rag_router
 
 
 @asynccontextmanager
@@ -26,6 +26,12 @@ app = FastAPI(
     description="Python FastAPI backend for NotToBeCooked monorepo",
     version="0.0.1",
     lifespan=lifespan,
+)
+app.include_router(                                   
+    ingestion_runs_router,
+    prefix="/ingestion-runs",
+    tags=["Ingestion Runs"],
+    dependencies=[Depends(get_current_user)],
 )
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
 app.include_router(

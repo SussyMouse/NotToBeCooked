@@ -99,3 +99,12 @@ class IngestionRun(SQLModel, table=True):
     )
 
     error_message: str | None = Field(default=None)
+
+
+class IngestionRunRead(SQLModel):
+    id: UUID
+    file_id: UUID
+    status: IngestionRunStatus
+    started_at: datetime | None
+    completed_at: datetime | None
+    error_message: str | None
