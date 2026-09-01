@@ -276,7 +276,7 @@
           }
         ],
         "responses": {
-          "200": {
+          "202": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -578,6 +578,54 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingestion-runs/{ingestion_run_id}": {
+      "get": {
+        "tags": [
+          "Ingestion Runs"
+        ],
+        "summary": "Get Ingestion Run",
+        "operationId": "get_ingestion_run_ingestion_runs__ingestion_run_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ingestion_run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Ingestion Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionRunRead"
                 }
               }
             }
@@ -962,10 +1010,15 @@
             "format": "uuid",
             "title": "File Id"
           },
+          "ingestion_run_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Ingestion Run Id"
+          },
           "status": {
             "type": "string",
             "enum": [
-              "uploaded",
+              "queued",
               "processing",
               "ready",
               "failed"
@@ -998,9 +1051,83 @@
         "type": "object",
         "required": [
           "file_id",
+          "ingestion_run_id",
           "status"
         ],
-        "title": "IngestionResponse"
+        "title": "IngestionResponse",
+        "description": "Outbound shape for POST /files/{file_id}/ingest.\n\n202, not 200: parsing a real lecture PDF measured 430.84 s on 31 Aug 2026\nagainst 0.02 s for the upload before it. Nothing holds an HTTP request open\nfor seven minutes, so the endpoint acknowledges the work and hands back an id\nto poll -- CR-33."
+      },
+      "IngestionRunRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "file_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "File Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IngestionRunStatus"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "file_id",
+          "status",
+          "started_at",
+          "completed_at",
+          "error_message"
+        ],
+        "title": "IngestionRunRead"
+      },
+      "IngestionRunStatus": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "processing",
+          "ready",
+          "failed"
+        ],
+        "title": "IngestionRunStatus"
       },
       "LoginRequest": {
         "properties": {

@@ -209,6 +209,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ingestion-runs/{ingestion_run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Ingestion Run */
+        get: operations["get_ingestion_run_ingestion_runs__ingestion_run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -425,7 +442,15 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
-        /** IngestionResponse */
+        /**
+         * IngestionResponse
+         * @description Outbound shape for POST /files/{file_id}/ingest.
+         *
+         *     202, not 200: parsing a real lecture PDF measured 430.84 s on 31 Aug 2026
+         *     against 0.02 s for the upload before it. Nothing holds an HTTP request open
+         *     for seven minutes, so the endpoint acknowledges the work and hands back an id
+         *     to poll -- CR-33.
+         */
         IngestionResponse: {
             /**
              * File Id
@@ -433,15 +458,45 @@ export interface components {
              */
             file_id: string;
             /**
+             * Ingestion Run Id
+             * Format: uuid
+             */
+            ingestion_run_id: string;
+            /**
              * Status
              * @enum {string}
              */
-            status: "uploaded" | "processing" | "ready" | "failed";
+            status: "queued" | "processing" | "ready" | "failed";
             /** Chunk Count */
             chunk_count?: number | null;
             /** Error */
             error?: string | null;
         };
+        /** IngestionRunRead */
+        IngestionRunRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * File Id
+             * Format: uuid
+             */
+            file_id: string;
+            status: components["schemas"]["IngestionRunStatus"];
+            /** Started At */
+            started_at: string | null;
+            /** Completed At */
+            completed_at: string | null;
+            /** Error Message */
+            error_message: string | null;
+        };
+        /**
+         * IngestionRunStatus
+         * @enum {string}
+         */
+        IngestionRunStatus: "queued" | "processing" | "ready" | "failed";
         /** LoginRequest */
         LoginRequest: {
             /**
@@ -826,7 +881,7 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Successful Response */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1024,6 +1079,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_ingestion_run_ingestion_runs__ingestion_run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ingestion_run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestionRunRead"];
                 };
             };
             /** @description Validation Error */
