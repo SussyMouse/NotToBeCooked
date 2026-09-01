@@ -1,25 +1,30 @@
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from sqlalchemy import func, update
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+    status,
+)
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import settings
 from app.db.database import get_session
 from app.dependencies.auth import get_current_user
-from app.schemas.chunk import Chunk
 from app.schemas.course import Course
 from app.schemas.file import File as FileRow
 from app.schemas.file import FileRead, FileStatus, IngestionResponse
 from app.schemas.folder import Folder
 from app.schemas.ingestion_run import IngestionRun, IngestionRunStatus
-from app.services.processing import NoExtractableContentError, run_ingestion
 from app.services.storage import (
     UploadTooLargeError,
     build_storage_key,
-    resolve,
     write_upload,
 )
 
@@ -56,10 +61,10 @@ async def upload_file(
     # stranger which folder ids are real.
     statement = (
         select(Folder)
-        .join(Course, Course.id == Folder.course_id)  # pyright: ignore[reportArgumentType]
+        .join(Course, col(Course.id) == col(Folder.course_id))  # pyright: ignore[reportArgumentType]
         .where(Folder.id == folder_id, Course.user_id == user_id)
     )
-    folder = (await session.execute(statement)).scalars().first()
+    folder = (await session.exec(statement)).first()
     if folder is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Folder not found")
 
@@ -95,10 +100,11 @@ async def upload_file(
 @files_router.post(
     "/{file_id}/ingest",
     response_model=IngestionResponse,
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_202_ACCEPTED,
 )
 async def ingest_file(
     file_id: UUID,
+    background: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
     user: dict = Depends(get_current_user),
 ) -> IngestionResponse:
@@ -147,75 +153,36 @@ async def ingest_file(
     # UUID | None only because SQLModel lets the database default it.
     assert run.id is not None
 
-    # storage_key is an object-store key, not a path -- resolve() is the one place
-    # that knows how a key maps onto the filesystem today, and the only line that
-    # has to change when that becomes a bucket.
-    try:
-        await run_ingestion(
-            file_id=file_id,
-            course_id=file_row.course_id,
-            ingestion_run_id=run.id,
-            file_path=str(resolve(file_row.storage_key)),
-            session=session,
-        )
-    except NoExtractableContentError:
-        # run_ingestion has already marked the INGESTION_RUN row failed. This marks
-        # the FILE row, which nothing else touches -- without it a scanned PDF sits
-        # at `uploaded` forever and the UI has no way to say why.
-        file_row.status = FileStatus.FAILED
-        await session.commit()
-        return IngestionResponse(
-            file_id=file_id, status="failed", chunk_count=0,
-            error="This PDF has no selectable text (usually a scan or images only).",
-        )
-
-    except Exception:
-        # Every other failure. run_ingestion marks the INGESTION_RUN failed for
-        # these too, but without this the FILE row keeps saying `uploaded` -- which
-        # is indistinguishable from a file that was never ingested at all. The
-        # caller re-queues it, waits out another parse, and fails again, and none
-        # of those attempts leave a trace they can see.
-        #
-        # Measured 31 Aug 2026, with a broken cv2 making Docling raise:
-        #
-        #   file_status | run_status | run.error_message
-        #   uploaded    | failed     | File processing failed
-        #
-        # The message is deliberately generic: whatever went wrong here is ours,
-        # not something the caller can act on, and the exception text can carry
-        # filesystem paths. The detail is already on the INGESTION_RUN row.
-        #
-        # `raise` is not optional. This is bookkeeping before the error goes up,
-        # not a way to swallow it -- the response is still a 500.
-        file_row.status = FileStatus.FAILED
-        file_row.error_message = "Ingestion failed. Please try again or contact support."
-        await session.commit()
-        raise
-
-    # Deactivate before activate, never the other way round.
-    # ix_ingestion_run_one_active is a partial UNIQUE on file_id WHERE is_active, so
-    # the two runs must not both be active for even one statement. Setting
-    # run.is_active first does not merely read wrong -- session.exec() autoflushes
-    # the pending change ahead of the UPDATE, so the collision happens before the
-    # statement that would have resolved it is ever sent.
-    await session.exec(
-        update(IngestionRun)
-        .where(col(IngestionRun.file_id) == file_id, col(IngestionRun.is_active))
-        .values(is_active=False)
+# The work is handed off and the response goes out now. 202, not 200 -- CR-33.
+    background.add_task(
+        _ingest_in_background,
+        file_id=file_id,
+        course_id=file_row.course_id,
+        ingestion_run_id=run.id,
+        storage_key=file_row.storage_key,
     )
-    run.is_active = True
-
-    file_row.status = FileStatus.READY
-    file_row.indexed_at = datetime.now(UTC)
-    await session.commit()
-
-    # Counted by ingestion_run_id, not file_id. Nothing in the codebase deletes
-    # chunks, so a file ingested three times has three generations of rows and
-    # file_id would report their sum -- a number that only ever grows.
-    chunk_count = (await session.exec(
-        select(func.count()).select_from(Chunk).where(Chunk.ingestion_run_id == run.id)
-    )).one()
 
     return IngestionResponse(
-        file_id=file_id, status="ready", chunk_count=chunk_count, error=None,
+        file_id=file_id,
+        ingestion_run_id=run.id,
+        status="queued",
+        chunk_count=None,
+        error=None,
     )
+
+
+# TODO(AI-3): the body below is AI-3's half of Decision 1. Two things must be
+# true of it and neither is true of the old synchronous tail it replaces:
+#
+#   1. It needs its own session. BackgroundTasks runs after the response is sent,
+#      by which point get_session's async with has closed the request's one.
+#   2. Nothing can raise out of it -- there is nobody to raise to, and the
+#      response has already gone out. Failures record into
+#      INGESTION_RUN.error_message and FILE.status instead.
+async def _ingest_in_background(
+    file_id: UUID,
+    course_id: UUID,
+    ingestion_run_id: UUID,
+    storage_key: str,
+) -> None:
+    raise NotImplementedError("AI-3: Decision 1, the body half")

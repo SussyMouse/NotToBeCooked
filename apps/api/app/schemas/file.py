@@ -40,17 +40,14 @@ class FileStatus(StrEnum):
 
 
 class File(SQLModel, table=True):
-
     __table_args__ = (
         UniqueConstraint("id", "course_id", name="uq_file_id_course"),
-
         ForeignKeyConstraint(
             ["folder_id", "course_id"],
             ["folder.id", "folder.course_id"],
             ondelete="CASCADE",
             name="fk_file_folder_course_agree",
         ),
-
     )
 
     id: UUID | None = Field(primary_key=True, default_factory=uuid4)
@@ -141,6 +138,7 @@ class IngestionRequest(SQLModel):
 
 class IngestionResponse(SQLModel):
     file_id: UUID
-    status: Literal["uploaded", "processing", "ready", "failed"]
+    ingestion_run_id: UUID
+    status: Literal["queued", "processing", "ready", "failed"]
     chunk_count: int | None = None
     error: str | None = None
