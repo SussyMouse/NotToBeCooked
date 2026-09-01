@@ -353,6 +353,38 @@ coordinate systems and ranks them against each other.
 
 Whoever changes `settings.MODEL_TYPE` owns this entry from that moment.
 
+### R27 — deleting a FILE row leaves its bytes on disk
+
+`FILE.storage_key` points at an object that nothing owns. Every foreign key into
+FILE cascades, so deleting a file takes its chunks and its ingestion runs with
+it — and leaves the stored bytes exactly where they were.
+
+**Measured 1 September 2026**, after a day of end-to-end runs:
+
+```
+select count(*) from file;      0
+du -sh apps/api/storage        18M      -- six orphaned directories
+```
+
+Zero rows, eighteen megabytes. Nothing deleted them because no code path deletes
+a blob: `app/services/storage.py` has a `delete()`, and it has no callers.
+
+**Not reachable in v1.** R16 declined soft delete and there is no delete-file
+endpoint, so the only way to lose a FILE row today is by hand. The day a delete
+endpoint lands, this leaks on every use — silently, because a leak of disk is not
+an error.
+
+Two shapes when it matters, and they are not the same decision:
+
+- **Delete on delete.** Simple, and wrong the moment two rows can share a key.
+  Today they cannot: `storage_key` is UNIQUE and built from `{user_id}/{file_id}`.
+- **Sweep.** A job that lists the store and removes what no row references.
+  Survives sharing, and it is the only one that also collects what a crashed
+  upload left behind — `write_upload` deletes its partial file, but only if the
+  process is still alive to do it.
+
+Nobody owns this yet. It goes with whoever writes the delete endpoint.
+
 ### R8 — `INGESTION_RUN.is_active` is a boolean with no uniqueness guarantee
 
 The annotation says exactly one active run per file is visible to retrieval. A

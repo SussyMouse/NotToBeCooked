@@ -221,8 +221,17 @@ This section exists only to put the symptom somewhere a developer will look
 smoke-test script; the traceback names `cv2`, and `cv2` appears in no dependency
 list we wrote.
 
-**Redo the swap after every `uv sync`**, and use `uv run --no-sync` while working
-on ingestion. Check 1 of `smoke.py` going red is the signal that a sync undid it.
+**Redo the swap after every `uv sync`.** As of 1 Sep 2026 the package scripts no
+longer sync on your behalf — `lint`, `test`, `dev` and `schema:update` all pass
+`--no-sync`, so `pnpm verify` does not silently reinstall the GUI build behind
+your back. It used to: every `pnpm verify` put `opencv-python` back and broke
+ingestion, while verify itself stayed 13/13 green because nothing in it touches
+Docling.
+
+The cost of that change is that **a lockfile change no longer installs itself**.
+After pulling a branch that adds a dependency, run `uv sync` explicitly — and
+then redo the opencv swap, because the sync will have undone it. Check 1 of
+`smoke.py` going red is the signal that something synced.
 
 ### Green tests do not mean ingestion runs
 
@@ -267,3 +276,31 @@ uv run python scripts/seed_folder.py you@example.com   # register the account fi
 
 It prints a `folder_id` and a ready-to-paste `curl`. Delete the script the day
 those endpoints land.
+
+---
+
+## 🤝 8. `packages/contracts` is checked, not trusted
+
+`pnpm verify` ends with `pnpm contracts:check`, which regenerates the OpenAPI
+document from the running app and compares it to the committed
+`packages/contracts/openapi.json`. A difference fails the build and prints the
+paths and schemas that moved.
+
+**It exists because the file went stale and nothing noticed.** On 1 Sep 2026
+CR-33 moved the ingest endpoint to 202 and made `ingestion_run_id` required;
+`openapi.json` was not regenerated, so for several hours it described a 200 with
+`status` still carrying `"uploaded"` — while `pnpm verify` was 13/13 the whole
+time. The frontend would have been typed against a backend that no longer
+existed.
+
+When it fails, the fix is one command:
+
+```bash
+pnpm schema:update
+```
+
+The check is **outside** turbo, in the root `verify` script rather than in
+`api#lint`. Turbo caches a task on its own package's inputs, and
+`packages/contracts/openapi.json` is not one of `apps/api`'s — so inside `lint`
+it was cached away and never ran. That is worth remembering for any future check
+that reads a file from another package.
