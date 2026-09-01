@@ -203,43 +203,45 @@ or, once opencv is reinstalled:
 ImportError: libgthread-2.0.so.0: cannot open shared object file
 ```
 
-**Cause.** Nothing here chose opencv. `docling` pulls
-`docling-slim[standard]` → `rapidocr` → `opencv-python`, and
-`docling_ibm_models`' table-structure model imports `cv2` without declaring it.
-The `opencv-python` wheel is the GUI build: it links against X11
-(`libxcb.so.1`) and glib (`libgthread-2.0.so.0`). A machine without those
-system libraries cannot import it, so every PDF parse dies.
-
-**Fix — the same swap the Dockerfile already does** (see `Dockerfile`, the
-comment above the `uv pip install opencv-python-headless` line):
+**This is already documented, and there is already a check for it.** Read the
+docstring of `scripts/smoke.py` — it explains the cause (docling →
+docling-slim[standard] → rapidocr → the GUI opencv build, which links X11 and
+glib), names the machines it hits, and gives the fix. Its check 1 is exactly
+this import, and its check 4 parses a real PDF through Docling.
 
 ```bash
-uv pip uninstall opencv-python
+cd apps/api
+uv pip uninstall opencv-python opencv-python-headless
 uv pip install opencv-python-headless==5.0.0.93
+uv run --no-sync python scripts/smoke.py
 ```
 
-Verify:
+This section exists only to put the symptom somewhere a developer will look
+**while a request is failing in front of them**. Nobody hunting a 500 opens a
+smoke-test script; the traceback names `cv2`, and `cv2` appears in no dependency
+list we wrote.
 
-```bash
-uv run --no-sync python -c "import cv2; print(cv2.__version__, hasattr(cv2, 'setNumThreads'))"
-# 5.0.0 True
-```
+**Redo the swap after every `uv sync`**, and use `uv run --no-sync` while working
+on ingestion. Check 1 of `smoke.py` going red is the signal that a sync undid it.
 
-**Redo this after every `uv sync`.** `uv` cannot substitute one distribution
-for another inside the lock file, so a sync puts `opencv-python` back and
-ingestion breaks again. Use `uv run --no-sync` while working on ingestion if
-you want to be sure a stray sync has not undone it.
+### Green tests do not mean ingestion runs
 
-**Why this was not caught earlier.** `tests/test_processing.py` patches
-`ingest_document`, `extract_text`, `create_chunk`, `embed_text` and
-`add_chunks` — every real call in the pipeline. The suite is green whether or
-not Docling can load. Until `POST /files/{file_id}/ingest` landed on 31 Aug
-2026, nothing outside those tests called `run_ingestion` at all, so Docling had
-never actually run in this project.
+`pnpm verify` never loads a model, opens a PDF, or links a shared library, and
+`tests/test_processing.py` patches `ingest_document`, `extract_text`,
+`create_chunk`, `embed_text` and `add_chunks` — every real call in the pipeline.
+That is the right shape for a unit test, but it means the suite is green whether
+or not Docling can load. **`scripts/smoke.py` is the thing that answers "does it
+actually run", and it is deliberately not part of `pnpm verify`** because a cold
+run pulls ~1.9 GB of weights.
+
+Until `POST /files/{file_id}/ingest` landed on 31 Aug 2026, `run_ingestion` had
+no production caller, so the pipeline had never run *through the application* —
+only through that smoke script, by hand.
 
 ### How long ingestion takes
 
-Measured 31 Aug 2026 on a 4.5 MB, 55-slide lecture PDF, first end-to-end run:
+Measured 31 Aug 2026 on a 4.5 MB, 55-slide lecture PDF, the first end-to-end run
+through the API:
 
 ```
 POST /files          upload     0.02 s
@@ -249,3 +251,19 @@ POST /rag/query                 0.03 s
 
 Parsing dominates by four orders of magnitude. Plan any change to the ingest
 endpoint around seven minutes of work per file, not seconds.
+
+---
+
+## 🌱 7. Getting a `folder_id` — `scripts/seed_folder.py`
+
+`POST /files` needs a `folder_id` whose course belongs to the caller, and **no
+endpoint creates a COURSE or a FOLDER yet**. Until `POST /courses` and
+`POST /courses/{course_id}/folders` exist, make one directly:
+
+```bash
+cd apps/api
+uv run python scripts/seed_folder.py you@example.com   # register the account first
+```
+
+It prints a `folder_id` and a ready-to-paste `curl`. Delete the script the day
+those endpoints land.
