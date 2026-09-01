@@ -13,7 +13,7 @@ const HTTPValidationError = z.object({ detail: z.array(ValidationError) }).parti
 const RegisterRequest = z.object({ display_name: z.string(), email: z.string().email(), password: z.string().min(8) }).passthrough();
 const Body_upload_file_files_post = z.object({ folder_id: z.string().uuid(), upload: z.string() }).passthrough();
 const FileRead = z.object({ id: z.string().uuid(), folder_id: z.string().uuid(), filename: z.string(), storage_key: z.string(), sha256: z.union([z.string(), z.null()]).optional(), mime_type: z.string(), size_bytes: z.number().int(), page_count: z.union([z.number(), z.null()]).optional(), status: z.enum(["uploaded", "processing", "ready", "failed"]), error_message: z.union([z.string(), z.null()]).optional(), uploaded_at: z.string().datetime({ offset: true }), indexed_at: z.union([z.string(), z.null()]).optional() }).passthrough();
-const IngestionResponse = z.object({ file_id: z.string().uuid(), status: z.enum(["uploaded", "processing", "ready", "failed"]), chunk_count: z.union([z.number(), z.null()]).optional(), error: z.union([z.string(), z.null()]).optional() }).passthrough();
+const IngestionResponse = z.object({ file_id: z.string().uuid(), ingestion_run_id: z.string().uuid(), status: z.enum(["queued", "processing", "ready", "failed"]), chunk_count: z.union([z.number(), z.null()]).optional(), error: z.union([z.string(), z.null()]).optional() }).passthrough();
 const RagQueryRequest = z.object({ question: z.string().min(1).max(2000), course_id: z.union([z.string(), z.null()]).optional(), conversation_id: z.union([z.string(), z.null()]).optional(), file_ids: z.union([z.array(z.string().uuid()), z.null()]).optional(), top_k: z.number().int().gte(1).lte(20).optional().default(5) });
 const Citation = z.object({ marker: z.number().int().gte(1), file_id: z.string().uuid(), course_id: z.string().uuid(), filename: z.string().min(1), page: z.union([z.number(), z.null()]).optional(), page_end: z.union([z.number(), z.null()]).optional(), quote: z.string().min(1) });
 const RagAnswer = z.object({ answer: z.string().min(1), citations: z.array(Citation).optional(), grounded: z.boolean(), used_chunks: z.number().int().gte(0), conversation_id: z.union([z.string(), z.null()]).optional() });
@@ -23,6 +23,8 @@ const ChatRole = z.enum(["user", "assistant"]);
 const MessageRead = z.object({ id: z.string().uuid(), conversation_id: z.string().uuid(), scope_course_id: z.string().uuid(), role: ChatRole, content: z.string(), grounded: z.boolean(), citations: z.union([z.array(z.object({}).partial().passthrough()), z.null()]), mentioned_file_ids: z.union([z.array(z.string().uuid()), z.null()]), created_at: z.string().datetime({ offset: true }) }).passthrough();
 const ConversationDetail = z.object({ id: z.string().uuid(), course_id: z.string().uuid(), title: z.string(), created_at: z.string().datetime({ offset: true }), updated_at: z.string().datetime({ offset: true }), messages: z.array(MessageRead).optional().default([]) }).passthrough();
 const DeleteSessionResponse = z.object({ status: z.string().default("ok") }).partial().passthrough();
+const IngestionRunStatus = z.enum(["queued", "processing", "ready", "failed"]);
+const IngestionRunRead = z.object({ id: z.string().uuid(), file_id: z.string().uuid(), status: IngestionRunStatus, started_at: z.union([z.string(), z.null()]), completed_at: z.union([z.string(), z.null()]), error_message: z.union([z.string(), z.null()]) }).passthrough();
 
 export const schemas = {
 	UserRead,
@@ -44,6 +46,8 @@ export const schemas = {
 	MessageRead,
 	ConversationDetail,
 	DeleteSessionResponse,
+	IngestionRunStatus,
+	IngestionRunRead,
 };
 
 const endpoints = makeApi([
@@ -305,6 +309,27 @@ known server-side, and asking for it only creates a way to be wrong.`,
 		alias: "health_check_health_get",
 		requestFormat: "json",
 		response: z.unknown(),
+	},
+	{
+		method: "get",
+		path: "/ingestion-runs/:ingestion_run_id",
+		alias: "get_ingestion_run_ingestion_runs__ingestion_run_id__get",
+		requestFormat: "json",
+		parameters: [
+			{
+				name: "ingestion_run_id",
+				type: "Path",
+				schema: z.string().uuid()
+			},
+		],
+		response: IngestionRunRead,
+		errors: [
+			{
+				status: 422,
+				description: `Validation Error`,
+				schema: HTTPValidationError
+			},
+		]
 	},
 	{
 		method: "post",

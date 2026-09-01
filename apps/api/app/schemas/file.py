@@ -137,8 +137,22 @@ class IngestionRequest(SQLModel):
 
 
 class IngestionResponse(SQLModel):
+    """Outbound shape for POST /files/{file_id}/ingest.
+
+    202, not 200: parsing a real lecture PDF measured 430.84 s on 31 Aug 2026
+    against 0.02 s for the upload before it. Nothing holds an HTTP request open
+    for seven minutes, so the endpoint acknowledges the work and hands back an id
+    to poll -- CR-33.
+    """
+
     file_id: UUID
+    # Required, not optional. It is the only thing the caller can poll with, so a
+    # response without it is a response the client cannot act on.
     ingestion_run_id: UUID
+    # `queued` rather than `uploaded`. `uploaded` described the FILE row, which
+    # the caller already knew; this field describes the run it has just started.
     status: Literal["queued", "processing", "ready", "failed"]
+    # Both stay null on the 202. Neither is known yet, and the run is where the
+    # answer arrives -- GET /ingestion-runs/{id}, not a second call to this one.
     chunk_count: int | None = None
     error: str | None = None
