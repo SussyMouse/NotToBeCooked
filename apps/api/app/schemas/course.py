@@ -13,6 +13,24 @@ class CourseStatus(StrEnum):
     ACTIVE = "active"
     ARCHIVED = "archived"
 
+
+class CourseCreate(SQLModel):
+    code: str
+    name: str
+    year: int
+    sem: int
+
+
+class CourseRead(SQLModel):
+    id: UUID
+    code: str
+    name: str
+    year: int
+    sem: int
+    status: CourseStatus
+    created_at: datetime
+
+
 class Course(SQLModel, table=True):
     __table_args__ = (
         UniqueConstraint(

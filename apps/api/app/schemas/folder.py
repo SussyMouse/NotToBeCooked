@@ -5,8 +5,23 @@ from sqlalchemy import Column, UniqueConstraint
 from sqlmodel import DateTime, Field, SQLModel
 
 
+class FolderCreate(SQLModel):
+    name: str
+    parent_folder_id: UUID | None = None
+    sort_order: int = 0
+
+
+class FolderRead(SQLModel):
+    id: UUID
+    course_id: UUID
+    parent_folder_id: UUID | None
+    name: str
+    is_root: bool
+    sort_order: int
+    created_at: datetime
+
+
 class Folder(SQLModel, table=True):
-    
     __table_args__ = (UniqueConstraint("id", "course_id", name="uq_folder_id_course"),)
 
     id: UUID | None = Field(default_factory=uuid4, primary_key=True)

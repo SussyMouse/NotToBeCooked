@@ -226,6 +226,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Courses */
+        get: operations["list_courses_courses_get"];
+        put?: never;
+        /** Create Course */
+        post: operations["create_course_courses_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{course_id}/folders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Folders */
+        get: operations["list_folders_courses__course_id__folders_get"];
+        put?: never;
+        /** Create Folder */
+        post: operations["create_folder_courses__course_id__folders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -387,6 +423,44 @@ export interface components {
              */
             messages: components["schemas"]["MessageRead"][];
         };
+        /** CourseCreate */
+        CourseCreate: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Year */
+            year: number;
+            /** Sem */
+            sem: number;
+        };
+        /** CourseRead */
+        CourseRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Year */
+            year: number;
+            /** Sem */
+            sem: number;
+            status: components["schemas"]["CourseStatus"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * CourseStatus
+         * @enum {string}
+         */
+        CourseStatus: "active" | "archived";
         /** DeleteSessionResponse */
         DeleteSessionResponse: {
             /**
@@ -436,6 +510,44 @@ export interface components {
             uploaded_at: string;
             /** Indexed At */
             indexed_at?: string | null;
+        };
+        /** FolderCreate */
+        FolderCreate: {
+            /** Name */
+            name: string;
+            /** Parent Folder Id */
+            parent_folder_id?: string | null;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+        };
+        /** FolderRead */
+        FolderRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Course Id
+             * Format: uuid
+             */
+            course_id: string;
+            /** Parent Folder Id */
+            parent_folder_id: string | null;
+            /** Name */
+            name: string;
+            /** Is Root */
+            is_root: boolean;
+            /** Sort Order */
+            sort_order: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1110,6 +1222,125 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IngestionRunRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_courses_courses_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseRead"][];
+                };
+            };
+        };
+    };
+    create_course_courses_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CourseCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_folders_courses__course_id__folders_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_folder_courses__course_id__folders_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolderCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderRead"];
                 };
             };
             /** @description Validation Error */

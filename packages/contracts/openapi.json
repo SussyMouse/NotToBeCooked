@@ -643,6 +643,188 @@
         }
       }
     },
+    "/courses": {
+      "get": {
+        "tags": [
+          "Courses"
+        ],
+        "summary": "List Courses",
+        "operationId": "list_courses_courses_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CourseRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Courses Courses Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Courses"
+        ],
+        "summary": "Create Course",
+        "operationId": "create_course_courses_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/courses/{course_id}/folders": {
+      "post": {
+        "tags": [
+          "Folder"
+        ],
+        "summary": "Create Folder",
+        "operationId": "create_folder_courses__course_id__folders_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Course Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FolderRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Folder"
+        ],
+        "summary": "List Folders",
+        "operationId": "list_folders_courses__course_id__folders_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Course Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FolderRead"
+                  },
+                  "title": "Response List Folders Courses  Course Id  Folders Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "summary": "Read Root",
@@ -876,6 +1058,86 @@
         ],
         "title": "ConversationDetail"
       },
+      "CourseCreate": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "year": {
+            "type": "integer",
+            "title": "Year"
+          },
+          "sem": {
+            "type": "integer",
+            "title": "Sem"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "year",
+          "sem"
+        ],
+        "title": "CourseCreate"
+      },
+      "CourseRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "year": {
+            "type": "integer",
+            "title": "Year"
+          },
+          "sem": {
+            "type": "integer",
+            "title": "Sem"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CourseStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "year",
+          "sem",
+          "status",
+          "created_at"
+        ],
+        "title": "CourseRead"
+      },
+      "CourseStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "archived"
+        ],
+        "title": "CourseStatus"
+      },
       "DeleteSessionResponse": {
         "properties": {
           "status": {
@@ -989,6 +1251,90 @@
         ],
         "title": "FileRead",
         "description": "Outbound shape for a file."
+      },
+      "FolderCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "parent_folder_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Folder Id"
+          },
+          "sort_order": {
+            "type": "integer",
+            "title": "Sort Order",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "FolderCreate"
+      },
+      "FolderRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "course_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Course Id"
+          },
+          "parent_folder_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Folder Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "is_root": {
+            "type": "boolean",
+            "title": "Is Root"
+          },
+          "sort_order": {
+            "type": "integer",
+            "title": "Sort Order"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "course_id",
+          "parent_folder_id",
+          "name",
+          "is_root",
+          "sort_order",
+          "created_at"
+        ],
+        "title": "FolderRead"
       },
       "HTTPValidationError": {
         "properties": {

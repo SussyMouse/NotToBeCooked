@@ -25,6 +25,11 @@ const ConversationDetail = z.object({ id: z.string().uuid(), course_id: z.string
 const DeleteSessionResponse = z.object({ status: z.string().default("ok") }).partial().passthrough();
 const IngestionRunStatus = z.enum(["queued", "processing", "ready", "failed"]);
 const IngestionRunRead = z.object({ id: z.string().uuid(), file_id: z.string().uuid(), status: IngestionRunStatus, started_at: z.union([z.string(), z.null()]), completed_at: z.union([z.string(), z.null()]), error_message: z.union([z.string(), z.null()]) }).passthrough();
+const CourseStatus = z.enum(["active", "archived"]);
+const CourseRead = z.object({ id: z.string().uuid(), code: z.string(), name: z.string(), year: z.number().int(), sem: z.number().int(), status: CourseStatus, created_at: z.string().datetime({ offset: true }) }).passthrough();
+const CourseCreate = z.object({ code: z.string(), name: z.string(), year: z.number().int(), sem: z.number().int() }).passthrough();
+const FolderCreate = z.object({ name: z.string(), parent_folder_id: z.union([z.string(), z.null()]).optional(), sort_order: z.number().int().optional().default(0) }).passthrough();
+const FolderRead = z.object({ id: z.string().uuid(), course_id: z.string().uuid(), parent_folder_id: z.union([z.string(), z.null()]), name: z.string(), is_root: z.boolean(), sort_order: z.number().int(), created_at: z.string().datetime({ offset: true }) }).passthrough();
 
 export const schemas = {
 	UserRead,
@@ -48,6 +53,11 @@ export const schemas = {
 	DeleteSessionResponse,
 	IngestionRunStatus,
 	IngestionRunRead,
+	CourseStatus,
+	CourseRead,
+	CourseCreate,
+	FolderCreate,
+	FolderRead,
 };
 
 const endpoints = makeApi([
@@ -243,6 +253,81 @@ const endpoints = makeApi([
 				description: `Session not found`,
 				schema: ApiError
 			},
+			{
+				status: 422,
+				description: `Validation Error`,
+				schema: HTTPValidationError
+			},
+		]
+	},
+	{
+		method: "get",
+		path: "/courses",
+		alias: "list_courses_courses_get",
+		requestFormat: "json",
+		response: z.array(CourseRead),
+	},
+	{
+		method: "post",
+		path: "/courses",
+		alias: "create_course_courses_post",
+		requestFormat: "json",
+		parameters: [
+			{
+				name: "body",
+				type: "Body",
+				schema: CourseCreate
+			},
+		],
+		response: CourseRead,
+		errors: [
+			{
+				status: 422,
+				description: `Validation Error`,
+				schema: HTTPValidationError
+			},
+		]
+	},
+	{
+		method: "post",
+		path: "/courses/:course_id/folders",
+		alias: "create_folder_courses__course_id__folders_post",
+		requestFormat: "json",
+		parameters: [
+			{
+				name: "body",
+				type: "Body",
+				schema: FolderCreate
+			},
+			{
+				name: "course_id",
+				type: "Path",
+				schema: z.string().uuid()
+			},
+		],
+		response: FolderRead,
+		errors: [
+			{
+				status: 422,
+				description: `Validation Error`,
+				schema: HTTPValidationError
+			},
+		]
+	},
+	{
+		method: "get",
+		path: "/courses/:course_id/folders",
+		alias: "list_folders_courses__course_id__folders_get",
+		requestFormat: "json",
+		parameters: [
+			{
+				name: "course_id",
+				type: "Path",
+				schema: z.string().uuid()
+			},
+		],
+		response: z.array(FolderRead),
+		errors: [
 			{
 				status: 422,
 				description: `Validation Error`,
