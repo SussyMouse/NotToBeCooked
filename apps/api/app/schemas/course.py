@@ -21,6 +21,14 @@ class CourseCreate(SQLModel):
     sem: int
 
 
+class CourseUpdate(SQLModel):
+    code: str | None = None
+    name: str | None = None
+    year: int | None = None
+    sem: int | None = None
+    status: CourseStatus | None = None
+
+
 class CourseRead(SQLModel):
     id: UUID
     code: str

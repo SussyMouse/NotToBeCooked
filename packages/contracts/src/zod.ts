@@ -28,6 +28,7 @@ const IngestionRunRead = z.object({ id: z.string().uuid(), file_id: z.string().u
 const CourseStatus = z.enum(["active", "archived"]);
 const CourseRead = z.object({ id: z.string().uuid(), code: z.string(), name: z.string(), year: z.number().int(), sem: z.number().int(), status: CourseStatus, created_at: z.string().datetime({ offset: true }) }).passthrough();
 const CourseCreate = z.object({ code: z.string(), name: z.string(), year: z.number().int(), sem: z.number().int() }).passthrough();
+const CourseUpdate = z.object({ code: z.union([z.string(), z.null()]), name: z.union([z.string(), z.null()]), year: z.union([z.number(), z.null()]), sem: z.union([z.number(), z.null()]), status: z.union([CourseStatus, z.null()]) }).partial().passthrough();
 const FolderCreate = z.object({ name: z.string(), parent_folder_id: z.union([z.string(), z.null()]).optional(), sort_order: z.number().int().optional().default(0) }).passthrough();
 const FolderRead = z.object({ id: z.string().uuid(), course_id: z.string().uuid(), parent_folder_id: z.union([z.string(), z.null()]), name: z.string(), is_root: z.boolean(), sort_order: z.number().int(), created_at: z.string().datetime({ offset: true }) }).passthrough();
 
@@ -56,6 +57,7 @@ export const schemas = {
 	CourseStatus,
 	CourseRead,
 	CourseCreate,
+	CourseUpdate,
 	FolderCreate,
 	FolderRead,
 };
@@ -280,6 +282,53 @@ const endpoints = makeApi([
 			},
 		],
 		response: CourseRead,
+		errors: [
+			{
+				status: 422,
+				description: `Validation Error`,
+				schema: HTTPValidationError
+			},
+		]
+	},
+	{
+		method: "patch",
+		path: "/courses/:course_id",
+		alias: "update_course_courses__course_id__patch",
+		requestFormat: "json",
+		parameters: [
+			{
+				name: "body",
+				type: "Body",
+				schema: CourseUpdate
+			},
+			{
+				name: "course_id",
+				type: "Path",
+				schema: z.string().uuid()
+			},
+		],
+		response: CourseRead,
+		errors: [
+			{
+				status: 422,
+				description: `Validation Error`,
+				schema: HTTPValidationError
+			},
+		]
+	},
+	{
+		method: "delete",
+		path: "/courses/:course_id",
+		alias: "delete_course_courses__course_id__delete",
+		requestFormat: "json",
+		parameters: [
+			{
+				name: "course_id",
+				type: "Path",
+				schema: z.string().uuid()
+			},
+		],
+		response: z.void(),
 		errors: [
 			{
 				status: 422,

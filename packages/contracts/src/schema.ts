@@ -244,6 +244,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/courses/{course_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Course */
+        delete: operations["delete_course_courses__course_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Course */
+        patch: operations["update_course_courses__course_id__patch"];
+        trace?: never;
+    };
     "/courses/{course_id}/folders": {
         parameters: {
             query?: never;
@@ -461,6 +479,18 @@ export interface components {
          * @enum {string}
          */
         CourseStatus: "active" | "archived";
+        /** CourseUpdate */
+        CourseUpdate: {
+            /** Code */
+            code?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Year */
+            year?: number | null;
+            /** Sem */
+            sem?: number | null;
+            status?: components["schemas"]["CourseStatus"] | null;
+        };
         /** DeleteSessionResponse */
         DeleteSessionResponse: {
             /**
@@ -1270,6 +1300,70 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_course_courses__course_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_course_courses__course_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CourseUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -19,6 +19,7 @@ class FolderRead(SQLModel):
     is_root: bool
     sort_order: int
     created_at: datetime
+    
 
 
 class Folder(SQLModel, table=True):
