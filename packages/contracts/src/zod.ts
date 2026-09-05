@@ -31,6 +31,7 @@ const CourseCreate = z.object({ code: z.string(), name: z.string(), year: z.numb
 const CourseUpdate = z.object({ code: z.union([z.string(), z.null()]), name: z.union([z.string(), z.null()]), year: z.union([z.number(), z.null()]), sem: z.union([z.number(), z.null()]), status: z.union([CourseStatus, z.null()]) }).partial().passthrough();
 const FolderCreate = z.object({ name: z.string(), parent_folder_id: z.union([z.string(), z.null()]).optional(), sort_order: z.number().int().optional().default(0) }).passthrough();
 const FolderRead = z.object({ id: z.string().uuid(), course_id: z.string().uuid(), parent_folder_id: z.union([z.string(), z.null()]), name: z.string(), is_root: z.boolean(), sort_order: z.number().int(), created_at: z.string().datetime({ offset: true }) }).passthrough();
+const FolderUpdate = z.object({ name: z.union([z.string(), z.null()]), sort_order: z.union([z.number(), z.null()]) }).partial().passthrough();
 
 export const schemas = {
 	UserRead,
@@ -60,6 +61,7 @@ export const schemas = {
 	CourseUpdate,
 	FolderCreate,
 	FolderRead,
+	FolderUpdate,
 };
 
 const endpoints = makeApi([
@@ -376,6 +378,89 @@ const endpoints = makeApi([
 			},
 		],
 		response: z.array(FolderRead),
+		errors: [
+			{
+				status: 422,
+				description: `Validation Error`,
+				schema: HTTPValidationError
+			},
+		]
+	},
+	{
+		method: "get",
+		path: "/courses/:course_id/folders/:folder_id",
+		alias: "get_folder_courses__course_id__folders__folder_id__get",
+		requestFormat: "json",
+		parameters: [
+			{
+				name: "course_id",
+				type: "Path",
+				schema: z.string().uuid()
+			},
+			{
+				name: "folder_id",
+				type: "Path",
+				schema: z.string().uuid()
+			},
+		],
+		response: FolderRead,
+		errors: [
+			{
+				status: 422,
+				description: `Validation Error`,
+				schema: HTTPValidationError
+			},
+		]
+	},
+	{
+		method: "patch",
+		path: "/courses/:course_id/folders/:folder_id",
+		alias: "update_folder_courses__course_id__folders__folder_id__patch",
+		requestFormat: "json",
+		parameters: [
+			{
+				name: "body",
+				type: "Body",
+				schema: FolderUpdate
+			},
+			{
+				name: "course_id",
+				type: "Path",
+				schema: z.string().uuid()
+			},
+			{
+				name: "folder_id",
+				type: "Path",
+				schema: z.string().uuid()
+			},
+		],
+		response: FolderRead,
+		errors: [
+			{
+				status: 422,
+				description: `Validation Error`,
+				schema: HTTPValidationError
+			},
+		]
+	},
+	{
+		method: "delete",
+		path: "/courses/:course_id/folders/:folder_id",
+		alias: "delete_folder_courses__course_id__folders__folder_id__delete",
+		requestFormat: "json",
+		parameters: [
+			{
+				name: "course_id",
+				type: "Path",
+				schema: z.string().uuid()
+			},
+			{
+				name: "folder_id",
+				type: "Path",
+				schema: z.string().uuid()
+			},
+		],
+		response: z.void(),
 		errors: [
 			{
 				status: 422,

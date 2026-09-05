@@ -11,6 +11,11 @@ class FolderCreate(SQLModel):
     sort_order: int = 0
 
 
+class FolderUpdate(SQLModel):
+    name: str | None = None
+    sort_order: int | None = None
+
+
 class FolderRead(SQLModel):
     id: UUID
     course_id: UUID
@@ -19,7 +24,6 @@ class FolderRead(SQLModel):
     is_root: bool
     sort_order: int
     created_at: datetime
-    
 
 
 class Folder(SQLModel, table=True):
