@@ -115,6 +115,11 @@ class File(SQLModel, table=True):
     )
 
 
+class FileUpdate(SQLModel):
+    filename: str | None = None
+    folder_id: UUID | None = None
+
+
 class FileRead(SQLModel):
     """Outbound shape for a file."""
 

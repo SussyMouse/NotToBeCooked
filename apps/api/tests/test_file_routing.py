@@ -7,10 +7,11 @@ from fastapi.testclient import TestClient
 
 from app.db.database import get_session
 from app.dependencies.auth import get_current_user
-from app.routers.files import course_files_router
+from app.routers.files import course_files_router, files_router
 from app.schemas.course import Course
 from app.schemas.file import File as FileRow
 from app.schemas.file import FileStatus
+from app.schemas.folder import Folder
 
 
 # Test Course with files
@@ -166,3 +167,234 @@ def test_list_course_files_returns_404_when_course_not_found():
     assert response.json()["detail"] == "Course not found"
 
     fake_session.exec.assert_awaited_once()
+
+
+def test_update_file_renames_file():
+    test_app = FastAPI()
+    test_app.include_router(files_router, prefix="/files")
+
+    user_id = uuid4()
+    course_id = uuid4()
+    folder_id = uuid4()
+    file_id = uuid4()
+
+    fake_file = FileRow(
+        id=file_id,
+        course_id=course_id,
+        folder_id=folder_id,
+        filename="old-name.pdf",
+        storage_key=f"{user_id}/{file_id}/old-name.pdf",
+        sha256="abc123",
+        mime_type="application/pdf",
+        size_bytes=1024,
+        page_count=10,
+        status=FileStatus.READY,
+        error_message=None,
+        uploaded_at=datetime.now(UTC),
+        indexed_at=datetime.now(UTC),
+    )
+
+    file_result = Mock()
+    file_result.first.return_value = fake_file
+
+    fake_session = AsyncMock()
+    fake_session.exec.return_value = file_result
+
+    async def override_session():
+        return fake_session
+
+    async def override_current_user():
+        return {"sub": str(user_id)}
+
+    test_app.dependency_overrides[get_session] = override_session
+    test_app.dependency_overrides[get_current_user] = override_current_user
+
+    client = TestClient(test_app)
+    response = client.patch(
+        f"/files/{file_id}",
+        json={"filename": "new-name.pdf"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["filename"] == "new-name.pdf"
+    assert response.json()["folder_id"] == str(folder_id)
+
+    assert fake_file.filename == "new-name.pdf"
+    fake_session.commit.assert_awaited_once()
+    fake_session.refresh.assert_awaited_once_with(fake_file)
+
+
+def test_update_file_moves_file_to_destination_folder():
+    test_app = FastAPI()
+    test_app.include_router(files_router, prefix="/files")
+
+    user_id = uuid4()
+    old_course_id = uuid4()
+    old_folder_id = uuid4()
+
+    new_course_id = uuid4()
+    new_folder_id = uuid4()
+
+    file_id = uuid4()
+
+    fake_file = FileRow(
+        id=file_id,
+        course_id=old_course_id,
+        folder_id=old_folder_id,
+        filename="lecture.pdf",
+        storage_key=f"{user_id}/{file_id}/lecture.pdf",
+        sha256="abc123",
+        mime_type="application/pdf",
+        size_bytes=1024,
+        page_count=10,
+        status=FileStatus.READY,
+        error_message=None,
+        uploaded_at=datetime.now(UTC),
+        indexed_at=datetime.now(UTC),
+    )
+
+    destination_folder = Folder(
+        id=new_folder_id,
+        course_id=new_course_id,
+        parent_folder_id=None,
+        name="New Folder",
+        is_root=True,
+        sort_order=0,
+    )
+
+    file_result = Mock()
+    file_result.first.return_value = fake_file
+
+    destination_result = Mock()
+    destination_result.first.return_value = destination_folder
+
+    fake_session = AsyncMock()
+    fake_session.exec.side_effect = [
+        file_result,
+        destination_result,
+    ]
+
+    async def override_session():
+        return fake_session
+
+    async def override_current_user():
+        return {"sub": str(user_id)}
+
+    test_app.dependency_overrides[get_session] = override_session
+    test_app.dependency_overrides[get_current_user] = override_current_user
+
+    client = TestClient(test_app)
+    response = client.patch(
+        f"/files/{file_id}",
+        json={"folder_id": str(new_folder_id)},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["folder_id"] == str(new_folder_id)
+
+    assert fake_file.folder_id == new_folder_id
+    assert fake_file.course_id == new_course_id
+
+    assert fake_session.exec.await_count == 2
+    fake_session.commit.assert_awaited_once()
+    fake_session.refresh.assert_awaited_once_with(fake_file)
+
+
+def test_update_file_returns_404_when_file_not_found():
+    test_app = FastAPI()
+    test_app.include_router(files_router, prefix="/files")
+
+    user_id = uuid4()
+    file_id = uuid4()
+
+    file_result = Mock()
+    file_result.first.return_value = None
+
+    fake_session = AsyncMock()
+    fake_session.exec.return_value = file_result
+
+    async def override_session():
+        return fake_session
+
+    async def override_current_user():
+        return {"sub": str(user_id)}
+
+    test_app.dependency_overrides[get_session] = override_session
+    test_app.dependency_overrides[get_current_user] = override_current_user
+
+    client = TestClient(test_app)
+    response = client.patch(
+        f"/files/{file_id}",
+        json={"filename": "new-name.pdf"},
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "File not found"}
+
+    fake_session.exec.assert_awaited_once()
+    fake_session.commit.assert_not_awaited()
+    fake_session.refresh.assert_not_awaited()
+
+
+def test_update_file_returns_404_when_destination_folder_not_found():
+    test_app = FastAPI()
+    test_app.include_router(files_router, prefix="/files")
+
+    user_id = uuid4()
+    course_id = uuid4()
+    original_folder_id = uuid4()
+    destination_folder_id = uuid4()
+    file_id = uuid4()
+
+    fake_file = FileRow(
+        id=file_id,
+        course_id=course_id,
+        folder_id=original_folder_id,
+        filename="lecture.pdf",
+        storage_key=f"{user_id}/{file_id}/lecture.pdf",
+        sha256="abc123",
+        mime_type="application/pdf",
+        size_bytes=1024,
+        page_count=10,
+        status=FileStatus.READY,
+        error_message=None,
+        uploaded_at=datetime.now(UTC),
+        indexed_at=datetime.now(UTC),
+    )
+
+    file_result = Mock()
+    file_result.first.return_value = fake_file
+
+    destination_result = Mock()
+    destination_result.first.return_value = None
+
+    fake_session = AsyncMock()
+    fake_session.exec.side_effect = [
+        file_result,
+        destination_result,
+    ]
+
+    async def override_session():
+        return fake_session
+
+    async def override_current_user():
+        return {"sub": str(user_id)}
+
+    test_app.dependency_overrides[get_session] = override_session
+    test_app.dependency_overrides[get_current_user] = override_current_user
+
+    client = TestClient(test_app)
+    response = client.patch(
+        f"/files/{file_id}",
+        json={"folder_id": str(destination_folder_id)},
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Destination folder not found"}
+
+    assert fake_file.folder_id == original_folder_id
+    assert fake_file.course_id == course_id
+
+    assert fake_session.exec.await_count == 2
+    fake_session.commit.assert_not_awaited()
+    fake_session.refresh.assert_not_awaited()
