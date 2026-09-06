@@ -39,6 +39,7 @@ from app.services.storage import (
 logger = logging.getLogger(__name__)
 
 files_router = APIRouter(dependencies=[Depends(get_current_user)])
+course_files_router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @files_router.post(
@@ -301,3 +302,44 @@ async def chunk_count_for_run(session: AsyncSession, ingestion_run_id: UUID) -> 
             .where(col(Chunk.ingestion_run_id) == ingestion_run_id)
         )
     ).one()
+
+
+@course_files_router.get(
+    "/{course_id}/files",
+    response_model=list[FileRead],
+)
+async def list_course_files(
+    course_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    user: dict = Depends(get_current_user),
+) -> list[FileRead]:
+    user_id = UUID(user["sub"])
+
+    statement = select(Course).where(
+        col(Course.id) == course_id,
+        col(Course.user_id) == user_id,
+    )
+    result = await session.exec(statement)
+    course = result.first()
+    if course is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found",
+        )
+
+    statement2 = (
+        select(FileRow)
+        .join(Folder, col(FileRow.folder_id) == col(Folder.id))
+        .join(Course, col(Folder.course_id) == col(Course.id))
+        .where(
+            col(Course.id) == course_id, #for safty purpose so check again
+            col(Course.user_id) == user_id, #for safty purpose so check again
+            col(FileRow.course_id) == course_id,
+        )
+        .order_by(col(FileRow.uploaded_at).desc())
+    )
+
+    result2 = await session.exec(statement2)
+    file_all = result2.all()
+
+    return [FileRead.model_validate(file) for file in file_all]

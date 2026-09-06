@@ -340,6 +340,27 @@ const endpoints = makeApi([
 		]
 	},
 	{
+		method: "get",
+		path: "/courses/:course_id/files",
+		alias: "list_course_files_courses__course_id__files_get",
+		requestFormat: "json",
+		parameters: [
+			{
+				name: "course_id",
+				type: "Path",
+				schema: z.string().uuid()
+			},
+		],
+		response: z.array(FileRead),
+		errors: [
+			{
+				status: 422,
+				description: `Validation Error`,
+				schema: HTTPValidationError
+			},
+		]
+	},
+	{
 		method: "post",
 		path: "/courses/:course_id/folders",
 		alias: "create_folder_courses__course_id__folders_post",

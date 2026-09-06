@@ -10,6 +10,7 @@ from app.dependencies.auth import get_current_user
 from app.routers import (
     auth_router,
     chat_router,
+    course_files_router,
     courses_router,
     files_router,
     folders_router,
@@ -63,6 +64,8 @@ app.include_router(
     prefix="/courses",
     tags=["Folder"],
 )
+app.include_router(course_files_router, prefix="/courses", tags=["Files"])
+
 # CORS configuration for Web (any local port), Tauri (Desktop & Android), and Production
 origins = [
     "tauri://localhost",  # Tauri v2 Desktop custom scheme
