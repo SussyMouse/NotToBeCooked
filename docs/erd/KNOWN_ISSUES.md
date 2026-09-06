@@ -385,6 +385,55 @@ Two shapes when it matters, and they are not the same decision:
 
 Nobody owns this yet. It goes with whoever writes the delete endpoint.
 
+### R28 — deleting a FOLDER row takes its files, runs and chunks with it
+
+`FILE.folder_id` and `FOLDER.parent_folder_id` are both `ON DELETE CASCADE`, and
+every foreign key into FILE cascades in turn. One `DELETE` against `folder`
+therefore removes every file under it, every ingestion run of those files, and
+every chunk of those runs — including the chunks that stored citations point at.
+
+**Measured 6 September 2026** against the test database, seeded with one course,
+one folder, one file and one ingestion run:
+
+```
+before delete: {'folder': 1, 'file': 1, 'ingestion_run': 1}
+
+  delete from folder where id = <the folder>     -- the folder holds one file
+  DELETE 1                                       -- no error
+
+after  delete: {'folder': 0, 'file': 0, 'ingestion_run': 0}
+```
+
+PostgreSQL reports `DELETE 1`. Three rows are gone, and nothing raised.
+
+**The one endpoint that deletes a folder does guard this.** `delete_folder` in
+`app/routers/folder.py` refuses with 409 when the folder still holds a child
+folder or a file, and both cases have a test. The guard is correct and it was
+written without being asked for.
+
+**It lives in the router, not in the database.** Any other path that removes a
+FOLDER row cascades in silence: a bulk delete written later, a data-fix
+statement run by hand, a `DELETE /courses/{id}` reworked from today's soft
+archive into a real delete, or the endpoint itself losing the race between its
+emptiness check and its `DELETE`.
+
+Two shapes when that day comes, and they are not the same decision:
+
+- **`RESTRICT` on `FILE.folder_id`.** The database refuses and the 409 becomes a
+  second line of defence rather than the only one. This is what D2 (18 August)
+  chose for `MESSAGE`. It costs a migration, and it makes every future
+  delete-a-course path explicit about the order it deletes in, because a course
+  can no longer be removed by cascading through its folders.
+- **Leave `CASCADE` and keep the rule in application code.** What we have today.
+  Correct exactly as long as every future delete path remembers, which is the
+  property this file exists to stop us assuming.
+
+**Not a defect today** — one endpoint deletes folders and it guards. Recorded
+because the guard is a function call away from the rule it enforces, and because
+the cost of finding out is a user's chunks.
+
+**Reopen the moment a second code path deletes a FOLDER row.**
+
 ### R8 — `INGESTION_RUN.is_active` is a boolean with no uniqueness guarantee
 
 The annotation says exactly one active run per file is visible to retrieval. A
@@ -760,6 +809,8 @@ SQLAlchemy's default, not anybody's mistake.
 | R4 | `CHUNK` FKs can contradict each other | **Closed 26 Aug, in two migrations.** r41 (`efda7a3`, 22 Aug) tied a chunk's run to its file via `fk_chunk_run_file_agree`. r42 (`2a22d57`, 26 Aug) tied `course_id` to `file_id`: Decision 02 option B put `course_id` back on FILE so a composite FK had something to point at, making it a chain — `CHUNK(file_id, course_id)` → `FILE(id, course_id)` → and `FILE(folder_id, course_id)` → `FOLDER(id, course_id)`. CR-31. Verified 11/11 by `check_r42.py`, including that a row where all three agree still inserts |
 | R5 | Vector scan not filtered by embedding model | **Closed 1 Sep by AI-1.** Both `_vector_similarity_search` and `_full_text_search` now join `INGESTION_RUN` and filter on `is_active`. Decision 3 of 25 Aug named only the vector path; the lexical one was fixed in the same pass unasked. Measured 25 Aug, before the fix: with two runs over one file, the superseded run's chunks took rank 1 and 2 and ate two of five `top_k` slots, silently. **Retrieval layer, not the migration** — reclassified 22 Aug, because a constraint rejects a row that is itself invalid, and a chunk embedded by an older model is a perfectly valid row; what is wrong is comparing it against a query embedded by a different one, and no constraint sees a comparison. **The cross-file half is R5b, deferred with a trigger.** |
 | R5b | Cross-file `embedding_model` filter | **Deferred 1 Sep, with a trigger.** The `is_active` join is sufficient within a file (`ix_ingestion_run_one_active`) and sufficient everywhere while one model is in use. **Trigger: the day `settings.MODEL_TYPE` changes without every existing chunk being re-indexed.** From that day two files can each hold an active run under a different model, and cosine distance across two vector spaces returns a number rather than an answer. It raises nothing. Whoever changes `MODEL_TYPE` owns this entry from that moment |
+| R27 | Deleting a FILE row leaves its bytes on disk | **Deferred 1 Sep, with a trigger.** `FILE.storage_key` points at an object nothing owns; every FK into FILE cascades and the blob stays. Measured 1 Sep: 0 rows, 18 MB, six orphaned directories. `storage.delete()` exists with zero callers. **Not reachable in v1** — R16 declined soft delete and there is no delete-file endpoint. **Trigger: the day a delete endpoint lands**, from which it leaks on every use, silently, because a leak of disk is not an error. Goes with whoever writes that endpoint |
+| R28 | Deleting a FOLDER row cascades to its files, runs and chunks | **Recorded 6 Sep, not a defect today.** `FILE.folder_id` and `FOLDER.parent_folder_id` are both `ON DELETE CASCADE`. Measured 6 Sep on the test database: one `delete from folder` against a non-empty folder reported `DELETE 1` and removed the folder, its file and its ingestion run, without raising. `delete_folder` guards this with a 409 on child folders and on contained files, both tested — **but the guard is in the router, not in the database**. **Reopen the moment a second code path deletes a FOLDER row** |
 | R8 | `is_active` needs a partial unique index | **Done 22 Aug** (`efda7a3`) — `ix_ingestion_run_one_active` UNIQUE on `(file_id) WHERE is_active`. Verified from empty: a second active run raises `UniqueViolation`, further inactive runs are accepted |
 | R17 | `UNIQUE (user_id, code, year, sem)` | **Done 22 Aug** — declared on `Course.__table_args__` and created in the initial migration as `uq_course_user_code_year_sem`. Verified from an empty database: a duplicate raises `UniqueViolationError`, while a second semester, a second year and a second user all insert. |
 | R18 | `UNIQUE (ingestion_run_id, chunk_index)` | **Done 22 Aug** (`efda7a3`) — `uq_chunk_run_index`. Verified: a second chunk 0 in one run is rejected; chunk 0 in a re-index run is accepted |
