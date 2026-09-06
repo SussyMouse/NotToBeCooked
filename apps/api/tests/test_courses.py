@@ -234,3 +234,60 @@ def test_archive_course_returns_204():
     fake_session.exec.assert_awaited_once()
     fake_session.commit.assert_awaited_once()
     fake_session.delete.assert_not_awaited()
+
+
+def test_archived_course_is_excluded_from_course_list():
+    test_app = FastAPI()
+    test_app.include_router(courses_router, prefix="/courses")
+
+    user_id = uuid4()
+    course_id = uuid4()
+
+    fake_course = Course(
+        id=course_id,
+        user_id=user_id,
+        code="SECJ3203",
+        name="Software Engineering",
+        year=2026,
+        sem=1,
+    )
+
+    delete_result = Mock()
+    delete_result.first.return_value = fake_course
+
+    list_result = Mock()
+    list_result.all.return_value = []
+
+    fake_session = AsyncMock()
+    fake_session.exec.side_effect = [
+        delete_result,
+        list_result,
+    ]
+
+    async def override_session():
+        return fake_session
+
+    async def override_current_user():
+        return {"sub": str(user_id)}
+
+    test_app.dependency_overrides[get_session] = override_session
+    test_app.dependency_overrides[get_current_user] = override_current_user
+
+    client = TestClient(test_app)
+
+    delete_response = client.delete(f"/courses/{course_id}")
+
+    assert delete_response.status_code == 204
+    assert fake_course.status == CourseStatus.ARCHIVED
+
+    list_response = client.get("/courses")
+
+    assert list_response.status_code == 200
+    assert list_response.json() == []
+
+    assert fake_session.exec.await_count == 2
+
+    list_statement = fake_session.exec.await_args_list[1].args[0]
+    list_parameters = list_statement.compile().params
+
+    assert CourseStatus.ACTIVE in list_parameters.values()

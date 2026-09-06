@@ -47,7 +47,10 @@ async def list_courses(
 ) -> list[CourseRead]:
     user_id = UUID(user["sub"])
 
-    statement = select(Course).where(col(Course.user_id) == user_id)
+    statement = select(Course).where(
+        col(Course.user_id) == user_id,
+        col(Course.status) == CourseStatus.ACTIVE,
+    )
     result = await session.exec(statement)
     courses = result.all()
     return [CourseRead.model_validate(course) for course in courses]
