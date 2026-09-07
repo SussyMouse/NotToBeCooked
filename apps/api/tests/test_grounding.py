@@ -125,17 +125,36 @@ def test_a_quote_spanning_a_line_break_in_the_source_passes():
     assert report.ok, report.problems
 
 
-def test_the_same_marker_listed_twice_fails():
+def test_one_source_may_carry_two_different_quotes():
+    """`marker` names a source, not a citation slot.
+
+    Measured 6 Sep 2026 against Gemini: asked for one-sentence quotes, it
+    returned two, both under [1], one per claim. That is correct citation
+    behaviour and the check must not reject it.
+    """
     report = check_grounding(
-        answer="Plants turn light into chemical energy [1].",
+        answer="Light becomes chemical energy [1], and it is stored in glucose [1].",
         citations=[
             cite(1, C1, "Photosynthesis converts light energy"),
-            cite(1, C1, "into chemical energy stored in glucose"),
+            cite(1, C1, "chemical energy stored in glucose"),
+        ],
+        selected=SELECTED,
+    )
+    assert report.ok, report.problems
+
+
+def test_the_same_quote_listed_twice_fails():
+    """A repeat carries no second piece of evidence."""
+    report = check_grounding(
+        answer="Light becomes chemical energy [1], and that is the point [1].",
+        citations=[
+            cite(1, C1, "Photosynthesis converts light energy"),
+            cite(1, C1, "Photosynthesis  converts   light energy"),
         ],
         selected=SELECTED,
     )
     assert not report.ok
-    assert any("twice" in p or "2 times" in p for p in report.problems)
+    assert any("repeats a quote" in p for p in report.problems)
 
 
 def test_a_refusal_is_not_a_grounding_failure():

@@ -434,6 +434,51 @@ the cost of finding out is a user's chunks.
 
 **Reopen the moment a second code path deletes a FOLDER row.**
 
+### R29 — two citations can share a marker, and the frontend has no rule for it
+
+`Citation.marker` names a **source**, not a citation slot: `prompt.py` says
+"Numbering starts at 1 and refers only to sources that appear in the list you
+were given". Two claims drawn from the same chunk therefore both carry `[1]`,
+each with the line that supports it, and `RagAnswer.citations` holds two entries
+under the same number.
+
+**Measured 6 September 2026**, one live call, one question over two real chunks:
+
+```
+answer:  A partial index is an index that covers only the rows matching its
+         WHERE clause [1]. The planner can only use a partial index when the
+         query repeats that same clause [1].
+
+citations:
+  [1]  "A partial index covers only the rows matching its WHERE clause."
+  [1]  "the planner can only use it when the query repeats that same clause."
+```
+
+This is correct behaviour and `check_grounding` accepts it. The first version of
+that check rejected duplicate markers outright, which would have thrown away a
+well-cited answer; it now rejects only the same marker with the same quote,
+which carries no second piece of evidence.
+
+**The open half is rendering.** A frontend that resolves a `[1]` in the answer
+text by taking the first citation with `marker === 1` silently drops the second
+quote — the reader clicks the second `[1]` and is shown the evidence for the
+first claim. Nothing raises, and the two quotes are both genuine, so it does not
+look like a bug from either side.
+
+Three shapes, and this is a C4 question rather than a rendering preference:
+
+- **Render every entry for that marker.** One pill, several quoted lines. No
+  contract change, and the honest reading of what generation produced.
+- **Number the citations rather than the sources.** Unambiguous per pill, but it
+  contradicts the published instruction and breaks `selected[marker - 1]`, which
+  is how both `_resolve_citations` and `check_grounding` reach provenance.
+- **One citation per source, best quote only.** Simplest UI, and it discards
+  evidence the model correctly produced.
+
+Owner: AI-3 owns `schemas/rag.py`, AI-1 owns the chat UI that renders it.
+**For the 8 September agenda** — it needs deciding before F3 pins a rendering
+rule in place, not after.
+
 ### R8 — `INGESTION_RUN.is_active` is a boolean with no uniqueness guarantee
 
 The annotation says exactly one active run per file is visible to retrieval. A
@@ -811,6 +856,7 @@ SQLAlchemy's default, not anybody's mistake.
 | R5b | Cross-file `embedding_model` filter | **Deferred 1 Sep, with a trigger.** The `is_active` join is sufficient within a file (`ix_ingestion_run_one_active`) and sufficient everywhere while one model is in use. **Trigger: the day `settings.MODEL_TYPE` changes without every existing chunk being re-indexed.** From that day two files can each hold an active run under a different model, and cosine distance across two vector spaces returns a number rather than an answer. It raises nothing. Whoever changes `MODEL_TYPE` owns this entry from that moment |
 | R27 | Deleting a FILE row leaves its bytes on disk | **Deferred 1 Sep, with a trigger.** `FILE.storage_key` points at an object nothing owns; every FK into FILE cascades and the blob stays. Measured 1 Sep: 0 rows, 18 MB, six orphaned directories. `storage.delete()` exists with zero callers. **Not reachable in v1** — R16 declined soft delete and there is no delete-file endpoint. **Trigger: the day a delete endpoint lands**, from which it leaks on every use, silently, because a leak of disk is not an error. Goes with whoever writes that endpoint |
 | R28 | Deleting a FOLDER row cascades to its files, runs and chunks | **Recorded 6 Sep, not a defect today.** `FILE.folder_id` and `FOLDER.parent_folder_id` are both `ON DELETE CASCADE`. Measured 6 Sep on the test database: one `delete from folder` against a non-empty folder reported `DELETE 1` and removed the folder, its file and its ingestion run, without raising. `delete_folder` guards this with a 409 on child folders and on contained files, both tested — **but the guard is in the router, not in the database**. **Reopen the moment a second code path deletes a FOLDER row** |
+| R29 | Two citations can share a marker | **Open, for the 8 Sep agenda.** `marker` names a source, so two claims from one chunk both carry `[1]`, each with its own supporting line. Measured 6 Sep on a live call: one answer, two entries under `[1]`. `check_grounding` accepts it and rejects only marker-plus-quote repeats. **The open half is rendering** — a frontend resolving `[1]` by first match silently shows the first claim's evidence for the second claim, and both quotes are genuine, so it looks wrong from neither side. AI-3 owns `schemas/rag.py`, AI-1 owns the UI |
 | R8 | `is_active` needs a partial unique index | **Done 22 Aug** (`efda7a3`) — `ix_ingestion_run_one_active` UNIQUE on `(file_id) WHERE is_active`. Verified from empty: a second active run raises `UniqueViolation`, further inactive runs are accepted |
 | R17 | `UNIQUE (user_id, code, year, sem)` | **Done 22 Aug** — declared on `Course.__table_args__` and created in the initial migration as `uq_course_user_code_year_sem`. Verified from an empty database: a duplicate raises `UniqueViolationError`, while a second semester, a second year and a second user all insert. |
 | R18 | `UNIQUE (ingestion_run_id, chunk_index)` | **Done 22 Aug** (`efda7a3`) — `uq_chunk_run_index`. Verified: a second chunk 0 in one run is rejected; chunk 0 in a re-index run is accepted |

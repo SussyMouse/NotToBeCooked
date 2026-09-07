@@ -93,10 +93,20 @@ def check_grounding(
     for marker in sorted(listed_set - in_answer):
         problems.append(f"citation [{marker}] is listed but never referred to in the answer")
 
-    # Two entries under one number: the reader is shown two sources for one
-    # pill, and the set comparison above cannot see it.
-    for marker in sorted({m for m in listed_set if listed.count(m) > 1}):
-        problems.append(f"marker [{marker}] is listed {listed.count(marker)} times")
+    # One source can legitimately be cited more than once: two claims drawn from
+    # the same chunk each deserve the line that supports them, and `marker`
+    # names a source, not a citation slot. Measured 6 September 2026 -- asked for
+    # one-sentence quotes, the model returned exactly that, twice, both under
+    # [1]. Rejecting it would have been rejecting correct behaviour.
+    #
+    # What is still wrong is the same source AND the same quote twice, which
+    # carries no second piece of evidence.
+    seen: set[tuple[int, str]] = set()
+    for citation in citations:
+        key = (citation.marker, _normalise(citation.quote))
+        if key in seen:
+            problems.append(f"citation [{citation.marker}] repeats a quote already listed")
+        seen.add(key)
 
     for citation in citations:
         if not 1 <= citation.marker <= len(selected):

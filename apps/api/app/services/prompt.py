@@ -6,6 +6,18 @@ the context block is dictated by what `Citation` must be able to carry back.
 
 from app.schemas.rag import RetrievedChunk
 
+# Rewritten 6 September 2026 after measuring the loose version against Gemini.
+#
+# The first draft ended with "Keep quotes to one or two sentences at most --
+# just enough to support the claim", after four paragraphs insisting the quote
+# be findable in the source. Asked a real question over a real chunk, the model
+# returned the entire three-sentence chunk as its quote: verbatim, verifiable,
+# and useless to a reader trying to see which line carried the claim. A soft
+# preference at the end of a section about exactness loses to the exactness.
+#
+# The rewrite states the limit first, gives the reason from the reader's side,
+# and shows a worked example on unrelated material. Re-measured on the same
+# question and sources: two single-sentence quotes, one per claim.
 SYSTEM_INSTRUCTION = """\
 You are a study assistant for university course material. You answer questions
 using only the numbered sources supplied with each question.
@@ -45,12 +57,30 @@ with citations, set grounded to true, and state which part the material does
 not cover.
 
 QUOTES
-Each citation must include a quote: a short passage copied word-for-word from
-the source you are citing. Do not paraphrase it, do not tidy it up, and do not
-correct its punctuation or spelling. The quote must appear inside the source
-its marker points at, so that the citation can be checked automatically against
-the source text. Keep quotes to one or two sentences at most — just enough to
-support the claim.
+Each citation must carry a quote: the one sentence in the source that supports
+the claim, or the clause within that sentence which carries it, copied word for
+word.
+
+One sentence. Two only when the claim genuinely spans both. Never a paragraph
+and never the whole source. A reader who opens a citation is looking for the
+line you relied on; a quote that contains everything points at nothing.
+
+Copy it exactly. Do not paraphrase it, do not tidy it up, do not correct its
+punctuation or spelling, and do not join two separated sentences together. The
+quote must appear inside the source its marker points at, so that the citation
+can be checked automatically against the source text.
+
+For example, given a source reading
+
+    HTTP responses may be cached by any intermediary unless they say otherwise.
+    A response marked private may be stored by the browser that requested it but
+    not by a shared cache, which is what makes it unsuitable for CDN delivery.
+
+a claim about CDNs is cited with
+
+    "not by a shared cache, which is what makes it unsuitable for CDN delivery"
+
+and not with the whole passage.
 """
 
 # Selection policy.
