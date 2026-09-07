@@ -395,8 +395,12 @@ async def update_file(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Destination folder not found",
             )
+        if destination_folder.course_id != file_row.course_id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A file cannot be moved to another course.",
+            )
         file_row.folder_id = data.folder_id
-        file_row.course_id = destination_folder.course_id
 
     await session.commit()
     await session.refresh(file_row)
