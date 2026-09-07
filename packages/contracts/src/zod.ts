@@ -14,6 +14,7 @@ const RegisterRequest = z.object({ display_name: z.string(), email: z.string().e
 const Body_upload_file_files_post = z.object({ folder_id: z.string().uuid(), upload: z.string() }).passthrough();
 const FileRead = z.object({ id: z.string().uuid(), folder_id: z.string().uuid(), filename: z.string(), storage_key: z.string(), sha256: z.union([z.string(), z.null()]).optional(), mime_type: z.string(), size_bytes: z.number().int(), page_count: z.union([z.number(), z.null()]).optional(), status: z.enum(["uploaded", "processing", "ready", "failed"]), error_message: z.union([z.string(), z.null()]).optional(), uploaded_at: z.string().datetime({ offset: true }), indexed_at: z.union([z.string(), z.null()]).optional() }).passthrough();
 const IngestionResponse = z.object({ file_id: z.string().uuid(), ingestion_run_id: z.string().uuid(), status: z.enum(["queued", "processing", "ready", "failed"]), chunk_count: z.union([z.number(), z.null()]).optional(), error: z.union([z.string(), z.null()]).optional() }).passthrough();
+const FileUpdate = z.object({ filename: z.union([z.string(), z.null()]), folder_id: z.union([z.string(), z.null()]) }).partial().passthrough();
 const RagQueryRequest = z.object({ question: z.string().min(1).max(2000), course_id: z.union([z.string(), z.null()]).optional(), conversation_id: z.union([z.string(), z.null()]).optional(), file_ids: z.union([z.array(z.string().uuid()), z.null()]).optional(), top_k: z.number().int().gte(1).lte(20).optional().default(5) });
 const Citation = z.object({ marker: z.number().int().gte(1), file_id: z.string().uuid(), course_id: z.string().uuid(), filename: z.string().min(1), page: z.union([z.number(), z.null()]).optional(), page_end: z.union([z.number(), z.null()]).optional(), quote: z.string().min(1) });
 const RagAnswer = z.object({ answer: z.string().min(1), citations: z.array(Citation).optional(), grounded: z.boolean(), used_chunks: z.number().int().gte(0), conversation_id: z.union([z.string(), z.null()]).optional() });
@@ -44,6 +45,7 @@ export const schemas = {
 	Body_upload_file_files_post,
 	FileRead,
 	IngestionResponse,
+	FileUpdate,
 	RagQueryRequest,
 	Citation,
 	RagAnswer,
@@ -340,6 +342,27 @@ const endpoints = makeApi([
 		]
 	},
 	{
+		method: "get",
+		path: "/courses/:course_id/files",
+		alias: "list_course_files_courses__course_id__files_get",
+		requestFormat: "json",
+		parameters: [
+			{
+				name: "course_id",
+				type: "Path",
+				schema: z.string().uuid()
+			},
+		],
+		response: z.array(FileRead),
+		errors: [
+			{
+				status: 422,
+				description: `Validation Error`,
+				schema: HTTPValidationError
+			},
+		]
+	},
+	{
 		method: "post",
 		path: "/courses/:course_id/folders",
 		alias: "create_folder_courses__course_id__folders_post",
@@ -490,6 +513,32 @@ known server-side, and asking for it only creates a way to be wrong.`,
 				name: "body",
 				type: "Body",
 				schema: Body_upload_file_files_post
+			},
+		],
+		response: FileRead,
+		errors: [
+			{
+				status: 422,
+				description: `Validation Error`,
+				schema: HTTPValidationError
+			},
+		]
+	},
+	{
+		method: "patch",
+		path: "/files/:file_id",
+		alias: "update_file_files__file_id__patch",
+		requestFormat: "json",
+		parameters: [
+			{
+				name: "body",
+				type: "Body",
+				schema: FileUpdate
+			},
+			{
+				name: "file_id",
+				type: "Path",
+				schema: z.string().uuid()
 			},
 		],
 		response: FileRead,
