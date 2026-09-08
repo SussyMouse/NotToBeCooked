@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react"
 import {
   ThemeContext,
-  THEME_OPTIONS,
+  USER_THEME_OPTIONS,
   type Theme,
   type ThemeContextType,
 } from "./theme-context"
@@ -15,16 +15,14 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({
   children,
-  defaultTheme = "midnight",
+  defaultTheme = "system",
 }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null
       if (
         stored &&
-        ["midnight", "violet", "teal", "carbon", "light", "system"].includes(
-          stored
-        )
+        ["midnight", "light", "system"].includes(stored)
       ) {
         return stored
       }
@@ -104,7 +102,7 @@ export function ThemeProvider({
       theme,
       resolvedTheme,
       setTheme,
-      themes: THEME_OPTIONS,
+      themes: USER_THEME_OPTIONS,
     }),
     [theme, resolvedTheme, setTheme]
   )

@@ -55,6 +55,26 @@ export const THEME_OPTIONS: ThemeOption[] = [
   },
 ]
 
+const USER_THEME_IDS: Theme[] = ["system", "light", "midnight"]
+
+export const USER_THEME_OPTIONS = USER_THEME_IDS.map((id) => {
+  const option = THEME_OPTIONS.find((theme) => theme.id === id)
+
+  if (!option) {
+    throw new Error(`Missing theme option: ${id}`)
+  }
+
+  if (id === "light") {
+    return { ...option, name: "Light" }
+  }
+
+  if (id === "midnight") {
+    return { ...option, name: "Dark" }
+  }
+
+  return option
+})
+
 export interface ThemeContextType {
   theme: Theme
   resolvedTheme: "midnight" | "violet" | "teal" | "carbon" | "light"
