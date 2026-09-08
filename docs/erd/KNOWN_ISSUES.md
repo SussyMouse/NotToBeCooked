@@ -490,6 +490,107 @@ CREATE UNIQUE INDEX ix_ingestion_run_one_active
     ON ingestion_run (file_id) WHERE is_active;
 ```
 
+### R30 — a corrected re-upload becomes a second FILE row, and both stay retrievable
+
+Uploading a revised version of a file that is already there creates a *second*
+FILE row. `POST /files` has no other mode, and no endpoint replaces the bytes of
+an existing row: the four file routes are `POST /files`, `POST
+/files/{id}/ingest`, `GET /courses/{course_id}/files` and `PATCH /files/{id}`.
+
+The two rows share a filename, hold different bytes, and each carries its own
+active ingestion run. Retrieval therefore returns chunks from both versions, and
+every citation reads `Week3.pdf`. The reader is given the superseded text and the
+current text under the same name, with nothing to tell them apart.
+
+**Measured 8 September 2026** against the development database, inside a
+transaction that was rolled back:
+
+```
+today -- POST /files twice, same folder, same name, different bytes
+    file 473f0786  filename=Week3.pdf  sha256=sha256-of-v1  is_active=true   accepted
+    file 6416fd4b  filename=Week3.pdf  sha256=sha256-of-v2  is_active=true   accepted
+
+    what retrieval sees (the is_active join, R5's fix):
+      Week3.pdf  sha256-of-v1  is_active=True
+      Week3.pdf  sha256-of-v2  is_active=True
+    -> 2 active runs, both named Week3.pdf, two different documents
+
+under the proposed fix -- one FILE row, the bytes replaced, re-ingested
+    second active run refused: UniqueViolationError
+      duplicate key value violates unique constraint "ix_ingestion_run_one_active"
+    -> 1 FILE row. one active run per file_id, enforced by the index, not by us
+```
+
+**Neither R5 nor R5b covers this.** R5 is superseded runs *of one file*, closed
+1 September by the `is_active` join. R5b is the cross-file half, and its trigger
+is the day `settings.MODEL_TYPE` changes — here both runs use the same model, so
+that trigger never fires. `ix_ingestion_run_one_active` is partial on `file_id`;
+two FILE rows are two different `file_id` values and the index has nothing to say
+about them.
+
+**A UNIQUE on `(folder_id, filename)` does not fix it.** Retrieval scope is a
+course, not a folder — `file_ids` null means the whole of `course_id`
+(`schemas/rag.py`) — so two folders can each hold a `Week3.pdf` and the citation
+is ambiguous either way. Such a constraint would also reject the legitimate
+second copy, which is the case R7 already declined to reject for `sha256`.
+
+The mechanism for replacement already exists and nothing reaches it:
+
+- `storage_key` is `{user_id}/{file_id}` plus the suffix (`services/storage.py`).
+  The original filename is deliberately not part of the key, so overwriting the
+  bytes of an existing row leaves the key unchanged.
+- Re-ingesting a `file_id` deactivates the previous run before activating the new
+  one (`routers/files.py`), in that order, because the partial index refuses two
+  active runs for even one statement.
+- Retrieval already joins `is_active`, so the superseded chunks stop being
+  visible without anything deleting them.
+
+**Proposed: one endpoint, `PUT /files/{file_id}/content`.** It streams to the
+existing `storage_key`, updates `sha256`, `size_bytes` and `page_count`, returns
+`status` to `uploaded`, and stops. Chunking, activation and retrieval are
+untouched. The upload UI asks "replace or keep both" when a file of that name is
+already in the folder; "keep both" remains legal and produces exactly the state
+measured above, but as a choice rather than as the only option.
+
+**The file browser is the visible half.** `GET /courses/{course_id}/files`
+selects FILE rows and joins nothing else, so today it lists both copies and the
+reader picks between two identical names. Under the proposal it lists one, and
+the superseded version is not hidden from the browser — it is not a file at all,
+only an inactive run, and `FileRead` carries no run field. Same query, both ways:
+
+```
+today -- uploaded twice, GET /courses/{id}/files returns:
+    Week3.pdf    sha=sha-v2    1450 bytes  07:22
+    Week3.pdf    sha=sha-v1    1000 bytes  07:17
+    -> 2 entries named Week3.pdf
+
+after the fix -- uploaded twice, same query returns:
+    Week3.pdf    sha=sha-v2    1450 bytes  07:17
+    -> 1 entry named Week3.pdf
+    -> 2 runs underneath: [False, True] -- neither is visible to the frontend
+```
+
+**`uploaded_at` must be updated by the same endpoint**, and the `07:17` in the
+second block above is why: the row holds the second upload's bytes while still
+carrying the timestamp of the first. The list is ordered by `uploaded_at DESC`, so
+a file the user has just replaced does not move to the top and reads as though
+the upload failed. Updating the column is preferred over adding `updated_at`:
+the column already means "when did this file arrive", and what has arrived is the
+new one. A second column costs a migration and a `FileRead` change to record a
+history v1 does not show.
+
+**Doing nothing has no fallback.** R27 records that there is no delete-file
+endpoint, so a user who uploads a corrected version cannot remove the old one
+either. The two versions stay, and stay retrievable, until someone deletes a row
+by hand.
+
+Owner: AI-2 owns the file router. Raised 8 September 2026 by the Lead, out of
+AI-2's question about whether one folder may hold two files of the same name.
+It may, and that part is not the defect — the defect is that the older document
+stays retrievable.
+
+---
+
 ---
 
 ## Not a defect
@@ -857,6 +958,7 @@ SQLAlchemy's default, not anybody's mistake.
 | R27 | Deleting a FILE row leaves its bytes on disk | **Deferred 1 Sep, with a trigger.** `FILE.storage_key` points at an object nothing owns; every FK into FILE cascades and the blob stays. Measured 1 Sep: 0 rows, 18 MB, six orphaned directories. `storage.delete()` exists with zero callers. **Not reachable in v1** — R16 declined soft delete and there is no delete-file endpoint. **Trigger: the day a delete endpoint lands**, from which it leaks on every use, silently, because a leak of disk is not an error. Goes with whoever writes that endpoint |
 | R28 | Deleting a FOLDER row cascades to its files, runs and chunks | **Recorded 6 Sep, not a defect today.** `FILE.folder_id` and `FOLDER.parent_folder_id` are both `ON DELETE CASCADE`. Measured 6 Sep on the test database: one `delete from folder` against a non-empty folder reported `DELETE 1` and removed the folder, its file and its ingestion run, without raising. `delete_folder` guards this with a 409 on child folders and on contained files, both tested — **but the guard is in the router, not in the database**. **Reopen the moment a second code path deletes a FOLDER row** |
 | R29 | Two citations can share a marker | **Open, for the 8 Sep agenda.** `marker` names a source, so two claims from one chunk both carry `[1]`, each with its own supporting line. Measured 6 Sep on a live call: one answer, two entries under `[1]`. `check_grounding` accepts it and rejects only marker-plus-quote repeats. **The open half is rendering** — a frontend resolving `[1]` by first match silently shows the first claim's evidence for the second claim, and both quotes are genuine, so it looks wrong from neither side. AI-3 owns `schemas/rag.py`, AI-1 owns the UI |
+| R30 | A corrected re-upload becomes a second FILE row | **Open, raised 8 Sep.** `POST /files` always creates a new row and no endpoint replaces the bytes of an existing one, so a revised file arrives as a second row sharing the filename, each with its own active run. Measured 8 Sep on the development database: two rows named `Week3.pdf`, different `sha256`, **both `is_active`** — retrieval returns superseded and current text under the same name. **Neither R5 nor R5b covers it**: R5 is runs of one file, R5b's trigger is a `MODEL_TYPE` change and both runs here use the same model. `ix_ingestion_run_one_active` is partial on `file_id`, and these are two `file_id` values. A UNIQUE on `(folder_id, filename)` does not help — retrieval scope is a course, not a folder. **Proposed: `PUT /files/{file_id}/content`**, reusing the existing deactivate-then-activate path — and updating `uploaded_at`, since the list is ordered by it and a replaced file would otherwise not move. R27 removes the fallback: there is no delete endpoint, so the old version cannot be removed either. AI-2 owns the file router |
 | R8 | `is_active` needs a partial unique index | **Done 22 Aug** (`efda7a3`) — `ix_ingestion_run_one_active` UNIQUE on `(file_id) WHERE is_active`. Verified from empty: a second active run raises `UniqueViolation`, further inactive runs are accepted |
 | R17 | `UNIQUE (user_id, code, year, sem)` | **Done 22 Aug** — declared on `Course.__table_args__` and created in the initial migration as `uq_course_user_code_year_sem`. Verified from an empty database: a duplicate raises `UniqueViolationError`, while a second semester, a second year and a second user all insert. |
 | R18 | `UNIQUE (ingestion_run_id, chunk_index)` | **Done 22 Aug** (`efda7a3`) — `uq_chunk_run_index`. Verified: a second chunk 0 in one run is rejected; chunk 0 in a re-index run is accepted |
