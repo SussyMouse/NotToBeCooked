@@ -21,7 +21,7 @@ Sheet contract this depends on (it will refuse to run if any of it is untrue):
     row 5           header; columns I onward are week-start dates like "22 Aug"
     row 6 onward    one task per row until the first row with no Start
     column B        owner        column D  priority, "CUT" marks a dropped row
-    column E / F    Start / End, formatted "22 Aug"      column H  done, boolean
+    column E / F    Start / End, formatted "22 Aug"      column H  done, 1/0 or TRUE/FALSE
 """
 
 import argparse
@@ -81,7 +81,11 @@ def parse_day(value: str) -> dt.date:
 def status_of(priority, done, start: dt.date, end: dt.date, today: dt.date) -> str:
     if priority == "CUT":
         return "cut"
-    if done is True:
+    # `is True` until 9 Sep 2026, which stopped being right the moment v1.11 changed
+    # the Done column from TRUE/FALSE to 1/0 for the checkbox display. `1 is True` is
+    # False, so every completed row was painted overdue and progress read 0 / 65.
+    # Membership rather than truthiness: a stray non-empty string must not count.
+    if done in (True, 1):
         return "done"
     if end < today:
         return "overdue"
@@ -174,7 +178,7 @@ def main() -> None:
         if p == "CUT":
             continue
         owner[ws.cell(row, 2).value] += 1
-        if ws.cell(row, 8).value is True:
+        if ws.cell(row, 8).value in (True, 1):
             done_count += 1
     live = sum(v for k, v in priority.items() if k != "CUT")
 
