@@ -19,6 +19,7 @@ interface FileExplorerProps {
   onOpenBatchUpload: () => void
   onOpenDirectFolderUpload: (category: string) => void
   className?: string
+  onRenameFile: (fileId: string, newFileName: string) => Promise<void> | void
 }
 
 export function FileExplorer({
@@ -30,6 +31,7 @@ export function FileExplorer({
   roadmapProgressPct,
   nextMilestoneText,
   onOpenFile,
+  onRenameFile,
   onOpenRoadmapModal,
   onOpenBatchUpload,
   onOpenDirectFolderUpload,
@@ -153,6 +155,7 @@ export function FileExplorer({
                         file={file}
                         isActive={activeFileId === file.id}
                         onOpenFile={onOpenFile}
+                        onRenameFile={onRenameFile}
                       />
                     ))
                   )}

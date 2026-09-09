@@ -358,15 +358,23 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   const activeFileId =
     activeCourseWorkspace?.activeFileId ?? (tabs[0]?.fileId || null)
   const openTab = useWorkspace((s) => s.openTab)
+  const renameFileReferences = useWorkspace((s) => s.renameFileReferences)
   const closeTab = useWorkspace((s) => s.closeTab)
   const setActiveFile = useWorkspace((s) => s.setActiveFile)
   const updateTabViewState = useWorkspace((s) => s.updateTabViewState)
   const openCitation = useWorkspace((s) => s.openCitation)
-
+  const [fileNameOverrides, setFileNameOverrides] = useState<
+    Record<string, string>
+  >({})
   // Repository of all files across all courses
   const allFiles = useMemo(() => {
-    return Object.values(MOCK_FILES_BY_COURSE).flat()
-  }, [])
+    return Object.values(MOCK_FILES_BY_COURSE)
+      .flat()
+      .map((file) => ({
+        ...file,
+        name: fileNameOverrides[file.id] ?? file.name,
+      }))
+  }, [fileNameOverrides])
 
   // Chat Session Hook
   const {
@@ -421,12 +429,16 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   }, [activeCourseId])
 
   const courseFiles = useMemo(() => {
-    return (
+    const files =
       MOCK_FILES_BY_COURSE[currentCourse.id] ||
       MOCK_FILES_BY_COURSE[currentCourse.code] ||
       []
-    )
-  }, [currentCourse])
+
+    return files.map((file) => ({
+      ...file,
+      name: fileNameOverrides[file.id] ?? file.name,
+    }))
+  }, [currentCourse, fileNameOverrides])
 
   // Roadmap calculations (from workspace.html)
   const courseRoadmap = useMemo(() => {
@@ -473,6 +485,16 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   const showToast = (msg: string) => {
     setToastMessage(msg)
     setTimeout(() => setToastMessage(null), 3000)
+  }
+
+  const handleRenameFile = (fileId: string, newFileName: string) => {
+    setFileNameOverrides((current) => ({
+      ...current,
+      [fileId]: newFileName,
+    }))
+
+    renameFileReferences(fileId, newFileName)
+    showToast(`Renamed to ${newFileName}`)
   }
 
   // Handlers for document & chat interaction
@@ -572,6 +594,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
               roadmapProgressPct={roadmapStats.pct}
               nextMilestoneText={roadmapStats.nextText}
               onOpenFile={handleOpenFile}
+              onRenameFile={handleRenameFile}
               onOpenRoadmapModal={() => setIsRoadmapOpen(true)}
               onOpenBatchUpload={handleOpenBatchUpload}
               onOpenDirectFolderUpload={handleOpenDirectFolderUpload}

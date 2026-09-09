@@ -15,7 +15,7 @@ import { create } from "zustand"
 import {
   loadPersistedWorkspace,
   savePersistedWorkspace,
-} from "../lib/workspace-storage"
+} from "../lib/workspace-storage.ts"
 
 export type CourseId = string
 export type FileId = string
@@ -75,6 +75,7 @@ interface WorkspaceState {
   setScope: (year: number | null, semester: number | null) => void
   switchCourse: (courseId: CourseId) => void
   openTab: (courseId: CourseId, tab: Tab) => void
+  renameFileReferences: (fileId: FileId, filename: string) => void
   closeTab: (courseId: CourseId, fileId: FileId) => void
   updateTabViewState: (
     courseId: CourseId,
@@ -172,6 +173,26 @@ export const useWorkspace = create<WorkspaceState>((set) => ({
         ...s.byCourse,
         [courseId]: withTab(s.byCourse[courseId] ?? emptyCourse(), tab),
       },
+    })),
+
+  renameFileReferences: (fileId, filename) =>
+    set((s) => ({
+      byCourse: Object.fromEntries(
+        Object.entries(s.byCourse).map(([courseId, workspace]) => [
+          courseId,
+          {
+            ...workspace,
+            tabs: workspace.tabs.map((tab) =>
+              tab.fileId === fileId
+                ? {
+                    ...tab,
+                    filename,
+                  }
+                : tab
+            ),
+          },
+        ])
+      ),
     })),
 
   closeTab: (courseId, fileId) =>

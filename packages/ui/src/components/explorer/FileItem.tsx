@@ -1,4 +1,5 @@
-import { FileText, MoreVertical } from "lucide-react"
+import { useState } from "react"
+import { FilePenLine, FileText, MoreVertical } from "lucide-react"
 
 import type { MockDocumentFile } from "../../types/course"
 import {
@@ -8,11 +9,13 @@ import {
   DropdownMenuTrigger,
 } from "../dropdown-menu"
 import { FileStatusBadge } from "./FileStatusBadge"
+import { RenameFileDialog } from "./RenameFileDialog"
 
 interface FileItemProps {
   file: MockDocumentFile
   isActive: boolean
   onOpenFile: (file: MockDocumentFile) => void
+  onRenameFile: (fileId: string, newFileName: string) => Promise<void> | void
 }
 
 export function getFileExtension(filename: string): string {
@@ -205,51 +208,69 @@ export function FileIcon({
   }
 }
 
-export function FileItem({ file, isActive, onOpenFile }: FileItemProps) {
+export function FileItem({
+  file,
+  isActive,
+  onOpenFile,
+  onRenameFile,
+}: FileItemProps) {
+  const [isRenameOpen, setIsRenameOpen] = useState(false)
+
   return (
-    <div
-      className={`group relative flex h-10 w-full items-center rounded-sm border-l-[3px] transition-colors ${
-        isActive
-          ? "border-l-(--acc,#52A8EA) bg-(--acc,#52A8EA)/10 text-(--acc,#52A8EA)"
-          : "border-l-transparent text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040)/50 hover:text-(--tx,#DCE3EA)"
-      }`}
-    >
-      <button
-        type="button"
-        onClick={() => onOpenFile(file)}
-        aria-current={isActive ? "page" : undefined}
-        className="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-sm py-1 pr-1 pl-2 text-left focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-(--acc,#52A8EA) focus-visible:outline-none"
+    <>
+      <div
+        className={`group relative flex h-10 w-full items-center rounded-sm border-l-[3px] transition-colors ${
+          isActive
+            ? "border-l-(--acc,#52A8EA) bg-(--acc,#52A8EA)/10 text-(--acc,#52A8EA)"
+            : "border-l-transparent text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040)/50 hover:text-(--tx,#DCE3EA)"
+        }`}
       >
-        <FileIcon filename={file.name} />
-
-        <span className="min-w-0 flex-1 truncate text-xs">{file.name}</span>
-
-        <FileStatusBadge status={file.status ?? "ready"} />
-      </button>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          aria-label={`Open actions for ${file.name}`}
-          title={`Actions for ${file.name}`}
-          className="mr-1 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-sm text-(--tx-faint,#5C6976) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA) focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-(--acc,#52A8EA) focus-visible:outline-none"
+        <button
+          type="button"
+          onClick={() => onOpenFile(file)}
+          aria-current={isActive ? "page" : undefined}
+          className="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-sm py-1 pr-1 pl-2 text-left focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-(--acc,#52A8EA) focus-visible:outline-none"
         >
-          <MoreVertical className="h-4 w-4" />
-        </DropdownMenuTrigger>
+          <FileIcon filename={file.name} />
 
-        <DropdownMenuContent
-          align="end"
-          sideOffset={4}
-          className="w-40 border-(--line,#25313E) bg-(--bg-panel,#121A23) text-(--tx,#DCE3EA)"
-        >
-          <DropdownMenuItem
-            onClick={() => onOpenFile(file)}
-            className="cursor-pointer text-xs"
+          <span className="min-w-0 flex-1 truncate text-xs">{file.name}</span>
+
+          <FileStatusBadge status={file.status ?? "ready"} />
+        </button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label={`Open actions for ${file.name}`}
+            title={`Actions for ${file.name}`}
+            className="mr-1 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-sm text-(--tx-faint,#5C6976) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA) focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-(--acc,#52A8EA) focus-visible:outline-none"
           >
-            <FileText className="h-4 w-4" />
-            Open file
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+            <MoreVertical className="h-4 w-4" />
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent
+            align="end"
+            sideOffset={4}
+            className="w-40 border-(--line,#25313E) bg-(--bg-panel,#121A23) text-(--tx,#DCE3EA)"
+          >
+            <DropdownMenuItem
+              onClick={() => setIsRenameOpen(true)}
+              className="cursor-pointer text-xs"
+            >
+              <FilePenLine className="h-4 w-4" />
+              Rename
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {isRenameOpen && (
+        <RenameFileDialog
+          open
+          fileName={file.name}
+          onOpenChange={setIsRenameOpen}
+          onRename={(newFileName) => onRenameFile(file.id, newFileName)}
+        />
+      )}
+    </>
   )
 }
