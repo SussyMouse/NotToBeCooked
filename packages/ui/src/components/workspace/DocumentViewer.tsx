@@ -142,15 +142,28 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = React.memo(
                     {document.contentByPage[page]}
                   </p>
 
-                  {/* Highlight quote if citation corresponds to this document & page */}
-                  {selectedCitation?.quote && isCitationOnCurrentPage && (
-                    <div className="rounded-lg border border-(--cite-line,rgba(227,166,63,0.4)) bg-(--cite-bg,rgba(227,166,63,0.12)) p-4 text-xs leading-relaxed text-(--tx-strong,#EDF2F6) shadow-sm">
-                      <span className="mb-1.5 block font-mono text-[11px] font-semibold text-(--cite,#E3A63F) uppercase">
-                        Verified Grounded Quote
-                      </span>
-                      <em>"{selectedCitation.quote}"</em>
-                    </div>
-                  )}
+                  {/* Highlight quote(s) if citation corresponds to this document & page */}
+                  {(selectedCitation?.quotes?.length || selectedCitation?.quote) &&
+                    isCitationOnCurrentPage && (
+                      <div className="rounded-lg border border-(--cite-line,rgba(227,166,63,0.4)) bg-(--cite-bg,rgba(227,166,63,0.12)) p-4 text-xs leading-relaxed text-(--tx-strong,#EDF2F6) shadow-sm space-y-2">
+                        <span className="mb-1.5 block font-mono text-[11px] font-semibold text-(--cite,#E3A63F) uppercase">
+                          Verified Grounded{" "}
+                          {selectedCitation.quotes &&
+                          selectedCitation.quotes.length > 1
+                            ? `Quotes (${selectedCitation.quotes.length})`
+                            : "Quote"}
+                        </span>
+                        {(selectedCitation.quotes &&
+                        selectedCitation.quotes.length > 0
+                          ? selectedCitation.quotes
+                          : [selectedCitation.quote!]
+                        ).map((quote, qIdx) => (
+                          <div key={qIdx}>
+                            <em>&ldquo;{quote}&rdquo;</em>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                 </div>
               ) : (
                 <div className="flex flex-1 flex-col gap-4">

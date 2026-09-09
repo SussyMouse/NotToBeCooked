@@ -20,8 +20,12 @@ export const CitationDrawer: React.FC<CitationDrawerProps> = ({
   if (!citation) return null
 
   const handleCopyQuote = () => {
-    if (!citation.quote && !citation.l) return
-    navigator.clipboard.writeText(citation.quote || citation.l)
+    const textToCopy =
+      citation.quotes && citation.quotes.length > 0
+        ? citation.quotes.join("\n\n")
+        : citation.quote || citation.l
+    if (!textToCopy) return
+    navigator.clipboard.writeText(textToCopy)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
@@ -34,7 +38,13 @@ export const CitationDrawer: React.FC<CitationDrawerProps> = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 font-mono text-[11px] font-semibold text-(--cite,#E3A63F)">
           <Check className="h-3 w-3" />
-          <span>Grounded Citation: {citation.l}</span>
+          <span>
+            Grounded Citation: {citation.marker ? `[${citation.marker}] ` : ""}
+            {citation.l}
+            {citation.quotes && citation.quotes.length > 1
+              ? ` (${citation.quotes.length} quotes)`
+              : ""}
+          </span>
         </div>
 
         <button
@@ -47,8 +57,19 @@ export const CitationDrawer: React.FC<CitationDrawerProps> = ({
         </button>
       </div>
 
-      {/* Quote / Excerpt */}
-      {citation.quote ? (
+      {/* Quote / Excerpt(s) - Option A: render every entry that carries that marker */}
+      {citation.quotes && citation.quotes.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          {citation.quotes.map((quote, qIdx) => (
+            <div
+              key={qIdx}
+              className="rounded border border-(--cite-line,rgba(227,166,63,0.25)) bg-(--bg-panel,#121A23)/60 p-2 text-[11.5px] leading-relaxed text-(--tx,#DCE3EA) italic"
+            >
+              &ldquo;{quote}&rdquo;
+            </div>
+          ))}
+        </div>
+      ) : citation.quote ? (
         <div className="rounded border border-(--cite-line,rgba(227,166,63,0.25)) bg-(--bg-panel,#121A23)/60 p-2 text-[11.5px] leading-relaxed text-(--tx,#DCE3EA) italic">
           &ldquo;{citation.quote}&rdquo;
         </div>
@@ -67,7 +88,13 @@ export const CitationDrawer: React.FC<CitationDrawerProps> = ({
           onClick={handleCopyQuote}
           className="flex cursor-pointer items-center gap-1 text-[10.5px] text-(--tx-dim,#8B98A7) transition-colors hover:text-(--tx,#DCE3EA)"
         >
-          <span>{copied ? "Copied ✓" : "Copy Quote"}</span>
+          <span>
+            {copied
+              ? "Copied ✓"
+              : citation.quotes && citation.quotes.length > 1
+                ? "Copy Quotes"
+                : "Copy Quote"}
+          </span>
         </button>
 
         {onOpenDocument && (

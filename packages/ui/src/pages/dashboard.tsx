@@ -7,6 +7,7 @@ import {
 } from "../store/workspace"
 import { useChatSession } from "../hooks/useChatSession"
 import Chat, { type CitationItem } from "../components/chat/Chat"
+import { groupCitations } from "../components/chat/ChatMessage"
 import { TopBar } from "../components/topbar/TopBar"
 import { FileExplorer } from "../components/explorer/FileExplorer"
 import { RoadmapModal } from "../components/roadmap/RoadmapModal"
@@ -497,14 +498,9 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
       if (res && res.answer) {
         return {
           text: res.answer,
-          cites: res.citations?.map((c) => ({
-            f: c.file_id,
-            p: c.page ?? 1,
-            l: c.filename
-              ? `${c.filename} · p.${c.page ?? 1}`
-              : `Document · p.${c.page ?? 1}`,
-            quote: c.quote,
-          })),
+          cites: groupCitations(
+            res.citations as Array<Record<string, unknown>> | null | undefined
+          ),
         }
       }
     } catch {
