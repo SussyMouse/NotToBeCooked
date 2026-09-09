@@ -82,8 +82,8 @@ export function RenameFileDialog({
         }
       }}
     >
-      <DialogContent className="gap-0 overflow-hidden border-(--line,#25313E) bg-(--bg-panel,#121A23) p-0 text-(--tx,#DCE3EA) shadow-2xl sm:max-w-md">
-        <DialogHeader className="border-b border-(--line-soft,#1B2530) px-5 py-4">
+      <DialogContent className="min-w-0 gap-0 overflow-hidden border-(--line,#25313E) bg-(--bg-panel,#121A23) p-0 text-(--tx,#DCE3EA) shadow-2xl sm:max-w-md">
+        <DialogHeader className="min-w-0 border-b border-(--line-soft,#1B2530) px-5 py-4">
           <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
             <FilePenLine className="h-4 w-4 text-(--acc,#52A8EA)" />
             Rename file
@@ -94,8 +94,8 @@ export function RenameFileDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-4 px-5 py-4">
+        <form onSubmit={handleSubmit} className="min-w-0 overflow-hidden">
+          <div className="flex min-w-0 flex-col gap-4 px-5 py-4">
             {requestError && (
               <div
                 role="alert"
@@ -105,7 +105,7 @@ export function RenameFileDialog({
               </div>
             )}
 
-            <div className="flex flex-col gap-1.5">
+            <div className="flex min-w-0 flex-col gap-1.5">
               <div className="flex min-w-0 items-center justify-between gap-4">
                 <label
                   htmlFor={inputId}
@@ -122,7 +122,7 @@ export function RenameFileDialog({
                 </span>
               </div>
 
-              <div className="relative">
+              <div className="relative min-w-0">
                 <Input
                   id={inputId}
                   value={name}
@@ -136,7 +136,7 @@ export function RenameFileDialog({
                   aria-describedby={
                     validationError ? `${inputId}-error` : `${inputId}-help`
                   }
-                  className="h-10 pr-16 text-sm"
+                  className="h-10 max-w-full min-w-0 pr-16 text-sm"
                 />
 
                 {extension && (
