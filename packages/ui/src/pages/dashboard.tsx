@@ -428,7 +428,6 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     )
   }, [currentCourse])
 
-
   // Roadmap calculations (from workspace.html)
   const courseRoadmap = useMemo(() => {
     const base = currentCourse.roadmap
@@ -538,8 +537,6 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     setIsUploadModalOpen(true)
   }
 
-  const openedFileIds = useMemo(() => tabs.map((t) => t.fileId), [tabs])
-
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-(--bg-canvas,#161F29) font-sans text-(--tx,#DCE3EA) select-none">
       {/* Toast Notification */}
@@ -570,7 +567,6 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
               categories={CATEGORIES}
               files={courseFiles}
               activeFileId={activeFileId}
-              openedFileIds={openedFileIds}
               courseWeek={currentCourse.week}
               courseWeeks={currentCourse.weeks}
               roadmapProgressPct={roadmapStats.pct}

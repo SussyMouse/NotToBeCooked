@@ -10,7 +10,6 @@ interface FileExplorerProps {
   categories: string[]
   files: MockDocumentFile[]
   activeFileId: string | null
-  openedFileIds: string[]
   courseWeek: number
   courseWeeks: number
   roadmapProgressPct: number
@@ -26,7 +25,6 @@ export function FileExplorer({
   categories,
   files,
   activeFileId,
-  openedFileIds,
   courseWeek,
   courseWeeks,
   roadmapProgressPct,
@@ -154,7 +152,6 @@ export function FileExplorer({
                         key={file.id}
                         file={file}
                         isActive={activeFileId === file.id}
-                        isOpenInTab={openedFileIds.includes(file.id)}
                         onOpenFile={onOpenFile}
                       />
                     ))
