@@ -210,32 +210,30 @@ export function FileItem({
     <button
       type="button"
       onClick={() => onOpenFile(file)}
-      className="group flex w-full cursor-pointer items-center gap-1.5 py-0 text-left text-xs transition-colors"
+      aria-current={isActive ? "page" : undefined}
+      className={`group relative flex h-10 w-full cursor-pointer items-center gap-2 rounded-sm border-l-[3px] pr-1.5 pl-2 text-left text-xs transition-colors focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--acc,#52A8EA) ${
+        isActive
+          ? "border-l-(--acc,#52A8EA) bg-(--acc,#52A8EA)/10 text-(--acc,#52A8EA)"
+          : "border-l-transparent text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040)/50 hover:text-(--tx,#DCE3EA)"
+      }`}
     >
       <FileIcon filename={file.name} />
 
-      <div
-        className={`flex min-w-0 flex-1 items-center justify-between gap-1.5 rounded px-1.5 py-0.5 transition-colors ${
-          isActive
-            ? "bg-(--bg-raise,#1C2833) font-medium text-(--acc,#52A8EA)"
-            : "text-(--tx-dim,#8B98A7) group-hover:bg-(--bg-hover,#213040)/40 group-hover:text-(--tx,#DCE3EA)"
-        }`}
-      >
-        <span className="min-w-0 flex-1 truncate text-xs">
-          {file.name}
-        </span>
+      <span className="min-w-0 flex-1 truncate text-xs">
+        {file.name}
+      </span>
 
-        <span className="flex shrink-0 items-center gap-1.5">
-          <FileStatusBadge status={file.status ?? "ready"} />
+      <span className="flex shrink-0 items-center gap-1.5">
+        <FileStatusBadge status={file.status ?? "ready"} />
 
-          {isOpenInTab && (
-            <span
-              className="h-1.5 w-1.5 rounded-full bg-(--acc,#52A8EA)"
-              title="Open in active tab"
-            />
-          )}
-        </span>
-      </div>
+        {isOpenInTab && (
+          <span
+            className="h-1.5 w-1.5 rounded-full bg-(--acc,#52A8EA)"
+            title="Open in a document tab"
+            aria-label="Open in a document tab"
+          />
+        )}
+      </span>
     </button>
   )
 }
