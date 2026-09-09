@@ -14,7 +14,7 @@ services:
     volumes:
       - pgvector_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -30,6 +30,14 @@ services:
       db:
         condition: service_healthy
     restart: always
+    volumes:
+      - api_storage:/app/storage
+    healthcheck:
+      test: [ "CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\"" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 volumes:
   pgvector_data:
+  api_storage:

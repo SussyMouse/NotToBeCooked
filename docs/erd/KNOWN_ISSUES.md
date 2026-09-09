@@ -677,8 +677,60 @@ bucket later". When that move happens this entry closes on its own, because the
 bytes stop living on the host at all. Until then the volume is what stands
 between a redeploy and every uploaded file.
 
-Owner: unassigned. It goes with whoever does the r45 deployment. Raised
-9 September 2026 by the Lead.
+**Fixed 9 September 2026.** Two lines on the `api` service and one declaration:
+
+```yaml
+api:
+  volumes:
+    - api_storage:/app/storage
+volumes:
+  pgvector_data:
+  api_storage:
+```
+
+Verified against the real stack, not the compose file. A file was written inside
+the container, the container was destroyed with `docker compose rm -sf` and
+brought back, and the file was read again:
+
+```
+in the container -- write one "uploaded file"
+-rw-r--r--. 1 root root 15 Sep  9 04:37 Week3.pdf
+
+destroy and recreate the container (same as down && up)
+  container rebuilt, health = healthy
+-rw-r--r--. 1 root root 15 Sep  9 04:37 Week3.pdf
+--- contents ---
+Week3.pdf body
+```
+
+The trigger recorded above no longer fires: a redeploy on the r45 host keeps the
+uploads. **This entry closes early rather than travelling with the deployment**,
+because the cost of carrying it was that it would be discovered by losing files
+on a machine that had real ones.
+
+**A healthcheck went in beside it, and it is worth recording why.** The `api`
+service had none while `db` had one, so `docker compose ps` printed `Up` for the
+twenty-odd seconds `init_db()` spends reflecting every table with `echo=True`
+switched on. Docker binds the published port when the container starts, not when
+uvicorn begins listening, so during that window a request is accepted and dropped
+— `curl` reports `(52) Empty reply from server` rather than a refused connection,
+and a browser's `fetch` rejects with a `TypeError` that serialises to `{}`.
+
+**That is what an outage looked like from the frontend on 9 September**: a
+registration form showing "An unexpected error occurred" with an empty Dev
+Response, which reads as a frontend defect. Two people spent an hour on it, and
+one of them (the Lead) misread `CREATED 36 seconds ago / Up 7 seconds` as a crash
+loop before the log showed `Application startup complete`. The service now
+reports `starting` until `/health` answers:
+
+```
+   5s  starting
+  10s  starting
+  15s  healthy
+```
+
+Owner: closed by the Lead, 9 September 2026, out of AI-2's failing registration.
+Raised the same day.
 
 ---
 
@@ -1152,7 +1204,7 @@ SQLAlchemy's default, not anybody's mistake.
 | R28 | Deleting a FOLDER row cascades to its files, runs and chunks | **Recorded 6 Sep, not a defect today.** `FILE.folder_id` and `FOLDER.parent_folder_id` are both `ON DELETE CASCADE`. Measured 6 Sep on the test database: one `delete from folder` against a non-empty folder reported `DELETE 1` and removed the folder, its file and its ingestion run, without raising. `delete_folder` guards this with a 409 on child folders and on contained files, both tested — **but the guard is in the router, not in the database**. **Reopen the moment a second code path deletes a FOLDER row** |
 | R29 | Two citations can share a marker | **Closed 8 Sep — Decision 4, option A: render every entry carrying that marker.** One pill, several quoted lines; no contract change. Numbering the citations instead was rejected because it breaks `selected[marker - 1]`, the path both `_resolve_citations` and `check_grounding` use to reach provenance. F3 (r36) renders to this rule. Background: `marker` names a source, so two claims from one chunk both carry `[1]`, each with its own supporting line. Measured 6 Sep on a live call: one answer, two entries under `[1]`. `check_grounding` accepts it and rejects only marker-plus-quote repeats. **The open half is rendering** — a frontend resolving `[1]` by first match silently shows the first claim's evidence for the second claim, and both quotes are genuine, so it looks wrong from neither side. AI-3 owns `schemas/rag.py`, AI-1 owns the UI |
 | R30 | A corrected re-upload becomes a second FILE row | **Open, raised 8 Sep.** `POST /files` always creates a new row and no endpoint replaces the bytes of an existing one, so a revised file arrives as a second row sharing the filename, each with its own active run. Measured 8 Sep on the development database: two rows named `Week3.pdf`, different `sha256`, **both `is_active`** — retrieval returns superseded and current text under the same name. **Neither R5 nor R5b covers it**: R5 is runs of one file, R5b's trigger is a `MODEL_TYPE` change and both runs here use the same model. `ix_ingestion_run_one_active` is partial on `file_id`, and these are two `file_id` values. A UNIQUE on `(folder_id, filename)` does not help — retrieval scope is a course, not a folder. **Proposed: `PUT /files/{file_id}/content`**, reusing the existing deactivate-then-activate path — and updating `uploaded_at`, since the list is ordered by it and a replaced file would otherwise not move. R27 removes the fallback: there is no delete endpoint, so the old version cannot be removed either. AI-2 owns the file router |
-| R31 | Uploaded files live in the container's writable layer | **Open, raised 9 Sep.** `docker-compose.yml` gives `db` a named volume and `api` none, while `STORAGE_DIR` resolves to `/app/storage` inside the image — so every uploaded blob sits in the writable layer Docker deletes with the container. The FILE rows are in the `db` volume and survive, so after a redeploy the browser lists every file and each resolves to a path that is gone. **Nothing raises at redeploy time**; it surfaces later, one read at a time. Measured 9 Sep on Docker 29.4.0-ce: same create/write/destroy/recreate cycle, `No such file or directory` without a volume and the file intact with one. **Opposite of R27** — R27 is bytes outliving their row, R31 is rows outliving their bytes; both are `storage_key` naming an object nothing owns. **Trigger: the first `docker compose down && up` on a host holding real uploads** (the r45 OCI instance). Fix is one volume on `api`. Goes with whoever does the deployment |
+| R31 | Uploaded files live in the container's writable layer | **Fixed 9 Sep — a named volume on the `api` service.** Verified against the real stack: a file written in the container survived `docker compose rm -sf` and a rebuild, contents intact, so a redeploy on the r45 host now keeps the uploads. A healthcheck went in beside it — `api` had none while `db` did, so `ps` printed `Up` through the twenty-odd seconds `init_db()` spends reflecting under `echo=True`, and Docker binds the port at container start rather than when uvicorn listens. In that window a request is accepted and dropped: `curl` says `(52) Empty reply`, a browser's `fetch` rejects with a `TypeError` that serialises to `{}`, and the whole outage reads as a frontend defect — which is exactly how it presented on 9 Sep. Background: `docker-compose.yml` gives `db` a named volume and `api` none, while `STORAGE_DIR` resolves to `/app/storage` inside the image — so every uploaded blob sits in the writable layer Docker deletes with the container. The FILE rows are in the `db` volume and survive, so after a redeploy the browser lists every file and each resolves to a path that is gone. **Nothing raises at redeploy time**; it surfaces later, one read at a time. Measured 9 Sep on Docker 29.4.0-ce: same create/write/destroy/recreate cycle, `No such file or directory` without a volume and the file intact with one. **Opposite of R27** — R27 is bytes outliving their row, R31 is rows outliving their bytes; both are `storage_key` naming an object nothing owns. **Trigger: the first `docker compose down && up` on a host holding real uploads** (the r45 OCI instance). Fix is one volume on `api`. Goes with whoever does the deployment |
 | R32 | Moving a file between courses is not supported | **Closed 8 Sep — Decision 5, option A.** The `409` from `PATCH /files/{file_id}` is the final answer, not a placeholder. Measured 9 Sep on the development database: with one ingested chunk present, **both** a `course_id`-only move and a `folder_id`+`course_id` move raise `ForeignKeyViolationError` on `fk_chunk_file_course_agree` — the constraint declares `ON DELETE CASCADE` and nothing for `ON UPDATE`, whose default is `NO ACTION`. So the router's guard is not what prevents the move; it is what turns an unhandled violation into a readable answer. Supporting it would mean deciding whether chunks move or are re-ingested, which changes what retrieval scope means while retrieval is unfinished (r48). No user story asks for it. Reopen only if one does |
 | R33 | What a mocked session cannot test | **Recorded 9 Sep, not a defect.** `AsyncMock` has no foreign key, CHECK, partial unique index, `ON DELETE` behaviour, column default or timezone coercion — it accepts every correctly-shaped value. Four findings survived a green suite this way: R8, R25, the cross-course move (6 Sep) and R28. **The sharpest is the third: the passing test asserted the broken behaviour**, because a mock cannot disagree with the code under test. Rule: anything the database enforces is tested against a database, seeded inside a transaction that is rolled back; call order, branching and response shape stay on mocks |
 | R8 | `is_active` needs a partial unique index | **Done 22 Aug** (`efda7a3`) — `ix_ingestion_run_one_active` UNIQUE on `(file_id) WHERE is_active`. Verified from empty: a second active run raises `UniqueViolation`, further inactive runs are accepted |
