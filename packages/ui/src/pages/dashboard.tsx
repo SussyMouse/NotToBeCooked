@@ -366,6 +366,9 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   const [fileNameOverrides, setFileNameOverrides] = useState<
     Record<string, string>
   >({})
+  const [fileFolderOverrides, setFileFolderOverrides] = useState<
+    Record<string, string>
+  >({})
   // Repository of all files across all courses
   const allFiles = useMemo(() => {
     return Object.values(MOCK_FILES_BY_COURSE)
@@ -373,8 +376,9 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
       .map((file) => ({
         ...file,
         name: fileNameOverrides[file.id] ?? file.name,
+        category: fileFolderOverrides[file.id] ?? file.category,
       }))
-  }, [fileNameOverrides])
+  }, [fileFolderOverrides, fileNameOverrides])
 
   // Chat Session Hook
   const {
@@ -437,8 +441,9 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     return files.map((file) => ({
       ...file,
       name: fileNameOverrides[file.id] ?? file.name,
+      category: fileFolderOverrides[file.id] ?? file.category,
     }))
-  }, [currentCourse, fileNameOverrides])
+  }, [currentCourse, fileFolderOverrides, fileNameOverrides])
 
   // Roadmap calculations (from workspace.html)
   const courseRoadmap = useMemo(() => {
@@ -495,6 +500,15 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
 
     renameFileReferences(fileId, newFileName)
     showToast(`Renamed to ${newFileName}`)
+  }
+
+  const handleMoveFile = (fileId: string, destinationFolder: string) => {
+    setFileFolderOverrides((current) => ({
+      ...current,
+      [fileId]: destinationFolder,
+    }))
+
+    showToast(`Moved file to ${destinationFolder}`)
   }
 
   // Handlers for document & chat interaction
@@ -595,6 +609,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
               nextMilestoneText={roadmapStats.nextText}
               onOpenFile={handleOpenFile}
               onRenameFile={handleRenameFile}
+              onMoveFile={handleMoveFile}
               onOpenRoadmapModal={() => setIsRoadmapOpen(true)}
               onOpenBatchUpload={handleOpenBatchUpload}
               onOpenDirectFolderUpload={handleOpenDirectFolderUpload}

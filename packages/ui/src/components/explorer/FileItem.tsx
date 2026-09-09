@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { FilePenLine, FileText, MoreVertical } from "lucide-react"
+import { FilePenLine, FileText, FolderInput, MoreVertical } from "lucide-react"
 
 import type { MockDocumentFile } from "../../types/course"
 import {
@@ -10,12 +10,18 @@ import {
 } from "../dropdown-menu"
 import { FileStatusBadge } from "./FileStatusBadge"
 import { RenameFileDialog } from "./RenameFileDialog"
+import { MoveFileDialog } from "./MoveFileDialog"
 
 interface FileItemProps {
   file: MockDocumentFile
+  folders: string[]
   isActive: boolean
   onOpenFile: (file: MockDocumentFile) => void
   onRenameFile: (fileId: string, newFileName: string) => Promise<void> | void
+  onMoveFile: (
+    fileId: string,
+    destinationFolder: string
+  ) => Promise<void> | void
 }
 
 export function getFileExtension(filename: string): string {
@@ -210,11 +216,14 @@ export function FileIcon({
 
 export function FileItem({
   file,
+  folders,
   isActive,
   onOpenFile,
   onRenameFile,
+  onMoveFile,
 }: FileItemProps) {
   const [isRenameOpen, setIsRenameOpen] = useState(false)
+  const [isMoveOpen, setIsMoveOpen] = useState(false)
 
   return (
     <>
@@ -259,6 +268,14 @@ export function FileItem({
               <FilePenLine className="h-4 w-4" />
               Rename
             </DropdownMenuItem>
+
+            <DropdownMenuItem
+              onClick={() => setIsMoveOpen(true)}
+              className="cursor-pointer text-xs"
+            >
+              <FolderInput className="h-4 w-4" />
+              Move
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -269,6 +286,16 @@ export function FileItem({
           fileName={file.name}
           onOpenChange={setIsRenameOpen}
           onRename={(newFileName) => onRenameFile(file.id, newFileName)}
+        />
+      )}
+      {isMoveOpen && (
+        <MoveFileDialog
+          open
+          fileName={file.name}
+          currentFolder={file.category ?? "Uncategorized"}
+          folders={folders}
+          onOpenChange={setIsMoveOpen}
+          onMove={(destinationFolder) => onMoveFile(file.id, destinationFolder)}
         />
       )}
     </>

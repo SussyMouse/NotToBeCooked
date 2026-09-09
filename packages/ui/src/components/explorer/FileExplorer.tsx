@@ -20,6 +20,10 @@ interface FileExplorerProps {
   onOpenDirectFolderUpload: (category: string) => void
   className?: string
   onRenameFile: (fileId: string, newFileName: string) => Promise<void> | void
+  onMoveFile: (
+    fileId: string,
+    destinationFolder: string
+  ) => Promise<void> | void
 }
 
 export function FileExplorer({
@@ -32,6 +36,7 @@ export function FileExplorer({
   nextMilestoneText,
   onOpenFile,
   onRenameFile,
+  onMoveFile,
   onOpenRoadmapModal,
   onOpenBatchUpload,
   onOpenDirectFolderUpload,
@@ -153,9 +158,11 @@ export function FileExplorer({
                       <FileItem
                         key={file.id}
                         file={file}
+                        folders={categories}
                         isActive={activeFileId === file.id}
                         onOpenFile={onOpenFile}
                         onRenameFile={onRenameFile}
+                        onMoveFile={onMoveFile}
                       />
                     ))
                   )}
