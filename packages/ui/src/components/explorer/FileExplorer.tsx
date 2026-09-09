@@ -5,7 +5,9 @@ import { FileItem } from "./FileItem"
 import { Folder, Search } from "lucide-react"
 import { RoadmapWidget } from "../roadmap/RoadmapWidget"
 import { UploadDock } from "../upload/UploadDock"
+import { ExplorerState } from "./ExplorerState"
 
+export type ExplorerStatus = "ready" | "loading" | "error"
 interface FileExplorerProps {
   categories: string[]
   files: MockDocumentFile[]
@@ -24,11 +26,15 @@ interface FileExplorerProps {
     fileId: string,
     destinationFolder: string
   ) => Promise<void> | void
+  explorerStatus?: ExplorerStatus
+  onRetryLoad?: () => void
 }
 
 export function FileExplorer({
   categories,
   files,
+  explorerStatus = "ready",
+  onRetryLoad,
   activeFileId,
   courseWeek,
   courseWeeks,
@@ -90,6 +96,18 @@ export function FileExplorer({
     )
   }, [files, searchQuery])
 
+  const visibleCategories = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+
+    if (!query) return categories
+
+    return categories.filter(
+      (category) =>
+        category.toLowerCase().includes(query) ||
+        filteredFiles.some((file) => file.category === category)
+    )
+  }, [categories, filteredFiles, searchQuery])
+
   const toggleCategory = (cat: string) => {
     setCollapsedCats((prev) => ({
       ...prev,
@@ -123,55 +141,81 @@ export function FileExplorer({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search documents..."
-              className="w-full bg-transparent text-xs text-(--tx,#DCE3EA) outline-none placeholder:text-(--tx-faint,#5C6976)"
+              disabled={explorerStatus !== "ready"}
+              aria-label="Search folders and files"
+              className="w-full bg-transparent text-xs text-(--tx,#DCE3EA) outline-none placeholder:text-(--tx-faint,#5C6976) disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
         </div>
 
         {/* Tree View Container: Categories & Files */}
         <div className="flex min-h-0 flex-1 scrollbar-thin [scrollbar-color:var(--line,#25313E)_transparent] flex-col gap-2 overflow-y-auto p-2.5">
-          {/* Folders header */}
-          <div className="px-1 font-mono text-[11px] font-semibold tracking-wider text-(--tx-faint,#5C6976) uppercase">
-            <span>Folders</span>
-          </div>
+          {explorerStatus === "loading" ? (
+            <ExplorerState variant="loading" />
+          ) : explorerStatus === "error" ? (
+            <ExplorerState
+              variant="error"
+              onRetry={() => {
+                onRetryLoad?.()
+              }}
+            />
+          ) : searchQuery.trim() && visibleCategories.length === 0 ? (
+            <ExplorerState
+              variant="no-results"
+              query={searchQuery.trim()}
+              onClear={() => setSearchQuery("")}
+            />
+          ) : (
+            <>
+              <div className="px-1 font-mono text-[11px] font-semibold tracking-wider text-(--tx-faint,#5C6976) uppercase">
+                <span>Folders</span>
+              </div>
 
-          <div className="flex flex-col gap-1.5">
-            {categories.map((cat) => {
-              const filesInCat = filteredFiles.filter((f) => f.category === cat)
-              const isCollapsed = collapsedCats[cat] || false
+              <div className="flex flex-col gap-1.5">
+                {visibleCategories.map((cat) => {
+                  const totalFilesInCat = files.filter(
+                    (file) => file.category === cat
+                  )
+                  const filesInCat = filteredFiles.filter(
+                    (file) => file.category === cat
+                  )
+                  const isCollapsed = collapsedCats[cat] || false
 
-              return (
-                <FolderItem
-                  key={cat}
-                  category={cat}
-                  fileCount={filesInCat.length}
-                  isCollapsed={isCollapsed}
-                  onToggle={() => toggleCategory(cat)}
-                  onDirectUpload={onOpenDirectFolderUpload}
-                >
-                  {filesInCat.length === 0 ? (
-                    <span className="px-2 py-1 font-mono text-[11px] text-(--tx-faint,#5C6976) italic">
-                      No documents
-                    </span>
-                  ) : (
-                    filesInCat.map((file) => (
-                      <FileItem
-                        key={file.id}
-                        file={file}
-                        folders={categories}
-                        isActive={activeFileId === file.id}
-                        onOpenFile={onOpenFile}
-                        onRenameFile={onRenameFile}
-                        onMoveFile={onMoveFile}
-                      />
-                    ))
-                  )}
-                </FolderItem>
-              )
-            })}
-          </div>
+                  return (
+                    <FolderItem
+                      key={cat}
+                      category={cat}
+                      fileCount={totalFilesInCat.length}
+                      isCollapsed={isCollapsed}
+                      onToggle={() => toggleCategory(cat)}
+                      onDirectUpload={onOpenDirectFolderUpload}
+                    >
+                      {totalFilesInCat.length === 0 ? (
+                        <ExplorerState
+                          variant="empty"
+                          folderName={cat}
+                          onUpload={() => onOpenDirectFolderUpload(cat)}
+                        />
+                      ) : (
+                        filesInCat.map((file) => (
+                          <FileItem
+                            key={file.id}
+                            file={file}
+                            folders={categories}
+                            isActive={activeFileId === file.id}
+                            onOpenFile={onOpenFile}
+                            onRenameFile={onRenameFile}
+                            onMoveFile={onMoveFile}
+                          />
+                        ))
+                      )}
+                    </FolderItem>
+                  )
+                })}
+              </div>
+            </>
+          )}
         </div>
-
         {/* Bottom Explorer: Unified Minimalist Roadmap & Upload Dock */}
         <div className="flex flex-col gap-2.5 border-t border-(--line,#25313E) bg-(--bg-bar,#101821)/70 p-3">
           <RoadmapWidget
