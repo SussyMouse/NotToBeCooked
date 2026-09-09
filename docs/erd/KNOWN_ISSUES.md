@@ -591,6 +591,80 @@ stays retrievable.
 
 ---
 
+### R31 — uploaded files live in the container's writable layer, and a redeploy takes them
+
+`docker-compose.yml` gives the `db` service a named volume and gives the `api`
+service none:
+
+```yaml
+db:
+  volumes:
+    - pgvector_data:/var/lib/postgresql/data
+api:
+  build: .
+  # no volumes
+```
+
+`STORAGE_DIR` is `_ENV_FILE.parent / "storage"`, and `_ENV_FILE` walks three
+parents up from `app/core/config.py`, so inside the image it resolves to
+`/app/storage`. Every uploaded blob is therefore written into the container's
+writable layer, which Docker deletes along with the container.
+
+The FILE rows do not go with them. They live in the `db` volume and survive, so
+after a redeploy the file browser lists every file it listed before and each one
+resolves to a path that no longer exists. **Nothing raises at redeploy time; the
+failure appears later, one file at a time, as a read that finds nothing.**
+
+**Measured 9 September 2026**, Docker 29.4.0-ce:
+
+```
+before -- no volume, the way docker-compose.yml has it today
+Week3.pdf
+ls: cannot access '/app/storage': No such file or directory
+
+after -- one named volume on the api service
+Week3.pdf
+Week3.pdf
+body
+```
+
+Both runs create the container, write the file, destroy the container and start
+a fresh one. The only difference between them is the volume.
+
+**This is not R27, and the two point in opposite directions:**
+
+- **R27** — a FILE row is deleted and its bytes stay on disk. Rows lost, bytes kept.
+- **R31** — no row is deleted and every byte goes. Bytes lost, rows kept.
+
+They share one cause: `FILE.storage_key` names an object that no component owns.
+R27 is the missing owner at delete time; R31 is the missing owner at deploy time.
+
+**Not reachable today.** Development runs the API outside Docker against a local
+Postgres, so the writable layer is never the store. **Trigger: the first
+`docker compose down && up` on a host where real uploads exist** — which is the
+OCI ARM instance of r45, on its first redeploy after go-live.
+
+The fix is one volume on the `api` service plus its declaration:
+
+```yaml
+api:
+  volumes:
+    - api_storage:/app/storage
+volumes:
+  pgvector_data:
+  api_storage:
+```
+
+`STORAGE_DIR` is documented as "a local directory today and an object-store
+bucket later". When that move happens this entry closes on its own, because the
+bytes stop living on the host at all. Until then the volume is what stands
+between a redeploy and every uploaded file.
+
+Owner: unassigned. It goes with whoever does the r45 deployment. Raised
+9 September 2026 by the Lead.
+
+---
+
 ---
 
 ## Not a defect
@@ -959,6 +1033,7 @@ SQLAlchemy's default, not anybody's mistake.
 | R28 | Deleting a FOLDER row cascades to its files, runs and chunks | **Recorded 6 Sep, not a defect today.** `FILE.folder_id` and `FOLDER.parent_folder_id` are both `ON DELETE CASCADE`. Measured 6 Sep on the test database: one `delete from folder` against a non-empty folder reported `DELETE 1` and removed the folder, its file and its ingestion run, without raising. `delete_folder` guards this with a 409 on child folders and on contained files, both tested — **but the guard is in the router, not in the database**. **Reopen the moment a second code path deletes a FOLDER row** |
 | R29 | Two citations can share a marker | **Open, for the 8 Sep agenda.** `marker` names a source, so two claims from one chunk both carry `[1]`, each with its own supporting line. Measured 6 Sep on a live call: one answer, two entries under `[1]`. `check_grounding` accepts it and rejects only marker-plus-quote repeats. **The open half is rendering** — a frontend resolving `[1]` by first match silently shows the first claim's evidence for the second claim, and both quotes are genuine, so it looks wrong from neither side. AI-3 owns `schemas/rag.py`, AI-1 owns the UI |
 | R30 | A corrected re-upload becomes a second FILE row | **Open, raised 8 Sep.** `POST /files` always creates a new row and no endpoint replaces the bytes of an existing one, so a revised file arrives as a second row sharing the filename, each with its own active run. Measured 8 Sep on the development database: two rows named `Week3.pdf`, different `sha256`, **both `is_active`** — retrieval returns superseded and current text under the same name. **Neither R5 nor R5b covers it**: R5 is runs of one file, R5b's trigger is a `MODEL_TYPE` change and both runs here use the same model. `ix_ingestion_run_one_active` is partial on `file_id`, and these are two `file_id` values. A UNIQUE on `(folder_id, filename)` does not help — retrieval scope is a course, not a folder. **Proposed: `PUT /files/{file_id}/content`**, reusing the existing deactivate-then-activate path — and updating `uploaded_at`, since the list is ordered by it and a replaced file would otherwise not move. R27 removes the fallback: there is no delete endpoint, so the old version cannot be removed either. AI-2 owns the file router |
+| R31 | Uploaded files live in the container's writable layer | **Open, raised 9 Sep.** `docker-compose.yml` gives `db` a named volume and `api` none, while `STORAGE_DIR` resolves to `/app/storage` inside the image — so every uploaded blob sits in the writable layer Docker deletes with the container. The FILE rows are in the `db` volume and survive, so after a redeploy the browser lists every file and each resolves to a path that is gone. **Nothing raises at redeploy time**; it surfaces later, one read at a time. Measured 9 Sep on Docker 29.4.0-ce: same create/write/destroy/recreate cycle, `No such file or directory` without a volume and the file intact with one. **Opposite of R27** — R27 is bytes outliving their row, R31 is rows outliving their bytes; both are `storage_key` naming an object nothing owns. **Trigger: the first `docker compose down && up` on a host holding real uploads** (the r45 OCI instance). Fix is one volume on `api`. Goes with whoever does the deployment |
 | R8 | `is_active` needs a partial unique index | **Done 22 Aug** (`efda7a3`) — `ix_ingestion_run_one_active` UNIQUE on `(file_id) WHERE is_active`. Verified from empty: a second active run raises `UniqueViolation`, further inactive runs are accepted |
 | R17 | `UNIQUE (user_id, code, year, sem)` | **Done 22 Aug** — declared on `Course.__table_args__` and created in the initial migration as `uq_course_user_code_year_sem`. Verified from an empty database: a duplicate raises `UniqueViolationError`, while a second semester, a second year and a second user all insert. |
 | R18 | `UNIQUE (ingestion_run_id, chunk_index)` | **Done 22 Aug** (`efda7a3`) — `uq_chunk_run_index`. Verified: a second chunk 0 in one run is rejected; chunk 0 in a re-index run is accepted |
