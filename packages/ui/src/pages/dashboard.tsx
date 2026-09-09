@@ -149,6 +149,7 @@ const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       totalPages: 32,
       uploadedAt: "2 days ago",
       size: "2.4 MB",
+      status: "ready",
       contentByPage: {
         1: "Lecture 4: Architectural Patterns & Decoupled Systems\n\nOverview:\nIn this session, we investigate event-driven systems, layered architectures, and microkernel plugins.",
         4: "Microkernel & Plugin Architecture:\n\nThe core system provides minimal functionality required for operations. Plugins extend the core with specific domain logic and custom adapters.",
@@ -162,6 +163,7 @@ const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       totalPages: 56,
       uploadedAt: "Yesterday",
       size: "6.8 MB",
+      status: "processing",
       contentByPage: {
         1: "Lecture 5: Distributed Consensus and Fault Tolerance\n\nKey Topics:\n- The CAP Theorem in modern cloud deployments\n- Leader election and log replication with Raft\n- Byzantine Fault Tolerance (BFT) fundamentals",
         12: "Raft Leader Election:\nFollowers increment their term and transition to candidate state if no heartbeat is received within the randomized election timeout window.",
@@ -176,6 +178,8 @@ const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       totalPages: 24,
       uploadedAt: "1 week ago",
       size: "1.8 MB",
+      status: "failed",
+      errorMessage: "No extractable content was found.",
       contentByPage: {
         1: "Lecture 1: SOLID Principles & Object-Oriented Design\n\nSingle Responsibility, Open-Closed, Liskov Substitution, Interface Segregation, Dependency Inversion.",
         5: "Single Responsibility Principle (SRP):\nA module or class should have one, and only one, reason to change.",
@@ -189,6 +193,7 @@ const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       totalPages: 28,
       uploadedAt: "6 days ago",
       size: "2.1 MB",
+      status: "uploaded",
       contentByPage: {
         1: "Lecture 2: Domain Modeling & UML Design\n\nRepresenting entity relationships, aggregation vs composition, and state machine transitions.",
       },

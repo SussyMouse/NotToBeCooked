@@ -1,5 +1,7 @@
-import type { MockDocumentFile } from "../../types/course"
 import { FileText } from "lucide-react"
+
+import type { MockDocumentFile } from "../../types/course"
+import { FileStatusBadge } from "./FileStatusBadge"
 
 interface FileItemProps {
   file: MockDocumentFile
@@ -219,13 +221,20 @@ export function FileItem({
             : "text-(--tx-dim,#8B98A7) group-hover:bg-(--bg-hover,#213040)/40 group-hover:text-(--tx,#DCE3EA)"
         }`}
       >
-        <span className="truncate text-xs">{file.name}</span>
-        {isOpenInTab && (
-          <span
-            className="h-1.5 w-1.5 shrink-0 rounded-full bg-(--acc,#52A8EA)"
-            title="Open in active tab"
-          />
-        )}
+        <span className="min-w-0 flex-1 truncate text-xs">
+          {file.name}
+        </span>
+
+        <span className="flex shrink-0 items-center gap-1.5">
+          <FileStatusBadge status={file.status ?? "ready"} />
+
+          {isOpenInTab && (
+            <span
+              className="h-1.5 w-1.5 rounded-full bg-(--acc,#52A8EA)"
+              title="Open in active tab"
+            />
+          )}
+        </span>
       </div>
     </button>
   )

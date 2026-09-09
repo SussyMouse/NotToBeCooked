@@ -1,3 +1,5 @@
+import type { components } from "@workspace/contracts"
+
 import type { ChatFile } from "../components/chat/Chat"
 
 export interface Milestone {
@@ -20,10 +22,14 @@ export interface MockCourse {
   target: string
   roadmap: Milestone[]
 }
+export type FileStatus =
+  components["schemas"]["FileRead"]["status"]
 
 export interface MockDocumentFile extends ChatFile {
   totalPages: number
   uploadedAt: string
   size: string
+  status?: FileStatus
+  errorMessage?: string | null
   contentByPage?: Record<number, string>
 }
