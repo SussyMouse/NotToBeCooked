@@ -20,6 +20,9 @@ interface FileExplorerProps {
   onOpenRoadmapModal: () => void
   onOpenBatchUpload: () => void
   onOpenDirectFolderUpload: (category: string) => void
+  onCreateSubfolder: (parentFolder: string) => void
+  onRenameFolder: (folderName: string) => void
+  onDeleteFolder: (folderName: string) => void
   className?: string
   onRenameFile: (fileId: string, newFileName: string) => Promise<void> | void
   onMoveFile: (
@@ -46,6 +49,9 @@ export function FileExplorer({
   onOpenRoadmapModal,
   onOpenBatchUpload,
   onOpenDirectFolderUpload,
+  onCreateSubfolder,
+  onRenameFolder,
+  onDeleteFolder,
   className = "",
 }: FileExplorerProps) {
   // Horizontal Resizing State (Matching Chat.tsx dynamic width behavior)
@@ -189,6 +195,9 @@ export function FileExplorer({
                       isCollapsed={isCollapsed}
                       onToggle={() => toggleCategory(cat)}
                       onDirectUpload={onOpenDirectFolderUpload}
+                      onCreateSubfolder={onCreateSubfolder}
+                      onRenameFolder={onRenameFolder}
+                      onDeleteFolder={onDeleteFolder}
                     >
                       {totalFilesInCat.length === 0 ? (
                         <ExplorerState

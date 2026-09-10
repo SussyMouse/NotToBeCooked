@@ -573,6 +573,18 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     setIsUploadModalOpen(true)
   }
 
+  const handleCreateSubfolder = (parentFolder: string) => {
+    showToast(`Create a subfolder inside ${parentFolder}`)
+  }
+
+  const handleRenameFolder = (folderName: string) => {
+    showToast(`Rename ${folderName}`)
+  }
+
+  const handleDeleteFolder = (folderName: string) => {
+    showToast(`Delete ${folderName}`)
+  }
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-(--bg-canvas,#161F29) font-sans text-(--tx,#DCE3EA) select-none">
       {/* Toast Notification */}
@@ -613,6 +625,9 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
               onOpenRoadmapModal={() => setIsRoadmapOpen(true)}
               onOpenBatchUpload={handleOpenBatchUpload}
               onOpenDirectFolderUpload={handleOpenDirectFolderUpload}
+              onCreateSubfolder={handleCreateSubfolder}
+              onRenameFolder={handleRenameFolder}
+              onDeleteFolder={handleDeleteFolder}
             />
           )}
 
