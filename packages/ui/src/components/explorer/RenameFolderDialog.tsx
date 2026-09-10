@@ -1,5 +1,5 @@
 import { useId, useState } from "react"
-import { FolderPen, LoaderCircle } from "lucide-react"
+import { CircleAlert, FolderPen, LoaderCircle, RefreshCw } from "lucide-react"
 
 import { Button } from "../button"
 import {
@@ -68,14 +68,18 @@ export function RenameFolderDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} aria-busy={isSubmitting}>
           <div className="flex flex-col gap-4 px-5 py-4">
             {requestError && (
               <div
                 role="alert"
-                className="rounded-sm border border-(--danger,#E0625C)/30 bg-(--danger,#E0625C)/10 px-3 py-2 text-xs text-(--danger-tx,#F0A19D)"
+                className="flex items-start gap-2 rounded-sm border border-(--danger,#E0625C)/30 bg-(--danger,#E0625C)/10 px-3 py-2 text-xs text-(--danger-tx,#F0A19D)"
               >
-                {requestError}
+                <CircleAlert
+                  aria-hidden="true"
+                  className="mt-0.5 h-4 w-4 shrink-0"
+                />
+                <span>{requestError}</span>
               </div>
             )}
 
@@ -148,6 +152,11 @@ export function RenameFolderDialog({
                 <>
                   <LoaderCircle className="animate-spin" />
                   Renaming…
+                </>
+              ) : requestError ? (
+                <>
+                  <RefreshCw />
+                  Try again
                 </>
               ) : (
                 "Rename"

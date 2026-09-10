@@ -1,5 +1,11 @@
 import { useState } from "react"
-import { AlertTriangle, Folder, LoaderCircle, Trash2 } from "lucide-react"
+import {
+  AlertTriangle,
+  Folder,
+  LoaderCircle,
+  RefreshCw,
+  Trash2,
+} from "lucide-react"
 
 import { Button } from "../button"
 import {
@@ -68,7 +74,7 @@ export function DeleteFolderDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4 px-5 py-4">
+        <div className="flex flex-col gap-4 px-5 py-4" aria-busy={isDeleting}>
           <div className="rounded-sm border border-(--line-soft,#1B2530) bg-(--bg-raise,#1C2833)/60 px-3 py-3">
             <div className="flex min-w-0 items-center gap-2">
               <Folder className="h-4 w-4 shrink-0 text-(--acc,#52A8EA)" />
@@ -86,9 +92,13 @@ export function DeleteFolderDialog({
           {requestError && (
             <div
               role="alert"
-              className="rounded-sm border border-(--danger,#E0625C)/30 bg-(--danger,#E0625C)/10 px-3 py-2 text-xs text-(--danger-tx,#F0A19D)"
+              className="flex items-start gap-2 rounded-sm border border-(--danger,#E0625C)/30 bg-(--danger,#E0625C)/10 px-3 py-2 text-xs text-(--danger-tx,#F0A19D)"
             >
-              {requestError}
+              <AlertTriangle
+                aria-hidden="true"
+                className="mt-0.5 h-4 w-4 shrink-0"
+              />
+              <span>{requestError}</span>
             </div>
           )}
 
@@ -133,6 +143,11 @@ export function DeleteFolderDialog({
                   <>
                     <LoaderCircle className="animate-spin" />
                     Deleting…
+                  </>
+                ) : requestError ? (
+                  <>
+                    <RefreshCw />
+                    Try delete again
                   </>
                 ) : (
                   <>
