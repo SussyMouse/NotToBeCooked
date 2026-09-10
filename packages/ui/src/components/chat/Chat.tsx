@@ -394,7 +394,7 @@ export const Chat: React.FC<ChatProps> = ({
                       type="button"
                       disabled={isTyping}
                       onClick={() => handleSend(q)}
-                      className="group flex cursor-pointer items-center justify-between rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2.5 py-1.5 text-left text-xs text-(--tx-dim,#8B98A7) [outline:none] transition-colors outline-none hover:border-(--acc-deep,#1D5D8A) hover:text-(--tx,#DCE3EA) focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                      className="group flex cursor-pointer items-center justify-between rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2.5 py-1.5 text-left text-xs text-(--tx-dim,#8B98A7) transition-colors hover:border-(--acc-deep,#1D5D8A) hover:text-(--tx,#DCE3EA) focus-visible:border-(--acc,#52A8EA) focus-visible:ring-2 focus-visible:ring-(--acc,#52A8EA)/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <span>{q}</span>
                       <span className="text-(--tx-faint,#5C6976) transition-colors group-hover:text-(--acc,#52A8EA)">
