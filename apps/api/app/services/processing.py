@@ -1,10 +1,11 @@
+import asyncio
 from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.vector_ops import add_chunks
-from app.schemas.chunk import Chunk
+from app.schemas.chunk import Chunk, ChunkCreate
 from app.schemas.ingestion_run import IngestionRun, IngestionRunStatus
 from app.services.embeddings import embed_text
 from app.services.ingestion import create_chunk, extract_text, ingest_document
@@ -14,6 +15,33 @@ class NoExtractableContentError(Exception):
     """Raised when a document produces no extractable chunks."""
 
 
+def _parse_and_chunk(file_path: str, file_id: UUID) -> list[ChunkCreate]:
+    """The synchronous half of ingestion, kept in one function so it costs one hop.
+
+    Docling's parse and the tokenizer behind `create_chunk` are CPU work inside C
+    extensions. Called straight from an async function they hold the event loop
+    for the whole run, and "the whole run" is not a figure of speech.
+
+    **Measured 10 September 2026**, 60 pages, on this machine (12 cores):
+
+        ingest             395 s  ->  ready, 41 chunks
+        GET /health        40 s, 40 s, 40 s   -- three attempts, none answered;
+                           40 s was the client's limit, not the server's latency
+        GET /health after  0.00 s
+
+    Nothing answered for six and a half minutes. The 1 September note recorded
+    this as `TimeoutError 30.07s`, which reads like a slow response and is not --
+    30 s was that client's timeout. It is total unavailability for the length of
+    the ingest, and `GET /ingestion-runs/{id}` is inside it, so the 202-and-poll
+    contract from CR-33 cannot be honoured while the work it describes is running.
+
+    Two hops, not three: parse, extract and chunk run back to back on the same
+    document, so splitting them buys nothing and costs two more context switches.
+    """
+    document = ingest_document(file_path)
+    return create_chunk(extract_text(document), file_id)
+
+
 async def process_file(
     file_id: UUID,
     course_id: UUID,
@@ -21,9 +49,7 @@ async def process_file(
     file_path: str,
     session: AsyncSession,
 ):
-    document = ingest_document(file_path)
-    extracted_items = extract_text(document)
-    chunk_creates = create_chunk(extracted_items, file_id)
+    chunk_creates = await asyncio.to_thread(_parse_and_chunk, file_path, file_id)
     if not chunk_creates:
         raise NoExtractableContentError("No extractable content found")
 
@@ -31,7 +57,10 @@ async def process_file(
     for chunk in chunk_creates:
         content_list.append(chunk.content)
 
-    embeddings = embed_text(content_list)  # list of embedding
+    # Same reason as _parse_and_chunk: SentenceTransformer.encode is a blocking
+    # call into torch. It is the larger half of the two -- 239 s of the 395 s
+    # above, against 125 s for the parse.
+    embeddings = await asyncio.to_thread(embed_text, content_list)
 
     database_chunks = []
     for chunk_create, embedding in zip(chunk_creates, embeddings, strict=True):
