@@ -1,5 +1,6 @@
 import { useRef, useState, type DragEvent } from "react"
 import {
+  AlertCircle,
   CheckCircle2,
   FileText,
   LoaderCircle,
@@ -19,6 +20,17 @@ import {
 } from "../dialog"
 
 type UploadStage = "initial" | "selected" | "uploading" | "complete"
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024
+const ALLOWED_EXTENSIONS = new Set(["pdf", "md", "markdown", "doc", "docx"])
+
+function fileKey(file: File): string {
+  return `${file.name}:${file.size}`
+}
+
+function fileExtension(filename: string): string {
+  return filename.split(".").pop()?.toLowerCase() ?? ""
+}
 
 interface UploadModalProps {
   isOpen: boolean
@@ -49,6 +61,8 @@ export function UploadModal({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [stage, setStage] = useState<UploadStage>("initial")
   const [isDragging, setIsDragging] = useState(false)
+  const [validationMessages, setValidationMessages] = useState<string[]>([])
+  const [requestError, setRequestError] = useState<string | null>(null)
 
   const selectedCategory =
     categoryOverride ?? initialCategory ?? categories[0] ?? "Lecture Decks"
@@ -63,16 +77,36 @@ export function UploadModal({
   }
 
   const addFiles = (files: File[]) => {
-    if (files.length === 0) return
+    if (files.length === 0 || stage === "uploading") return
 
-    setSelectedFiles((current) => {
-      const known = new Set(current.map((file) => `${file.name}:${file.size}`))
-      return [
-        ...current,
-        ...files.filter((file) => !known.has(`${file.name}:${file.size}`)),
-      ]
+    const messages: string[] = []
+    const known = new Set(selectedFiles.map(fileKey))
+    const accepted: File[] = []
+
+    files.forEach((file) => {
+      if (!ALLOWED_EXTENSIONS.has(fileExtension(file.name))) {
+        messages.push(`${file.name}: unsupported file type.`)
+        return
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        messages.push(`${file.name}: exceeds the 50 MB limit.`)
+        return
+      }
+      if (known.has(fileKey(file))) {
+        messages.push(`${file.name}: already selected.`)
+        return
+      }
+
+      known.add(fileKey(file))
+      accepted.push(file)
     })
-    setStage("selected")
+
+    if (accepted.length > 0) {
+      setSelectedFiles((current) => [...current, ...accepted])
+      setStage("selected")
+    }
+    setValidationMessages(messages)
+    setRequestError(null)
   }
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
@@ -91,13 +125,23 @@ export function UploadModal({
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0 || stage === "uploading") return
+    setRequestError(null)
     setStage("uploading")
 
-    await new Promise((resolve) => setTimeout(resolve, 700))
-    selectedFiles.forEach((file) =>
-      onUploadSuccess(selectedCategory, file.name)
-    )
-    setStage("complete")
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 700))
+      await Promise.all(
+        selectedFiles.map((file) =>
+          Promise.resolve(onUploadSuccess(selectedCategory, file.name))
+        )
+      )
+      setStage("complete")
+    } catch {
+      setRequestError(
+        "Couldn’t upload these files. Check your connection and try again."
+      )
+      setStage("selected")
+    }
   }
 
   const totalSize = selectedFiles.reduce((sum, file) => sum + file.size, 0)
@@ -148,6 +192,24 @@ export function UploadModal({
             </label>
           </div>
 
+          {(validationMessages.length > 0 || requestError) && (
+            <div
+              role="alert"
+              className="rounded-sm border border-(--danger,#E0625C)/30 bg-(--danger,#E0625C)/10 px-3 py-2 text-xs text-(--danger-tx,#F0A19D)"
+            >
+              {requestError && <p className="font-semibold">{requestError}</p>}
+              {validationMessages.length > 0 && (
+                <ul className="space-y-1">
+                  {validationMessages.map((message) => (
+                    <li key={message} className="flex gap-2">
+                      <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      <span className="min-w-0 break-words">{message}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
           {stage === "complete" ? (
             <div
               role="status"
