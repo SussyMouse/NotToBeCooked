@@ -124,6 +124,17 @@ export const Chat: React.FC<ChatProps> = ({
     setIsResizing(true)
   }
 
+  const handleResizeKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = e.shiftKey ? 40 : 16
+
+    if (e.key === "ArrowLeft") {
+      e.preventDefault()
+      setWidth((currentWidth) => Math.min(800, currentWidth + step))
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault()
+      setWidth((currentWidth) => Math.max(280, currentWidth - step))
+    }
+  }
   useEffect(() => {
     if (!isResizing) return
 
@@ -266,11 +277,19 @@ export const Chat: React.FC<ChatProps> = ({
     <div className="relative flex h-full min-h-0 flex-none">
       {/* Horizontal Drag Resize Handle */}
       <div
+        role="separator"
+        aria-label="Resize Chat panel"
+        aria-orientation="vertical"
+        aria-valuemin={280}
+        aria-valuemax={800}
+        aria-valuenow={width}
+        tabIndex={0}
         onMouseDown={handleMouseDown}
-        className={`relative z-10 w-1.5 flex-none cursor-col-resize transition-colors hover:bg-(--acc,#52A8EA) ${
+        onKeyDown={handleResizeKeyDown}
+        className={`relative z-10 w-1.5 flex-none cursor-col-resize transition-colors hover:bg-(--acc,#52A8EA) focus-visible:bg-(--acc,#52A8EA) focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-(--acc,#52A8EA) ${
           isResizing ? "bg-(--acc,#52A8EA)" : "bg-(--line,#25313E)"
         }`}
-        title="Drag horizontally to resize Chat panel"
+        title="Drag horizontally or use Left and Right arrow keys to resize Chat panel"
       />
 
       {/* Main Chat Panel */}
@@ -280,7 +299,7 @@ export const Chat: React.FC<ChatProps> = ({
       >
         {/* Top Header */}
         <div className="flex h-10 flex-none items-center justify-between gap-2 border-b border-(--line-soft,#1B2530) bg-(--bg-bar,#101821)/50 px-3">
-          <span className="min-w-0 flex-1 truncate font-medium text-xs text-(--tx,#DCE3EA)">
+          <span className="min-w-0 flex-1 truncate text-xs font-medium text-(--tx,#DCE3EA)">
             {headerTitle}
           </span>
 
