@@ -210,7 +210,7 @@ def main() -> None:
             s, e = ws.cell(row, 5).value, ws.cell(row, 6).value
             if not s or not e or ws.cell(row, 4).value == "CUT":
                 continue
-            if ws.cell(row, 8).value is not True and parse_day(e) < today:
+            if ws.cell(row, 8).value not in (True, 1) and parse_day(e) < today:
                 print(f"    row {row:>3}  {str(ws.cell(row, 2).value):<20} "
                       f"{(today - parse_day(e)).days:>3}d  {str(ws.cell(row, 3).value)[:56]}")
 
