@@ -377,6 +377,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   const [fileStatusOverrides, setFileStatusOverrides] = useState<
     Record<string, FileStatus>
   >({})
+  const [archivedFileIds, setArchivedFileIds] = useState<string[]>([])
   const [uploadedFilesByCourse, setUploadedFilesByCourse] = useState<
     Record<string, MockDocumentFile[]>
   >({})
@@ -393,13 +394,16 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     return [
       ...Object.values(MOCK_FILES_BY_COURSE).flat(),
       ...Object.values(uploadedFilesByCourse).flat(),
-    ].map((file) => ({
-      ...file,
-      name: fileNameOverrides[file.id] ?? file.name,
-      category: fileFolderOverrides[file.id] ?? file.category,
-      status: fileStatusOverrides[file.id] ?? file.status,
-    }))
+    ]
+      .filter((file) => !archivedFileIds.includes(file.id))
+      .map((file) => ({
+        ...file,
+        name: fileNameOverrides[file.id] ?? file.name,
+        category: fileFolderOverrides[file.id] ?? file.category,
+        status: fileStatusOverrides[file.id] ?? file.status,
+      }))
   }, [
+    archivedFileIds,
     fileFolderOverrides,
     fileNameOverrides,
     fileStatusOverrides,
@@ -503,13 +507,16 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
       ...(uploadedFilesByCourse[currentCourse.id] ?? []),
     ]
 
-    return files.map((file) => ({
-      ...file,
-      name: fileNameOverrides[file.id] ?? file.name,
-      category: fileFolderOverrides[file.id] ?? file.category,
-      status: fileStatusOverrides[file.id] ?? file.status,
-    }))
+    return files
+      .filter((file) => !archivedFileIds.includes(file.id))
+      .map((file) => ({
+        ...file,
+        name: fileNameOverrides[file.id] ?? file.name,
+        category: fileFolderOverrides[file.id] ?? file.category,
+        status: fileStatusOverrides[file.id] ?? file.status,
+      }))
   }, [
+    archivedFileIds,
     currentCourse,
     fileFolderOverrides,
     fileNameOverrides,
@@ -517,6 +524,30 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     uploadedFilesByCourse,
   ])
 
+  const archivedCourseFiles = useMemo(() => {
+    const files = [
+      ...(MOCK_FILES_BY_COURSE[currentCourse.id] ??
+        MOCK_FILES_BY_COURSE[currentCourse.code] ??
+        []),
+      ...(uploadedFilesByCourse[currentCourse.id] ?? []),
+    ]
+
+    return files
+      .filter((file) => archivedFileIds.includes(file.id))
+      .map((file) => ({
+        ...file,
+        name: fileNameOverrides[file.id] ?? file.name,
+        category: fileFolderOverrides[file.id] ?? file.category,
+        status: fileStatusOverrides[file.id] ?? file.status,
+      }))
+  }, [
+    archivedFileIds,
+    currentCourse,
+    fileFolderOverrides,
+    fileNameOverrides,
+    fileStatusOverrides,
+    uploadedFilesByCourse,
+  ])
   // Roadmap calculations (from workspace.html)
   const courseRoadmap = useMemo(() => {
     const base = currentCourse.roadmap
@@ -591,7 +622,26 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
 
     showToast("Indexing restarted in the background")
   }
+  const handleArchiveFile = (fileId: string) => {
+    const file = courseFiles.find((candidate) => candidate.id === fileId)
+    if (!file) throw new Error("File not found")
 
+    setArchivedFileIds((current) =>
+      current.includes(fileId) ? current : [...current, fileId]
+    )
+    closeTab(activeCourseId, fileId)
+    showToast(`Moved ${file.name} to Archive`)
+  }
+
+  const handleRestoreFile = (fileId: string) => {
+    const file = archivedCourseFiles.find(
+      (candidate) => candidate.id === fileId
+    )
+    if (!file) throw new Error("Archived file not found")
+
+    setArchivedFileIds((current) => current.filter((id) => id !== fileId))
+    showToast(`Restored ${file.name} to ${file.category ?? "its folder"}`)
+  }
   // Handlers for document & chat interaction
   const handleOpenFile = (file: MockDocumentFile) => {
     openTab(activeCourseId, {
@@ -789,6 +839,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
               categories={courseCategories}
               folderParents={folderParents}
               files={courseFiles}
+              archivedFiles={archivedCourseFiles}
               activeFileId={activeFileId}
               courseWeek={currentCourse.week}
               courseWeeks={currentCourse.weeks}
@@ -798,6 +849,8 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
               onRenameFile={handleRenameFile}
               onMoveFile={handleMoveFile}
               onRetryIndexing={handleRetryIndexing}
+              onArchiveFile={handleArchiveFile}
+              onRestoreFile={handleRestoreFile}
               onOpenRoadmapModal={() => setIsRoadmapOpen(true)}
               onOpenBatchUpload={handleOpenBatchUpload}
               onOpenDirectFolderUpload={handleOpenDirectFolderUpload}

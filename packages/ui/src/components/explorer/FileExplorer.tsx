@@ -2,16 +2,18 @@ import React, { useState, useMemo, useEffect } from "react"
 import type { MockDocumentFile } from "../../types/course"
 import { FolderItem } from "./FolderItem"
 import { FileItem } from "./FileItem"
-import { Folder, Search, X } from "lucide-react"
+import { Archive, Folder, Search, X } from "lucide-react"
 import { RoadmapWidget } from "../roadmap/RoadmapWidget"
 import { UploadDock } from "../upload/UploadDock"
 import { ExplorerState } from "./ExplorerState"
+import { ArchiveFilesDialog } from "./ArchiveFilesDialog"
 
 export type ExplorerStatus = "ready" | "loading" | "error"
 interface FileExplorerProps {
   categories: string[]
   folderParents: Record<string, string | null>
   files: MockDocumentFile[]
+  archivedFiles: MockDocumentFile[]
   activeFileId: string | null
   courseWeek: number
   courseWeeks: number
@@ -37,6 +39,8 @@ interface FileExplorerProps {
     destinationFolder: string
   ) => Promise<void> | void
   onRetryIndexing: (fileId: string) => Promise<void> | void
+  onArchiveFile: (fileId: string) => Promise<void> | void
+  onRestoreFile: (fileId: string) => Promise<void> | void
   explorerStatus?: ExplorerStatus
   onRetryLoad?: () => void
 }
@@ -45,6 +49,7 @@ export function FileExplorer({
   categories,
   folderParents,
   files,
+  archivedFiles,
   explorerStatus = "ready",
   onRetryLoad,
   activeFileId,
@@ -56,6 +61,8 @@ export function FileExplorer({
   onRenameFile,
   onMoveFile,
   onRetryIndexing,
+  onArchiveFile,
+  onRestoreFile,
   onOpenRoadmapModal,
   onOpenBatchUpload,
   onOpenDirectFolderUpload,
@@ -69,6 +76,7 @@ export function FileExplorer({
   const [isResizing, setIsResizing] = useState(false)
 
   const [searchQuery, setSearchQuery] = useState("")
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false)
   const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>(
     {}
   )
@@ -184,6 +192,7 @@ export function FileExplorer({
                 onRenameFile={onRenameFile}
                 onMoveFile={onMoveFile}
                 onRetryIndexing={onRetryIndexing}
+                onArchiveFile={onArchiveFile}
               />
             ))}
             {childFolders.map(renderFolder)}
@@ -206,9 +215,25 @@ export function FileExplorer({
               <Folder className="h-3.5 w-3.5 text-(--acc,#52A8EA)" />
               Explorer
             </span>
-            <span className="font-mono text-xs text-(--tx-faint,#5C6976)">
-              {files.length} files
-            </span>
+            <div className="flex items-center gap-1">
+              <span className="font-mono text-xs text-(--tx-faint,#5C6976)">
+                {files.length} files
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsArchiveOpen(true)}
+                aria-label={`Open Archive with ${archivedFiles.length} files`}
+                title="Archived files"
+                className="relative flex h-7 w-7 cursor-pointer items-center justify-center rounded-sm text-(--tx-faint,#5C6976) hover:bg-(--bg-hover,#213040) hover:text-amber-300 focus-visible:ring-2 focus-visible:ring-(--acc,#52A8EA) focus-visible:outline-none"
+              >
+                <Archive className="h-3.5 w-3.5" />
+                {archivedFiles.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-amber-400 px-0.5 font-mono text-[8px] font-bold text-black">
+                    {archivedFiles.length}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Minimalist Search Box */}
@@ -278,6 +303,13 @@ export function FileExplorer({
           <UploadDock onOpenBatchUpload={onOpenBatchUpload} />
         </div>
       </aside>
+
+      <ArchiveFilesDialog
+        open={isArchiveOpen}
+        files={archivedFiles}
+        onOpenChange={setIsArchiveOpen}
+        onRestore={onRestoreFile}
+      />
 
       {/* Horizontal Drag Resize Handle on Right Edge */}
       <div
