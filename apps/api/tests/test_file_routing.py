@@ -471,3 +471,151 @@ def test_update_file_returns_404_when_destination_folder_not_found():
     assert fake_session.exec.await_count == 2
     fake_session.commit.assert_not_awaited()
     fake_session.refresh.assert_not_awaited()
+
+
+def test_get_file_content_returns_file_bytes(tmp_path, monkeypatch):
+    test_app = FastAPI()
+    test_app.include_router(files_router, prefix="/files")
+
+    user_id = uuid4()
+    course_id = uuid4()
+    folder_id = uuid4()
+    file_id = uuid4()
+
+    expected_content = b"%PDF-1.4\nfake pdf content"
+    stored_file = tmp_path / "stored-file.pdf"
+    stored_file.write_bytes(expected_content)
+
+    fake_file = FileRow(
+        id=file_id,
+        course_id=course_id,
+        folder_id=folder_id,
+        filename="lecture-1.pdf",
+        storage_key=f"{user_id}/{file_id}.pdf",
+        sha256="abc123",
+        mime_type="application/pdf",
+        size_bytes=len(expected_content),
+        page_count=1,
+        status=FileStatus.READY,
+        error_message=None,
+        uploaded_at=datetime.now(UTC),
+        indexed_at=datetime.now(UTC),
+    )
+
+    query_result = Mock()
+    query_result.first.return_value = fake_file
+
+    fake_session = AsyncMock()
+    fake_session.exec.return_value = query_result
+
+    async def override_session():
+        return fake_session
+
+    async def override_current_user():
+        return {"sub": str(user_id)}
+
+    test_app.dependency_overrides[get_session] = override_session
+    test_app.dependency_overrides[get_current_user] = override_current_user
+
+    fake_resolve = Mock(return_value=stored_file)
+    monkeypatch.setattr("app.routers.files.resolve", fake_resolve)
+
+    client = TestClient(test_app)
+    response = client.get(f"/files/{file_id}/content")
+
+    assert response.status_code == 200
+    assert response.content == expected_content
+    assert response.headers["content-type"] == "application/pdf"
+    assert "inline" in response.headers["content-disposition"]
+    assert "lecture-1.pdf" in response.headers["content-disposition"]
+    fake_session.exec.assert_awaited_once()
+    fake_resolve.assert_called_once_with(fake_file.storage_key)
+
+
+def test_get_file_content_returns_404_when_file_not_found(monkeypatch):
+    test_app = FastAPI()
+    test_app.include_router(files_router, prefix="/files")
+
+    user_id = uuid4()
+    file_id = uuid4()
+
+    query_result = Mock()
+    query_result.first.return_value = None
+
+    fake_session = AsyncMock()
+    fake_session.exec.return_value = query_result
+
+    fake_resolve = Mock()
+    monkeypatch.setattr("app.routers.files.resolve", fake_resolve)
+
+    async def override_session():
+        return fake_session
+
+    async def override_current_user():
+        return {"sub": str(user_id)}
+
+    test_app.dependency_overrides[get_session] = override_session
+    test_app.dependency_overrides[get_current_user] = override_current_user
+
+    client = TestClient(test_app)
+    response = client.get(f"/files/{file_id}/content")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "File not found"}
+    fake_resolve.assert_not_called()
+
+
+def test_get_file_content_returns_404_when_stored_file_is_missing(
+    tmp_path,
+    monkeypatch,
+):
+    test_app = FastAPI()
+    test_app.include_router(files_router, prefix="/files")
+
+    user_id = uuid4()
+    course_id = uuid4()
+    folder_id = uuid4()
+    file_id = uuid4()
+
+    fake_file = FileRow(
+        id=file_id,
+        course_id=course_id,
+        folder_id=folder_id,
+        filename="missing.pdf",
+        storage_key=f"{user_id}/{file_id}.pdf",
+        sha256="abc123",
+        mime_type="application/pdf",
+        size_bytes=1024,
+        page_count=1,
+        status=FileStatus.READY,
+        error_message=None,
+        uploaded_at=datetime.now(UTC),
+        indexed_at=datetime.now(UTC),
+    )
+
+    query_result = Mock()
+    query_result.first.return_value = fake_file
+
+    fake_session = AsyncMock()
+    fake_session.exec.return_value = query_result
+
+    missing_file = tmp_path / "missing.pdf"
+    monkeypatch.setattr(
+        "app.routers.files.resolve",
+        lambda storage_key: missing_file,
+    )
+
+    async def override_session():
+        return fake_session
+
+    async def override_current_user():
+        return {"sub": str(user_id)}
+
+    test_app.dependency_overrides[get_session] = override_session
+    test_app.dependency_overrides[get_current_user] = override_current_user
+
+    client = TestClient(test_app)
+    response = client.get(f"/files/{file_id}/content")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "File content not found"}
