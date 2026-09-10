@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from "react"
 import type { MockDocumentFile } from "../../types/course"
 import { FolderItem } from "./FolderItem"
 import { FileItem } from "./FileItem"
-import { Folder, Search } from "lucide-react"
+import { Folder, Search, X } from "lucide-react"
 import { RoadmapWidget } from "../roadmap/RoadmapWidget"
 import { UploadDock } from "../upload/UploadDock"
 import { ExplorerState } from "./ExplorerState"
@@ -212,7 +212,7 @@ export function FileExplorer({
           </div>
 
           {/* Minimalist Search Box */}
-          <div className="flex items-center gap-2 rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833)/80 px-2.5 py-1.5 text-xs">
+          <div className="flex items-center gap-2 rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833)/80 px-2.5 py-1.5 text-xs focus-within:border-(--acc,#52A8EA) focus-within:ring-1 focus-within:ring-(--acc,#52A8EA)/40">
             <Search className="h-3.5 w-3.5 text-(--tx-faint,#5C6976)" />
             <input
               type="text"
@@ -223,6 +223,17 @@ export function FileExplorer({
               aria-label="Search folders and files"
               className="w-full bg-transparent text-xs text-(--tx,#DCE3EA) outline-none placeholder:text-(--tx-faint,#5C6976) disabled:cursor-not-allowed disabled:opacity-50"
             />
+            {searchQuery && explorerStatus === "ready" && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                aria-label="Clear search"
+                title="Clear search"
+                className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-sm text-(--tx-faint,#5C6976) hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA) focus-visible:ring-2 focus-visible:ring-(--acc,#52A8EA) focus-visible:outline-none"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
