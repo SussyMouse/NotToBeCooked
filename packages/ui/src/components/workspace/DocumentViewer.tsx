@@ -54,6 +54,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = React.memo(
             <div className="flex items-center gap-1.5 rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2.5 py-1 text-xs">
               <button
                 type="button"
+                aria-label="Previous page"
                 disabled={page <= 1}
                 onClick={() => onPageChange(Math.max(1, page - 1))}
                 className="cursor-pointer text-(--tx-dim,#8B98A7) hover:text-white disabled:opacity-40"
@@ -65,6 +66,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = React.memo(
               </span>
               <button
                 type="button"
+                aria-label="Next page"
                 disabled={page >= document.totalPages}
                 onClick={() =>
                   onPageChange(Math.min(document.totalPages, page + 1))
@@ -78,6 +80,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = React.memo(
             <div className="flex items-center gap-1.5 rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2.5 py-1 text-xs">
               <button
                 type="button"
+                aria-label="Zoom out"
                 onClick={() => onZoomChange(Math.max(50, zoomLevel - 10))}
                 className="cursor-pointer text-(--tx-dim,#8B98A7) hover:text-white"
               >
@@ -86,6 +89,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = React.memo(
               <span className="px-1 font-mono text-xs">{zoomLevel}%</span>
               <button
                 type="button"
+                aria-label="Zoom in"
                 onClick={() => onZoomChange(Math.min(150, zoomLevel + 10))}
                 className="cursor-pointer text-(--tx-dim,#8B98A7) hover:text-white"
               >
@@ -110,6 +114,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = React.memo(
               <button
                 type="button"
                 onClick={onDismissCitation}
+                aria-label="Dismiss citation evidence"
                 className="cursor-pointer text-xs hover:text-white"
               >
                 Dismiss ✕

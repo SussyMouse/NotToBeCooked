@@ -313,11 +313,26 @@ export function FileExplorer({
 
       {/* Horizontal Drag Resize Handle on Right Edge */}
       <div
+        role="separator"
+        tabIndex={0}
+        aria-label="Resize File Explorer"
+        aria-orientation="vertical"
+        aria-valuemin={220}
+        aria-valuemax={600}
+        aria-valuenow={width}
         onMouseDown={handleMouseDown}
-        className={`relative z-10 w-1.5 flex-none cursor-col-resize transition-colors hover:bg-(--acc,#52A8EA) ${
+        onKeyDown={(event) => {
+          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return
+          event.preventDefault()
+          const direction = event.key === "ArrowLeft" ? -20 : 20
+          setWidth((current) =>
+            Math.min(600, Math.max(220, current + direction))
+          )
+        }}
+        className={`relative z-10 w-1.5 flex-none cursor-col-resize transition-colors hover:bg-(--acc,#52A8EA) focus-visible:bg-(--acc,#52A8EA) focus-visible:outline-none ${
           isResizing ? "bg-(--acc,#52A8EA)" : "bg-(--line,#25313E)"
         }`}
-        title="Drag horizontally to resize File Explorer"
+        title="Drag or use arrow keys to resize File Explorer"
       />
     </div>
   )
