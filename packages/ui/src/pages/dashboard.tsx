@@ -377,6 +377,9 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   const [fileStatusOverrides, setFileStatusOverrides] = useState<
     Record<string, FileStatus>
   >({})
+  const [uploadedFilesByCourse, setUploadedFilesByCourse] = useState<
+    Record<string, MockDocumentFile[]>
+  >({})
   const [customFoldersByCourse, setCustomFoldersByCourse] = useState<
     Record<string, MockFolder[]>
   >({})
@@ -387,15 +390,21 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   >({})
   // Repository of all files across all courses
   const allFiles = useMemo(() => {
-    return Object.values(MOCK_FILES_BY_COURSE)
-      .flat()
-      .map((file) => ({
-        ...file,
-        name: fileNameOverrides[file.id] ?? file.name,
-        category: fileFolderOverrides[file.id] ?? file.category,
-        status: fileStatusOverrides[file.id] ?? file.status,
-      }))
-  }, [fileFolderOverrides, fileNameOverrides, fileStatusOverrides])
+    return [
+      ...Object.values(MOCK_FILES_BY_COURSE).flat(),
+      ...Object.values(uploadedFilesByCourse).flat(),
+    ].map((file) => ({
+      ...file,
+      name: fileNameOverrides[file.id] ?? file.name,
+      category: fileFolderOverrides[file.id] ?? file.category,
+      status: fileStatusOverrides[file.id] ?? file.status,
+    }))
+  }, [
+    fileFolderOverrides,
+    fileNameOverrides,
+    fileStatusOverrides,
+    uploadedFilesByCourse,
+  ])
 
   // Chat Session Hook
   const {
@@ -487,10 +496,12 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   )
 
   const courseFiles = useMemo(() => {
-    const files =
-      MOCK_FILES_BY_COURSE[currentCourse.id] ||
-      MOCK_FILES_BY_COURSE[currentCourse.code] ||
-      []
+    const files = [
+      ...(MOCK_FILES_BY_COURSE[currentCourse.id] ??
+        MOCK_FILES_BY_COURSE[currentCourse.code] ??
+        []),
+      ...(uploadedFilesByCourse[currentCourse.id] ?? []),
+    ]
 
     return files.map((file) => ({
       ...file,
@@ -503,6 +514,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     fileFolderOverrides,
     fileNameOverrides,
     fileStatusOverrides,
+    uploadedFilesByCourse,
   ])
 
   // Roadmap calculations (from workspace.html)
@@ -942,8 +954,27 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
         initialCategory={uploadCategory}
         isDirectFolderUpload={isDirectFolderUpload}
         onClose={() => setIsUploadModalOpen(false)}
-        onUploadSuccess={(category) => {
-          showToast(`Uploaded document to ${category}.`)
+        onUploadSuccess={(category, filename) => {
+          const uploadedFileName = filename ?? "Uploaded document.pdf"
+          setUploadedFilesByCourse((current) => ({
+            ...current,
+            [currentCourse.id]: [
+              ...(current[currentCourse.id] ?? []),
+              {
+                id: crypto.randomUUID(),
+                name: uploadedFileName,
+                category,
+                totalPages: 1,
+                uploadedAt: "Just now",
+                size: "Pending",
+                status: "uploaded",
+                contentByPage: {
+                  1: `${uploadedFileName} is waiting to be indexed.`,
+                },
+              },
+            ],
+          }))
+          showToast(`Uploaded ${uploadedFileName} to ${category}.`)
         }}
       />
     </div>
