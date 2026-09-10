@@ -22,8 +22,7 @@ export interface MockCourse {
   target: string
   roadmap: Milestone[]
 }
-export type FileStatus =
-  components["schemas"]["FileRead"]["status"]
+export type FileStatus = components["schemas"]["FileRead"]["status"]
 
 export interface MockDocumentFile extends ChatFile {
   totalPages: number
@@ -31,5 +30,7 @@ export interface MockDocumentFile extends ChatFile {
   size: string
   status?: FileStatus
   errorMessage?: string | null
+  previewState?: "ready" | "loading" | "error" | "unsupported"
+  previewError?: string | null
   contentByPage?: Record<number, string>
 }
