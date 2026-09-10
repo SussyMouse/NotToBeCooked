@@ -14,7 +14,7 @@ import { UploadModal } from "../components/upload/UploadModal"
 import { TabBar } from "../components/tabs"
 import { DocumentViewer } from "../components/workspace/DocumentViewer"
 import { Maximize2, Minimize2, FileText } from "lucide-react"
-import type { MockCourse, MockDocumentFile } from "../types/course"
+import type { FileStatus, MockCourse, MockDocumentFile } from "../types/course"
 
 export interface DashboardPageProps {
   platform?: "web" | "tauri"
@@ -374,6 +374,9 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   const [fileFolderOverrides, setFileFolderOverrides] = useState<
     Record<string, string>
   >({})
+  const [fileStatusOverrides, setFileStatusOverrides] = useState<
+    Record<string, FileStatus>
+  >({})
   const [customFoldersByCourse, setCustomFoldersByCourse] = useState<
     Record<string, MockFolder[]>
   >({})
@@ -390,8 +393,9 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
         ...file,
         name: fileNameOverrides[file.id] ?? file.name,
         category: fileFolderOverrides[file.id] ?? file.category,
+        status: fileStatusOverrides[file.id] ?? file.status,
       }))
-  }, [fileFolderOverrides, fileNameOverrides])
+  }, [fileFolderOverrides, fileNameOverrides, fileStatusOverrides])
 
   // Chat Session Hook
   const {
@@ -492,8 +496,14 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
       ...file,
       name: fileNameOverrides[file.id] ?? file.name,
       category: fileFolderOverrides[file.id] ?? file.category,
+      status: fileStatusOverrides[file.id] ?? file.status,
     }))
-  }, [currentCourse, fileFolderOverrides, fileNameOverrides])
+  }, [
+    currentCourse,
+    fileFolderOverrides,
+    fileNameOverrides,
+    fileStatusOverrides,
+  ])
 
   // Roadmap calculations (from workspace.html)
   const courseRoadmap = useMemo(() => {
@@ -559,6 +569,15 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     }))
 
     showToast(`Moved file to ${destinationFolder}`)
+  }
+
+  const handleRetryIndexing = (fileId: string) => {
+    setFileStatusOverrides((current) => ({
+      ...current,
+      [fileId]: "processing",
+    }))
+
+    showToast("Indexing restarted in the background")
   }
 
   // Handlers for document & chat interaction
@@ -766,6 +785,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
               onOpenFile={handleOpenFile}
               onRenameFile={handleRenameFile}
               onMoveFile={handleMoveFile}
+              onRetryIndexing={handleRetryIndexing}
               onOpenRoadmapModal={() => setIsRoadmapOpen(true)}
               onOpenBatchUpload={handleOpenBatchUpload}
               onOpenDirectFolderUpload={handleOpenDirectFolderUpload}

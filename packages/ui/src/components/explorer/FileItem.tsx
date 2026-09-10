@@ -1,5 +1,11 @@
 import { useState } from "react"
-import { FilePenLine, FileText, FolderInput, MoreVertical } from "lucide-react"
+import {
+  AlertCircle,
+  FilePenLine,
+  FileText,
+  FolderInput,
+  MoreVertical,
+} from "lucide-react"
 
 import type { MockDocumentFile } from "../../types/course"
 import {
@@ -9,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "../dropdown-menu"
 import { FileStatusBadge } from "./FileStatusBadge"
+import { IndexingFailureDialog } from "./IndexingFailureDialog"
 import { RenameFileDialog } from "./RenameFileDialog"
 import { MoveFileDialog } from "./MoveFileDialog"
 
@@ -22,6 +29,7 @@ interface FileItemProps {
     fileId: string,
     destinationFolder: string
   ) => Promise<void> | void
+  onRetryIndexing: (fileId: string) => Promise<void> | void
 }
 
 export function getFileExtension(filename: string): string {
@@ -221,9 +229,11 @@ export function FileItem({
   onOpenFile,
   onRenameFile,
   onMoveFile,
+  onRetryIndexing,
 }: FileItemProps) {
   const [isRenameOpen, setIsRenameOpen] = useState(false)
   const [isMoveOpen, setIsMoveOpen] = useState(false)
+  const [isFailureOpen, setIsFailureOpen] = useState(false)
 
   return (
     <>
@@ -276,6 +286,16 @@ export function FileItem({
               <FolderInput className="h-4 w-4" />
               Move
             </DropdownMenuItem>
+
+            {file.status === "failed" && (
+              <DropdownMenuItem
+                onClick={() => setIsFailureOpen(true)}
+                className="cursor-pointer text-xs text-(--danger-tx,#F0A19D)"
+              >
+                <AlertCircle className="h-4 w-4" />
+                View failure details
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -296,6 +316,16 @@ export function FileItem({
           folders={folders}
           onOpenChange={setIsMoveOpen}
           onMove={(destinationFolder) => onMoveFile(file.id, destinationFolder)}
+        />
+      )}
+      {isFailureOpen && (
+        <IndexingFailureDialog
+          open
+          fileName={file.name}
+          fileSize={file.size}
+          errorMessage={file.errorMessage}
+          onOpenChange={setIsFailureOpen}
+          onRetry={() => onRetryIndexing(file.id)}
         />
       )}
     </>
