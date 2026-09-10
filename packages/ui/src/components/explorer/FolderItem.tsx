@@ -18,10 +18,13 @@ import {
   DropdownMenuTrigger,
 } from "../dropdown-menu"
 import { CreateFolderDialog } from "./CreateFolderDialog"
+import { DeleteFolderDialog } from "./DeleteFolderDialog"
+import { RenameFolderDialog } from "./RenameFolderDialog"
 
 interface FolderItemProps {
   category: string
   fileCount: number
+  childFolderCount: number
   isCollapsed: boolean
   onToggle: () => void
   onDirectUpload: (category: string) => void
@@ -29,14 +32,18 @@ interface FolderItemProps {
     parentFolder: string,
     folderName: string
   ) => Promise<void> | void
-  onRenameFolder: (category: string) => void
-  onDeleteFolder: (category: string) => void
+  onRenameFolder: (
+    folderName: string,
+    newFolderName: string
+  ) => Promise<void> | void
+  onDeleteFolder: (category: string) => Promise<void> | void
   children: ReactNode
 }
 
 export function FolderItem({
   category,
   fileCount,
+  childFolderCount,
   isCollapsed,
   onToggle,
   onDirectUpload,
@@ -46,6 +53,8 @@ export function FolderItem({
   children,
 }: FolderItemProps) {
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false)
+  const [isDeleteFolderOpen, setIsDeleteFolderOpen] = useState(false)
+  const [isRenameFolderOpen, setIsRenameFolderOpen] = useState(false)
 
   return (
     <>
@@ -111,7 +120,7 @@ export function FolderItem({
               <DropdownMenuSeparator />
 
               <DropdownMenuItem
-                onClick={() => onRenameFolder(category)}
+                onClick={() => setIsRenameFolderOpen(true)}
                 className="cursor-pointer text-xs"
               >
                 <FolderPen className="h-4 w-4" />
@@ -119,7 +128,7 @@ export function FolderItem({
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onClick={() => onDeleteFolder(category)}
+                onClick={() => setIsDeleteFolderOpen(true)}
                 className="cursor-pointer text-xs text-(--danger-tx,#F0A19D)"
               >
                 <Trash2 className="h-4 w-4" />
@@ -142,6 +151,26 @@ export function FolderItem({
           parentFolder={category}
           onOpenChange={setIsCreateFolderOpen}
           onCreate={(folderName) => onCreateSubfolder(category, folderName)}
+        />
+      )}
+
+      {isRenameFolderOpen && (
+        <RenameFolderDialog
+          open
+          folderName={category}
+          onOpenChange={setIsRenameFolderOpen}
+          onRename={(newFolderName) => onRenameFolder(category, newFolderName)}
+        />
+      )}
+
+      {isDeleteFolderOpen && (
+        <DeleteFolderDialog
+          open
+          folderName={category}
+          fileCount={fileCount}
+          childFolderCount={childFolderCount}
+          onOpenChange={setIsDeleteFolderOpen}
+          onDelete={() => onDeleteFolder(category)}
         />
       )}
     </>

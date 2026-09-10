@@ -10,6 +10,7 @@ import { ExplorerState } from "./ExplorerState"
 export type ExplorerStatus = "ready" | "loading" | "error"
 interface FileExplorerProps {
   categories: string[]
+  folderParents: Record<string, string | null>
   files: MockDocumentFile[]
   activeFileId: string | null
   courseWeek: number
@@ -20,9 +21,15 @@ interface FileExplorerProps {
   onOpenRoadmapModal: () => void
   onOpenBatchUpload: () => void
   onOpenDirectFolderUpload: (category: string) => void
-  onCreateSubfolder: (parentFolder: string) => void
-  onRenameFolder: (folderName: string) => void
-  onDeleteFolder: (folderName: string) => void
+  onCreateSubfolder: (
+    parentFolder: string,
+    folderName: string
+  ) => Promise<void> | void
+  onRenameFolder: (
+    folderName: string,
+    newFolderName: string
+  ) => Promise<void> | void
+  onDeleteFolder: (folderName: string) => Promise<void> | void
   className?: string
   onRenameFile: (fileId: string, newFileName: string) => Promise<void> | void
   onMoveFile: (
@@ -35,6 +42,7 @@ interface FileExplorerProps {
 
 export function FileExplorer({
   categories,
+  folderParents,
   files,
   explorerStatus = "ready",
   onRetryLoad,
@@ -114,11 +122,72 @@ export function FileExplorer({
     )
   }, [categories, filteredFiles, searchQuery])
 
+  const rootCategories = useMemo(
+    () =>
+      visibleCategories.filter((category) => {
+        const parentFolder = folderParents[category]
+        return !parentFolder || !visibleCategories.includes(parentFolder)
+      }),
+    [folderParents, visibleCategories]
+  )
+
   const toggleCategory = (cat: string) => {
     setCollapsedCats((prev) => ({
       ...prev,
       [cat]: !prev[cat],
     }))
+  }
+
+  const renderFolder = (category: string): React.ReactNode => {
+    const totalFilesInFolder = files.filter(
+      (file) => file.category === category
+    )
+    const visibleFilesInFolder = filteredFiles.filter(
+      (file) => file.category === category
+    )
+    const childFolders = visibleCategories.filter(
+      (folderName) => folderParents[folderName] === category
+    )
+    const isCollapsed = collapsedCats[category] || false
+    const isEmpty = totalFilesInFolder.length === 0 && childFolders.length === 0
+
+    return (
+      <FolderItem
+        key={category}
+        category={category}
+        fileCount={totalFilesInFolder.length}
+        childFolderCount={childFolders.length}
+        isCollapsed={isCollapsed}
+        onToggle={() => toggleCategory(category)}
+        onDirectUpload={onOpenDirectFolderUpload}
+        onCreateSubfolder={onCreateSubfolder}
+        onRenameFolder={onRenameFolder}
+        onDeleteFolder={onDeleteFolder}
+      >
+        {isEmpty ? (
+          <ExplorerState
+            variant="empty"
+            folderName={category}
+            onUpload={() => onOpenDirectFolderUpload(category)}
+          />
+        ) : (
+          <>
+            {visibleFilesInFolder.map((file) => (
+              <FileItem
+                key={file.id}
+                file={file}
+                folders={categories}
+                isActive={activeFileId === file.id}
+                onOpenFile={onOpenFile}
+                onRenameFile={onRenameFile}
+                onMoveFile={onMoveFile}
+              />
+            ))}
+            {childFolders.map(renderFolder)}
+          </>
+        )}
+      </FolderItem>
+    )
   }
 
   return (
@@ -178,49 +247,7 @@ export function FileExplorer({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                {visibleCategories.map((cat) => {
-                  const totalFilesInCat = files.filter(
-                    (file) => file.category === cat
-                  )
-                  const filesInCat = filteredFiles.filter(
-                    (file) => file.category === cat
-                  )
-                  const isCollapsed = collapsedCats[cat] || false
-
-                  return (
-                    <FolderItem
-                      key={cat}
-                      category={cat}
-                      fileCount={totalFilesInCat.length}
-                      isCollapsed={isCollapsed}
-                      onToggle={() => toggleCategory(cat)}
-                      onDirectUpload={onOpenDirectFolderUpload}
-                      onCreateSubfolder={onCreateSubfolder}
-                      onRenameFolder={onRenameFolder}
-                      onDeleteFolder={onDeleteFolder}
-                    >
-                      {totalFilesInCat.length === 0 ? (
-                        <ExplorerState
-                          variant="empty"
-                          folderName={cat}
-                          onUpload={() => onOpenDirectFolderUpload(cat)}
-                        />
-                      ) : (
-                        filesInCat.map((file) => (
-                          <FileItem
-                            key={file.id}
-                            file={file}
-                            folders={categories}
-                            isActive={activeFileId === file.id}
-                            onOpenFile={onOpenFile}
-                            onRenameFile={onRenameFile}
-                            onMoveFile={onMoveFile}
-                          />
-                        ))
-                      )}
-                    </FolderItem>
-                  )
-                })}
+                {rootCategories.map(renderFolder)}
               </div>
             </>
           )}

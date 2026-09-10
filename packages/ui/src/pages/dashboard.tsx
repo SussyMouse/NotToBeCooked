@@ -346,6 +346,11 @@ const CATEGORIES = [
   "Tutorials & PYQs",
 ]
 
+interface MockFolder {
+  name: string
+  parentFolder: string | null
+}
+
 export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   const { user, logout } = useAuth()
 
@@ -368,6 +373,14 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   >({})
   const [fileFolderOverrides, setFileFolderOverrides] = useState<
     Record<string, string>
+  >({})
+  const [customFoldersByCourse, setCustomFoldersByCourse] = useState<
+    Record<string, MockFolder[]>
+  >({})
+  const [folderNameOverridesByCourse, setFolderNameOverridesByCourse] =
+    useState<Record<string, Record<string, string>>>({})
+  const [deletedBaseFoldersByCourse, setDeletedBaseFoldersByCourse] = useState<
+    Record<string, string[]>
   >({})
   // Repository of all files across all courses
   const allFiles = useMemo(() => {
@@ -431,6 +444,43 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
       ) ?? MOCK_COURSES[0]!
     )
   }, [activeCourseId])
+
+  const folderNameOverrides = useMemo(
+    () => folderNameOverridesByCourse[currentCourse.id] ?? {},
+    [currentCourse.id, folderNameOverridesByCourse]
+  )
+
+  const deletedBaseFolders = useMemo(
+    () => deletedBaseFoldersByCourse[currentCourse.id] ?? [],
+    [currentCourse.id, deletedBaseFoldersByCourse]
+  )
+
+  const customFolders = useMemo(
+    () => customFoldersByCourse[currentCourse.id] ?? [],
+    [currentCourse.id, customFoldersByCourse]
+  )
+
+  const baseFolderNames = useMemo(
+    () =>
+      CATEGORIES.filter(
+        (folderName) => !deletedBaseFolders.includes(folderName)
+      ).map((folderName) => folderNameOverrides[folderName] ?? folderName),
+    [deletedBaseFolders, folderNameOverrides]
+  )
+
+  const courseCategories = useMemo(
+    () => [...baseFolderNames, ...customFolders.map((folder) => folder.name)],
+    [baseFolderNames, customFolders]
+  )
+
+  const folderParents = useMemo(
+    () =>
+      Object.fromEntries([
+        ...baseFolderNames.map((folderName) => [folderName, null]),
+        ...customFolders.map((folder) => [folder.name, folder.parentFolder]),
+      ]) as Record<string, string | null>,
+    [baseFolderNames, customFolders]
+  )
 
   const courseFiles = useMemo(() => {
     const files =
@@ -573,16 +623,109 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     setIsUploadModalOpen(true)
   }
 
-  const handleCreateSubfolder = (parentFolder: string) => {
-    showToast(`Create a subfolder inside ${parentFolder}`)
+  const handleCreateSubfolder = (parentFolder: string, folderName: string) => {
+    const folderAlreadyExists = courseCategories.some(
+      (category) => category.toLowerCase() === folderName.toLowerCase()
+    )
+
+    if (folderAlreadyExists) {
+      throw new Error("Folder already exists")
+    }
+
+    setCustomFoldersByCourse((current) => ({
+      ...current,
+      [currentCourse.id]: [
+        ...(current[currentCourse.id] ?? []),
+        {
+          name: folderName,
+          parentFolder,
+        },
+      ],
+    }))
+
+    showToast(`Created ${folderName} inside ${parentFolder}`)
   }
 
-  const handleRenameFolder = (folderName: string) => {
-    showToast(`Rename ${folderName}`)
+  const handleRenameFolder = (folderName: string, newFolderName: string) => {
+    const duplicateExists = courseCategories.some(
+      (category) =>
+        category !== folderName &&
+        category.toLowerCase() === newFolderName.toLowerCase()
+    )
+
+    if (duplicateExists) throw new Error("Folder already exists")
+
+    const originalBaseFolder = CATEGORIES.find(
+      (originalName) =>
+        (folderNameOverrides[originalName] ?? originalName) === folderName
+    )
+
+    if (originalBaseFolder) {
+      setFolderNameOverridesByCourse((current) => ({
+        ...current,
+        [currentCourse.id]: {
+          ...(current[currentCourse.id] ?? {}),
+          [originalBaseFolder]: newFolderName,
+        },
+      }))
+    }
+
+    setCustomFoldersByCourse((current) => ({
+      ...current,
+      [currentCourse.id]: (current[currentCourse.id] ?? []).map((folder) => ({
+        ...folder,
+        name: folder.name === folderName ? newFolderName : folder.name,
+        parentFolder:
+          folder.parentFolder === folderName
+            ? newFolderName
+            : folder.parentFolder,
+      })),
+    }))
+
+    setFileFolderOverrides((current) => {
+      const next = { ...current }
+      courseFiles.forEach((file) => {
+        if (file.category === folderName) next[file.id] = newFolderName
+      })
+      return next
+    })
+
+    showToast(`Renamed ${folderName} to ${newFolderName}`)
   }
 
   const handleDeleteFolder = (folderName: string) => {
-    showToast(`Delete ${folderName}`)
+    const hasFiles = courseFiles.some((file) => file.category === folderName)
+    const hasChildren = customFolders.some(
+      (folder) => folder.parentFolder === folderName
+    )
+
+    if (hasFiles || hasChildren) {
+      throw new Error("Folder is not empty")
+    }
+
+    const originalBaseFolder = CATEGORIES.find(
+      (originalName) =>
+        (folderNameOverrides[originalName] ?? originalName) === folderName
+    )
+
+    if (originalBaseFolder) {
+      setDeletedBaseFoldersByCourse((current) => ({
+        ...current,
+        [currentCourse.id]: [
+          ...(current[currentCourse.id] ?? []),
+          originalBaseFolder,
+        ],
+      }))
+    } else {
+      setCustomFoldersByCourse((current) => ({
+        ...current,
+        [currentCourse.id]: (current[currentCourse.id] ?? []).filter(
+          (folder) => folder.name !== folderName
+        ),
+      }))
+    }
+
+    showToast(`Deleted ${folderName}`)
   }
 
   return (
@@ -612,7 +755,8 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
           {/* Left Pane: Structured File Explorer */}
           {!isWorkspaceFullscreen && (
             <FileExplorer
-              categories={CATEGORIES}
+              categories={courseCategories}
+              folderParents={folderParents}
               files={courseFiles}
               activeFileId={activeFileId}
               courseWeek={currentCourse.week}
@@ -742,7 +886,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
               courseCode={currentCourse.code}
               filesCount={courseFiles.length}
               files={courseFiles}
-              categories={CATEGORIES}
+              categories={courseCategories}
               messages={messages}
               sessions={sessions}
               activeSessionId={activeConversationId}
@@ -774,7 +918,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
       <UploadModal
         isOpen={isUploadModalOpen}
         courseCode={currentCourse.code}
-        categories={CATEGORIES}
+        categories={courseCategories}
         initialCategory={uploadCategory}
         isDirectFolderUpload={isDirectFolderUpload}
         onClose={() => setIsUploadModalOpen(false)}
