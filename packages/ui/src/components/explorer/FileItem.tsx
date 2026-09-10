@@ -1,7 +1,6 @@
 import { useState } from "react"
 import {
   AlertCircle,
-  Archive,
   FilePenLine,
   FileText,
   FolderInput,
@@ -13,10 +12,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../dropdown-menu"
-import { ArchiveFileDialog } from "./ArchiveFileDialog"
 import { FileStatusBadge } from "./FileStatusBadge"
 import { IndexingFailureDialog } from "./IndexingFailureDialog"
 import { RenameFileDialog } from "./RenameFileDialog"
@@ -33,7 +30,6 @@ interface FileItemProps {
     destinationFolder: string
   ) => Promise<void> | void
   onRetryIndexing: (fileId: string) => Promise<void> | void
-  onArchiveFile: (fileId: string) => Promise<void> | void
 }
 
 export function getFileExtension(filename: string): string {
@@ -234,12 +230,10 @@ export function FileItem({
   onRenameFile,
   onMoveFile,
   onRetryIndexing,
-  onArchiveFile,
 }: FileItemProps) {
   const [isRenameOpen, setIsRenameOpen] = useState(false)
   const [isMoveOpen, setIsMoveOpen] = useState(false)
   const [isFailureOpen, setIsFailureOpen] = useState(false)
-  const [isArchiveOpen, setIsArchiveOpen] = useState(false)
 
   return (
     <>
@@ -302,17 +296,10 @@ export function FileItem({
                 View failure details
               </DropdownMenuItem>
             )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => setIsArchiveOpen(true)}
-              className="cursor-pointer text-xs text-(--danger-tx,#F0A19D)"
-            >
-              <Archive className="h-4 w-4" />
-              Move to archive
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
       {isRenameOpen && (
         <RenameFileDialog
           open
@@ -339,14 +326,6 @@ export function FileItem({
           errorMessage={file.errorMessage}
           onOpenChange={setIsFailureOpen}
           onRetry={() => onRetryIndexing(file.id)}
-        />
-      )}
-      {isArchiveOpen && (
-        <ArchiveFileDialog
-          open
-          fileName={file.name}
-          onOpenChange={setIsArchiveOpen}
-          onArchive={() => onArchiveFile(file.id)}
         />
       )}
     </>
