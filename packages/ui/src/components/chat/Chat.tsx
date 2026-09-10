@@ -7,7 +7,7 @@ import {
 import { ChatInput, type ChatFile } from "./ChatInput"
 import { History, type ChatSessionItem } from "./History"
 import { CitationDrawer } from "./CitationDrawer"
-import { Plus, Clock, Trash2 } from "lucide-react"
+import { Plus, Clock, Trash2, GripVertical } from "lucide-react"
 
 export type { CitationItem, ChatMessage, ChatFile, ChatSessionItem }
 
@@ -286,11 +286,15 @@ export const Chat: React.FC<ChatProps> = ({
         tabIndex={0}
         onMouseDown={handleMouseDown}
         onKeyDown={handleResizeKeyDown}
-        className={`relative z-10 w-1.5 flex-none cursor-col-resize transition-colors hover:bg-(--acc,#52A8EA) focus-visible:bg-(--acc,#52A8EA) focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-(--acc,#52A8EA) ${
-          isResizing ? "bg-(--acc,#52A8EA)" : "bg-(--line,#25313E)"
+        className={`group relative z-10 w-2 flex-none cursor-col-resize transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-(--acc,#52A8EA) ${
+          isResizing ? "bg-(--acc,#52A8EA)/35" : "bg-(--line,#25313E)"
         }`}
         title="Drag horizontally or use Left and Right arrow keys to resize Chat panel"
-      />
+      >
+        <span className="pointer-events-none absolute top-1/2 left-1/2 flex h-10 w-3 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-(--line,#25313E) bg-(--bg-raise,#1C2833) text-(--tx-faint,#5C6976) opacity-45 shadow-sm transition-all group-hover:border-(--acc,#52A8EA) group-hover:text-(--acc,#52A8EA) group-hover:opacity-100 group-focus-visible:border-(--acc,#52A8EA) group-focus-visible:text-(--acc,#52A8EA) group-focus-visible:opacity-100">
+          <GripVertical aria-hidden="true" className="h-4 w-4" />
+        </span>
+      </div>
 
       {/* Main Chat Panel */}
       <aside
