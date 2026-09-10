@@ -28,6 +28,54 @@ the same document.
 
 ---
 
+## Index — read this first
+
+**Every finding, its state, and what would reopen it.** This table exists because on
+10 September 2026 three of us spent an afternoon re-deriving whether file deletion
+should be soft or hard, and reached the opposite of R16, which had settled it on
+18 August. The answer was in this file the whole time, in a summary table at line
+1126 of 1236. Nobody scrolls that far to find a table of contents.
+
+The body below is organised by review round and by what was open at the time.
+**This index is organised by what you probably want to know: is it still live, and
+what makes it live again.** The long-form Summary with measurements stays at the end.
+
+### Live — something is still owed
+
+| # | One line | State | Owner / trigger |
+|---|---|---|---|
+| **R30** | A corrected re-upload becomes a second FILE row, both retrievable | **Open**, raised 8 Sep | AI-2 — `PUT /files/{file_id}/content` (Gantt r79) |
+| **R29** | Two citations can share a marker | Closed 8 Sep; **the rendering half is open** | AI-1 — a UI resolving `[1]` by first match shows the wrong evidence |
+| **R27** | Deleting a FILE row leaves its bytes on disk | **Deferred, with a trigger** | Whoever writes the delete-file endpoint. **Trigger: the day it lands** |
+| **R5b** | Cross-file `embedding_model` filter | **Deferred, with a trigger** | Whoever changes `settings.MODEL_TYPE` without re-indexing every chunk |
+| **R28** | Deleting a FOLDER row cascades to files, runs and chunks | Guarded in the router, not the database | **Reopen the moment a second code path deletes a FOLDER row** |
+| **R10** | `MESSAGE` has no `sequence_no` | **Deferred** — accepted v1 defect | Order is implied by `created_at` |
+| **R33** | What a mocked session cannot test | Recorded 9 Sep — **a rule, not a defect** | Anything the database enforces is tested against a database |
+
+### Declined — and what would reopen each
+
+| # | One line | Reopen condition |
+|---|---|---|
+| **R16** | Soft delete on `COURSE` / `FILE` | The first time someone deletes a course by mistake and asks for it back. **Consequence, easy to miss: v1 has no delete-course feature at all** |
+| **R13** | `MESSAGE_SCOPE_COURSE` junction table | The first US-12 acceptance case genuinely needing two courses on one turn, neither expressible as an @-mention |
+| **R32** | Moving a file between courses | A user story that asks for it. The `409` is the answer, not a placeholder |
+| **R21** | `EMBEDDING_PROFILE` as its own entity | Declined for v1 — see R5 |
+| **R22** | `STORED_OBJECT` / `FILE` split for global dedup | Declined for v1 |
+| **R23** | Remove `CHUNK.file_id` / `course_id` | Declined — see R4 |
+| **R24** | Full folder tree | Declined — see R9 |
+| **R9b** | Flat folder hierarchy | Not a defect |
+
+### Closed
+
+`R1` `R2` `R3` `R4` `R5` `R6` `R7` `R8` `R9` `R11` `R12` `R14` `R15` `R17` `R18`
+`R19` `R20` `R25` `R26` `R31` — plus the eight ratified fields dropped in drafting,
+restored in Part C. Each carries its date, its commit and its verification in the
+Summary at the end of this file.
+
+**Nothing on this list is unowned, and nothing is in the state "open, unassigned".**
+
+---
+
 # Part A — first review
 
 ## Corrected in the submitted diagram
