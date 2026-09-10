@@ -23,7 +23,14 @@ model weights and takes minutes. Run it by hand before a deploy, after changing
 dependencies, or on a schedule.
 
     cd apps/api
-    HF_HUB_DISABLE_XET=1 uv run python scripts/smoke.py
+    TORCHDYNAMO_DISABLE=1 HF_HUB_DISABLE_XET=1 uv run python scripts/smoke.py
+
+TORCHDYNAMO_DISABLE=1 is needed on any machine without a C++ compiler. Docling's
+layout model reaches torch.compile, and inductor shells out to g++ at run time;
+without it check 4 fails with InvalidCxxCompiler. A developer laptop has g++ and
+never sees this. The runtime image sets it in the Dockerfile -- this line is for
+running against a bare checkout, which is how it was found on the OCI box on
+10 Sep 2026.
 
 HF_HUB_DISABLE_XET=1 is not optional on every machine. HuggingFace's Xet
 backend fails here with an error that names neither HuggingFace nor the file,
