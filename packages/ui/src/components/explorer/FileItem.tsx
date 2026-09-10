@@ -5,6 +5,7 @@ import {
   FileText,
   FolderInput,
   MoreVertical,
+  Trash2,
 } from "lucide-react"
 
 import type { MockDocumentFile } from "../../types/course"
@@ -12,9 +13,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../dropdown-menu"
 import { FileStatusBadge } from "./FileStatusBadge"
+import { DeleteFileDialog } from "./DeleteFileDialog"
 import { IndexingFailureDialog } from "./IndexingFailureDialog"
 import { RenameFileDialog } from "./RenameFileDialog"
 import { MoveFileDialog } from "./MoveFileDialog"
@@ -30,6 +33,7 @@ interface FileItemProps {
     destinationFolder: string
   ) => Promise<void> | void
   onRetryIndexing: (fileId: string) => Promise<void> | void
+  onDeleteFile: (fileId: string) => Promise<void> | void
 }
 
 export function getFileExtension(filename: string): string {
@@ -230,10 +234,12 @@ export function FileItem({
   onRenameFile,
   onMoveFile,
   onRetryIndexing,
+  onDeleteFile,
 }: FileItemProps) {
   const [isRenameOpen, setIsRenameOpen] = useState(false)
   const [isMoveOpen, setIsMoveOpen] = useState(false)
   const [isFailureOpen, setIsFailureOpen] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
   return (
     <>
@@ -296,6 +302,14 @@ export function FileItem({
                 View failure details
               </DropdownMenuItem>
             )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => setIsDeleteOpen(true)}
+              className="cursor-pointer text-xs text-(--danger-tx,#F0A19D)"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete file
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -326,6 +340,14 @@ export function FileItem({
           errorMessage={file.errorMessage}
           onOpenChange={setIsFailureOpen}
           onRetry={() => onRetryIndexing(file.id)}
+        />
+      )}
+      {isDeleteOpen && (
+        <DeleteFileDialog
+          open
+          fileName={file.name}
+          onOpenChange={setIsDeleteOpen}
+          onDelete={() => onDeleteFile(file.id)}
         />
       )}
     </>

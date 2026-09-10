@@ -377,6 +377,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   const [fileStatusOverrides, setFileStatusOverrides] = useState<
     Record<string, FileStatus>
   >({})
+  const [deletedFileIds, setDeletedFileIds] = useState<string[]>([])
   const [uploadedFilesByCourse, setUploadedFilesByCourse] = useState<
     Record<string, MockDocumentFile[]>
   >({})
@@ -393,13 +394,16 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     return [
       ...Object.values(MOCK_FILES_BY_COURSE).flat(),
       ...Object.values(uploadedFilesByCourse).flat(),
-    ].map((file) => ({
-      ...file,
-      name: fileNameOverrides[file.id] ?? file.name,
-      category: fileFolderOverrides[file.id] ?? file.category,
-      status: fileStatusOverrides[file.id] ?? file.status,
-    }))
+    ]
+      .filter((file) => !deletedFileIds.includes(file.id))
+      .map((file) => ({
+        ...file,
+        name: fileNameOverrides[file.id] ?? file.name,
+        category: fileFolderOverrides[file.id] ?? file.category,
+        status: fileStatusOverrides[file.id] ?? file.status,
+      }))
   }, [
+    deletedFileIds,
     fileFolderOverrides,
     fileNameOverrides,
     fileStatusOverrides,
@@ -503,13 +507,16 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
       ...(uploadedFilesByCourse[currentCourse.id] ?? []),
     ]
 
-    return files.map((file) => ({
-      ...file,
-      name: fileNameOverrides[file.id] ?? file.name,
-      category: fileFolderOverrides[file.id] ?? file.category,
-      status: fileStatusOverrides[file.id] ?? file.status,
-    }))
+    return files
+      .filter((file) => !deletedFileIds.includes(file.id))
+      .map((file) => ({
+        ...file,
+        name: fileNameOverrides[file.id] ?? file.name,
+        category: fileFolderOverrides[file.id] ?? file.category,
+        status: fileStatusOverrides[file.id] ?? file.status,
+      }))
   }, [
+    deletedFileIds,
     currentCourse,
     fileFolderOverrides,
     fileNameOverrides,
@@ -590,6 +597,18 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     }))
 
     showToast("Indexing restarted in the background")
+  }
+
+  const handleDeleteFile = (fileId: string) => {
+    const file = courseFiles.find((candidate) => candidate.id === fileId)
+    if (!file) throw new Error("File not found")
+
+    setDeletedFileIds((current) =>
+      current.includes(fileId) ? current : [...current, fileId]
+    )
+    closeTab(activeCourseId, fileId)
+    setSelectedCitation((current) => (current?.f === fileId ? null : current))
+    showToast(`Deleted ${file.name}`)
   }
 
   // Handlers for document & chat interaction
@@ -798,6 +817,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
               onRenameFile={handleRenameFile}
               onMoveFile={handleMoveFile}
               onRetryIndexing={handleRetryIndexing}
+              onDeleteFile={handleDeleteFile}
               onOpenRoadmapModal={() => setIsRoadmapOpen(true)}
               onOpenBatchUpload={handleOpenBatchUpload}
               onOpenDirectFolderUpload={handleOpenDirectFolderUpload}
