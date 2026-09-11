@@ -478,11 +478,12 @@ async def delete_file(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="File not found",
         )
-    # Delete the physical file from storage
-    delete_stored_file(file_row.storage_key)
 
     # Delete the database record
     await session.delete(file_row)
 
     # Commit the transaction
     await session.commit()
+
+    # Delete the physical file from storage
+    delete_stored_file(file_row.storage_key)
