@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     # Database Settings
     DATABASE_URL: str = "postgresql+asyncpg://postgres:password@localhost:5432/not_to_be_cooked"
 
+    # Echo every statement the engine runs. False by default, which is a change
+    # from the hard-coded echo=True that shipped in db/database.py: on the OCI
+    # box those lines land in the system journal, several per request, carrying
+    # bound parameter values with them. Set SQL_ECHO=true in .env on a machine
+    # where you want them back.
+    SQL_ECHO: bool = False
+
     # Embedding Settings
     BATCH_SIZE: int = 32
     EMBEDDINGS_DIM: int = 1024

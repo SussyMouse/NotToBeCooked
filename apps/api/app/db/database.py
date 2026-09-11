@@ -12,7 +12,7 @@ from app.core.config import settings
 # 1. Create Async Engine (asyncpg)
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=True,  # Set to False in production
+    echo=settings.SQL_ECHO,
     future=True,
 )
 

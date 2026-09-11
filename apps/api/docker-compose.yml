@@ -10,11 +10,20 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: not_to_be_cooked
     ports:
-      - "5432:5432"
+      # 127.0.0.1, not 0.0.0.0. Nothing outside this host has any reason to reach
+      # Postgres directly -- the API talks to it over the compose network by
+      # service name, and a bare API on the same host reaches it on localhost.
+      #
+      # Published as "5432:5432" this listens on every interface, which on a VM
+      # with a public IP is Postgres on the internet with POSTGRES_PASSWORD set
+      # to "password". Docker inserts its own iptables rules and on many setups
+      # they bypass firewalld's zones, so a running firewall is not the guarantee
+      # it looks like.
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgvector_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -30,6 +39,14 @@ services:
       db:
         condition: service_healthy
     restart: always
+    volumes:
+      - api_storage:/app/storage
+    healthcheck:
+      test: [ "CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\"" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 volumes:
   pgvector_data:
+  api_storage:

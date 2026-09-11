@@ -12,6 +12,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi.responses import FileResponse
 from sqlalchemy import func, update
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -32,6 +33,7 @@ from app.services.storage import (
     resolve,
     write_upload,
 )
+from app.services.storage import delete as delete_stored_file
 
 # The only logger in app/ so far. It exists because of _ingest_in_background: a
 # background task has no caller to raise to, so without this an exception leaves
@@ -405,3 +407,82 @@ async def update_file(
     await session.commit()
     await session.refresh(file_row)
     return FileRead.model_validate(file_row)
+
+
+@files_router.get("/{file_id}/content", response_class=FileResponse)
+async def get_file_content(
+    file_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    user: dict = Depends(get_current_user),
+) -> FileResponse:
+    user_id = UUID(user["sub"])
+
+    statement = (
+        select(FileRow)
+        .join(Folder, col(FileRow.folder_id) == col(Folder.id))
+        .join(Course, col(Folder.course_id) == col(Course.id))
+        .where(col(Course.user_id) == user_id, col(FileRow.id) == file_id)
+    )
+    result = await session.exec(statement)
+    file_row = result.first()
+
+    if file_row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+    file_path = resolve(file_row.storage_key)
+    if not file_path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File content not found",
+        )
+
+    return FileResponse(
+        path=file_path,
+        media_type=file_row.mime_type,
+        filename=file_row.filename,
+        content_disposition_type="inline",
+    )
+
+
+@files_router.delete(
+    "/{file_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_file(
+    file_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    user: dict = Depends(get_current_user),
+) -> None:
+    user_id = UUID(user["sub"])
+
+    statement = (
+        select(FileRow)
+        .join(
+            Folder,
+            col(FileRow.folder_id) == col(Folder.id),
+        )
+        .join(
+            Course,
+            col(Folder.course_id) == col(Course.id),
+        )
+        .where(
+            col(Course.user_id) == user_id,
+            col(FileRow.id) == file_id,
+        )
+    )
+
+    file_row = (await session.exec(statement)).first()
+
+    if file_row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found",
+        )
+    # Delete the physical file from storage
+    delete_stored_file(file_row.storage_key)
+
+    # Delete the database record
+    await session.delete(file_row)
+
+    # Commit the transaction
+    await session.commit()

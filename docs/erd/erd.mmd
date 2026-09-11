@@ -146,7 +146,7 @@ erDiagram
         uuid course_id FK
         uuid parent_folder_id FK "null at the root; UI ships flat, the column is for later"
         string name
-        bool is_root "one hidden root per course, so every file has a folder"
+        bool is_root "true when parent_folder_id is null; a course may have several top-level folders (CR-34)"
         int sort_order
         timestamptz created_at
     }

@@ -551,6 +551,48 @@ known server-side, and asking for it only creates a way to be wrong.`,
 		]
 	},
 	{
+		method: "delete",
+		path: "/files/:file_id",
+		alias: "delete_file_files__file_id__delete",
+		requestFormat: "json",
+		parameters: [
+			{
+				name: "file_id",
+				type: "Path",
+				schema: z.string().uuid()
+			},
+		],
+		response: z.void(),
+		errors: [
+			{
+				status: 422,
+				description: `Validation Error`,
+				schema: HTTPValidationError
+			},
+		]
+	},
+	{
+		method: "get",
+		path: "/files/:file_id/content",
+		alias: "get_file_content_files__file_id__content_get",
+		requestFormat: "json",
+		parameters: [
+			{
+				name: "file_id",
+				type: "Path",
+				schema: z.string().uuid()
+			},
+		],
+		response: z.void(),
+		errors: [
+			{
+				status: 422,
+				description: `Validation Error`,
+				schema: HTTPValidationError
+			},
+		]
+	},
+	{
 		method: "post",
 		path: "/files/:file_id/ingest",
 		alias: "ingest_file_files__file_id__ingest_post",

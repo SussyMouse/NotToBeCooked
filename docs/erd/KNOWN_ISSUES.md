@@ -434,6 +434,68 @@ the cost of finding out is a user's chunks.
 
 **Reopen the moment a second code path deletes a FOLDER row.**
 
+### R29 — two citations can share a marker
+
+`Citation.marker` names a **source**, not a citation slot: `prompt.py` says
+"Numbering starts at 1 and refers only to sources that appear in the list you
+were given". Two claims drawn from the same chunk therefore both carry `[1]`,
+each with the line that supports it, and `RagAnswer.citations` holds two entries
+under the same number.
+
+**Measured 6 September 2026**, one live call, one question over two real chunks:
+
+```
+answer:  A partial index is an index that covers only the rows matching its
+         WHERE clause [1]. The planner can only use a partial index when the
+         query repeats that same clause [1].
+
+citations:
+  [1]  "A partial index covers only the rows matching its WHERE clause."
+  [1]  "the planner can only use it when the query repeats that same clause."
+```
+
+This is correct behaviour and `check_grounding` accepts it. The first version of
+that check rejected duplicate markers outright, which would have thrown away a
+well-cited answer; it now rejects only the same marker with the same quote,
+which carries no second piece of evidence.
+
+**The open half is rendering.** A frontend that resolves a `[1]` in the answer
+text by taking the first citation with `marker === 1` silently drops the second
+quote — the reader clicks the second `[1]` and is shown the evidence for the
+first claim. Nothing raises, and the two quotes are both genuine, so it does not
+look like a bug from either side.
+
+Three shapes, and this is a C4 question rather than a rendering preference:
+
+- **Render every entry for that marker.** One pill, several quoted lines. No
+  contract change, and the honest reading of what generation produced.
+- **Number the citations rather than the sources.** Unambiguous per pill, but it
+  contradicts the published instruction and breaks `selected[marker - 1]`, which
+  is how both `_resolve_citations` and `check_grounding` reach provenance.
+- **One citation per source, best quote only.** Simplest UI, and it discards
+  evidence the model correctly produced.
+
+Owner: AI-3 owns `schemas/rag.py`, AI-1 owns the chat UI that renders it.
+
+**Closed 8 September 2026 — Decision 4, option A.** *Render every entry that
+carries that marker*: one pill, several quoted lines. No contract change, and it
+is the honest reading of what generation produced.
+
+The two options not taken, and why:
+
+- **Number the citations rather than the sources.** Unambiguous per pill, but it
+  contradicts the instruction `prompt.py` publishes to the model and breaks
+  `selected[marker - 1]` — which is how both `_resolve_citations` and
+  `check_grounding` reach provenance. It would move the one layer that does not
+  have to trust the model.
+- **One citation per source, best quote only.** Simplest UI, and it throws away
+  evidence the model correctly produced.
+
+F3 (r36, AI-1, due 16 Sep) renders to this rule. **A frontend that resolves `[1]`
+by first match is the defect this closes** — it shows the first claim's evidence
+against the second, and both quotes are genuine, so nothing about it looks wrong
+from either side.
+
 ### R8 — `INGESTION_RUN.is_active` is a boolean with no uniqueness guarantee
 
 The annotation says exactly one active run per file is visible to retrieval. A
@@ -444,6 +506,335 @@ is a partial unique index:
 CREATE UNIQUE INDEX ix_ingestion_run_one_active
     ON ingestion_run (file_id) WHERE is_active;
 ```
+
+### R30 — a corrected re-upload becomes a second FILE row, and both stay retrievable
+
+Uploading a revised version of a file that is already there creates a *second*
+FILE row. `POST /files` has no other mode, and no endpoint replaces the bytes of
+an existing row: the four file routes are `POST /files`, `POST
+/files/{id}/ingest`, `GET /courses/{course_id}/files` and `PATCH /files/{id}`.
+
+The two rows share a filename, hold different bytes, and each carries its own
+active ingestion run. Retrieval therefore returns chunks from both versions, and
+every citation reads `Week3.pdf`. The reader is given the superseded text and the
+current text under the same name, with nothing to tell them apart.
+
+**Measured 8 September 2026** against the development database, inside a
+transaction that was rolled back:
+
+```
+today -- POST /files twice, same folder, same name, different bytes
+    file 473f0786  filename=Week3.pdf  sha256=sha256-of-v1  is_active=true   accepted
+    file 6416fd4b  filename=Week3.pdf  sha256=sha256-of-v2  is_active=true   accepted
+
+    what retrieval sees (the is_active join, R5's fix):
+      Week3.pdf  sha256-of-v1  is_active=True
+      Week3.pdf  sha256-of-v2  is_active=True
+    -> 2 active runs, both named Week3.pdf, two different documents
+
+under the proposed fix -- one FILE row, the bytes replaced, re-ingested
+    second active run refused: UniqueViolationError
+      duplicate key value violates unique constraint "ix_ingestion_run_one_active"
+    -> 1 FILE row. one active run per file_id, enforced by the index, not by us
+```
+
+**Neither R5 nor R5b covers this.** R5 is superseded runs *of one file*, closed
+1 September by the `is_active` join. R5b is the cross-file half, and its trigger
+is the day `settings.MODEL_TYPE` changes — here both runs use the same model, so
+that trigger never fires. `ix_ingestion_run_one_active` is partial on `file_id`;
+two FILE rows are two different `file_id` values and the index has nothing to say
+about them.
+
+**A UNIQUE on `(folder_id, filename)` does not fix it.** Retrieval scope is a
+course, not a folder — `file_ids` null means the whole of `course_id`
+(`schemas/rag.py`) — so two folders can each hold a `Week3.pdf` and the citation
+is ambiguous either way. Such a constraint would also reject the legitimate
+second copy, which is the case R7 already declined to reject for `sha256`.
+
+The mechanism for replacement already exists and nothing reaches it:
+
+- `storage_key` is `{user_id}/{file_id}` plus the suffix (`services/storage.py`).
+  The original filename is deliberately not part of the key, so overwriting the
+  bytes of an existing row leaves the key unchanged.
+- Re-ingesting a `file_id` deactivates the previous run before activating the new
+  one (`routers/files.py`), in that order, because the partial index refuses two
+  active runs for even one statement.
+- Retrieval already joins `is_active`, so the superseded chunks stop being
+  visible without anything deleting them.
+
+**Proposed: one endpoint, `PUT /files/{file_id}/content`.** It streams to the
+existing `storage_key`, updates `sha256`, `size_bytes` and `page_count`, returns
+`status` to `uploaded`, and stops. Chunking, activation and retrieval are
+untouched. The upload UI asks "replace or keep both" when a file of that name is
+already in the folder; "keep both" remains legal and produces exactly the state
+measured above, but as a choice rather than as the only option.
+
+**The file browser is the visible half.** `GET /courses/{course_id}/files`
+selects FILE rows and joins nothing else, so today it lists both copies and the
+reader picks between two identical names. Under the proposal it lists one, and
+the superseded version is not hidden from the browser — it is not a file at all,
+only an inactive run, and `FileRead` carries no run field. Same query, both ways:
+
+```
+today -- uploaded twice, GET /courses/{id}/files returns:
+    Week3.pdf    sha=sha-v2    1450 bytes  07:22
+    Week3.pdf    sha=sha-v1    1000 bytes  07:17
+    -> 2 entries named Week3.pdf
+
+after the fix -- uploaded twice, same query returns:
+    Week3.pdf    sha=sha-v2    1450 bytes  07:17
+    -> 1 entry named Week3.pdf
+    -> 2 runs underneath: [False, True] -- neither is visible to the frontend
+```
+
+**`uploaded_at` must be updated by the same endpoint**, and the `07:17` in the
+second block above is why: the row holds the second upload's bytes while still
+carrying the timestamp of the first. The list is ordered by `uploaded_at DESC`, so
+a file the user has just replaced does not move to the top and reads as though
+the upload failed. Updating the column is preferred over adding `updated_at`:
+the column already means "when did this file arrive", and what has arrived is the
+new one. A second column costs a migration and a `FileRead` change to record a
+history v1 does not show.
+
+**Doing nothing has no fallback.** R27 records that there is no delete-file
+endpoint, so a user who uploads a corrected version cannot remove the old one
+either. The two versions stay, and stay retrievable, until someone deletes a row
+by hand.
+
+Owner: AI-2 owns the file router. Raised 8 September 2026 by the Lead, out of
+AI-2's question about whether one folder may hold two files of the same name.
+It may, and that part is not the defect — the defect is that the older document
+stays retrievable.
+
+---
+
+### R31 — uploaded files live in the container's writable layer, and a redeploy takes them
+
+`docker-compose.yml` gives the `db` service a named volume and gives the `api`
+service none:
+
+```yaml
+db:
+  volumes:
+    - pgvector_data:/var/lib/postgresql/data
+api:
+  build: .
+  # no volumes
+```
+
+`STORAGE_DIR` is `_ENV_FILE.parent / "storage"`, and `_ENV_FILE` walks three
+parents up from `app/core/config.py`, so inside the image it resolves to
+`/app/storage`. Every uploaded blob is therefore written into the container's
+writable layer, which Docker deletes along with the container.
+
+The FILE rows do not go with them. They live in the `db` volume and survive, so
+after a redeploy the file browser lists every file it listed before and each one
+resolves to a path that no longer exists. **Nothing raises at redeploy time; the
+failure appears later, one file at a time, as a read that finds nothing.**
+
+**Measured 9 September 2026**, Docker 29.4.0-ce:
+
+```
+before -- no volume, the way docker-compose.yml has it today
+Week3.pdf
+ls: cannot access '/app/storage': No such file or directory
+
+after -- one named volume on the api service
+Week3.pdf
+Week3.pdf
+body
+```
+
+Both runs create the container, write the file, destroy the container and start
+a fresh one. The only difference between them is the volume.
+
+**This is not R27, and the two point in opposite directions:**
+
+- **R27** — a FILE row is deleted and its bytes stay on disk. Rows lost, bytes kept.
+- **R31** — no row is deleted and every byte goes. Bytes lost, rows kept.
+
+They share one cause: `FILE.storage_key` names an object that no component owns.
+R27 is the missing owner at delete time; R31 is the missing owner at deploy time.
+
+**Not reachable today.** Development runs the API outside Docker against a local
+Postgres, so the writable layer is never the store. **Trigger: the first
+`docker compose down && up` on a host where real uploads exist** — which is the
+OCI ARM instance of r45, on its first redeploy after go-live.
+
+The fix is one volume on the `api` service plus its declaration:
+
+```yaml
+api:
+  volumes:
+    - api_storage:/app/storage
+volumes:
+  pgvector_data:
+  api_storage:
+```
+
+`STORAGE_DIR` is documented as "a local directory today and an object-store
+bucket later". When that move happens this entry closes on its own, because the
+bytes stop living on the host at all. Until then the volume is what stands
+between a redeploy and every uploaded file.
+
+**Fixed 9 September 2026.** Two lines on the `api` service and one declaration:
+
+```yaml
+api:
+  volumes:
+    - api_storage:/app/storage
+volumes:
+  pgvector_data:
+  api_storage:
+```
+
+Verified against the real stack, not the compose file. A file was written inside
+the container, the container was destroyed with `docker compose rm -sf` and
+brought back, and the file was read again:
+
+```
+in the container -- write one "uploaded file"
+-rw-r--r--. 1 root root 15 Sep  9 04:37 Week3.pdf
+
+destroy and recreate the container (same as down && up)
+  container rebuilt, health = healthy
+-rw-r--r--. 1 root root 15 Sep  9 04:37 Week3.pdf
+--- contents ---
+Week3.pdf body
+```
+
+The trigger recorded above no longer fires: a redeploy on the r45 host keeps the
+uploads. **This entry closes early rather than travelling with the deployment**,
+because the cost of carrying it was that it would be discovered by losing files
+on a machine that had real ones.
+
+**A healthcheck went in beside it, and it is worth recording why.** The `api`
+service had none while `db` had one, so `docker compose ps` printed `Up` for the
+twenty-odd seconds `init_db()` spends reflecting every table with `echo=True`
+switched on. Docker binds the published port when the container starts, not when
+uvicorn begins listening, so during that window a request is accepted and dropped
+— `curl` reports `(52) Empty reply from server` rather than a refused connection,
+and a browser's `fetch` rejects with a `TypeError` that serialises to `{}`.
+
+**That is what an outage looked like from the frontend on 9 September**: a
+registration form showing "An unexpected error occurred" with an empty Dev
+Response, which reads as a frontend defect. Two people spent an hour on it, and
+one of them (the Lead) misread `CREATED 36 seconds ago / Up 7 seconds` as a crash
+loop before the log showed `Application startup complete`. The service now
+reports `starting` until `/health` answers:
+
+```
+   5s  starting
+  10s  starting
+  15s  healthy
+```
+
+Owner: closed by the Lead, 9 September 2026, out of AI-2's failing registration.
+Raised the same day.
+
+---
+
+### R32 — moving a file between courses is not supported, and the database is the reason
+
+**Decided 8 September 2026, Decision 5, option A.** A file cannot be moved from
+one course to another. The `409` returned by `PATCH /files/{file_id}` is the
+final answer rather than a placeholder, and this entry closes with that.
+
+`PATCH /files/{file_id}` takes a `folder_id`, and a folder belongs to a course,
+so the request shape allows an owner to name a folder in a different course.
+`routers/files.py` rejects it:
+
+```python
+if destination_folder.course_id != file_row.course_id:
+    raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                        detail="A file cannot be moved to another course.")
+```
+
+**Measured 9 September 2026** against the development database, inside a
+transaction that was rolled back. One user, two courses, one root folder each,
+one file in CS101 carrying one ingested chunk:
+
+```
+seeded: CS101 has one file with one ingested chunk
+
+  move the FILE to the other course (course_id only)
+     -> ForeignKeyViolationError: update or delete on table "file" violates
+        foreign key constraint "fk_chunk_file_course_agree" on table "chunk"
+  move it properly (folder_id AND course_id together)
+     -> ForeignKeyViolationError: update or delete on table "file" violates
+        foreign key constraint "fk_chunk_file_course_agree" on table "chunk"
+
+  fk_chunk_file_course_agree
+     FOREIGN KEY (file_id, course_id) REFERENCES file(id, course_id) ON DELETE CASCADE
+```
+
+**Both attempts fail, including the one that moves `folder_id` and `course_id`
+together.** The constraint declares `ON DELETE CASCADE` and says nothing about
+`ON UPDATE`, and PostgreSQL's default there is `NO ACTION` — so the moment a file
+has been ingested, its `course_id` is not writable at all while its chunks exist.
+
+The guard in the router is therefore not the thing preventing this. It is what
+turns an unhandled `ForeignKeyViolationError` into an answer the caller can read.
+
+**Option B was to support it**, either by moving `CHUNK.course_id` in the same
+statement or by adding `ON UPDATE CASCADE`. Its cost is not the migration:
+
+- Chunks would have to move with the file, or be re-ingested. That decision
+  changes what retrieval scope means, and retrieval is not finished (r48).
+- No user story asks for it. US-05 is "move files between folders" — within a
+  course. US-12's cross-course case is @-mentioning a file from another course
+  in a question, which is a read and already works.
+
+**Consequence accepted at the meeting:** a user who files something under the
+wrong course deletes it and uploads it again. There is no delete endpoint today
+(R27), so in practice that is a v1 limitation, recorded here rather than left to
+be rediscovered.
+
+**Closed on decision.** Reopen only if a user story asks for the move.
+
+---
+
+### R33 — what a mocked session cannot test
+
+Not a defect in the schema. It is the reason four separate findings survived a
+green test suite, written down so the fifth does not.
+
+A test that replaces the database session with `AsyncMock` exercises the order of
+calls in the route and nothing else. **`AsyncMock` has no foreign key, no CHECK,
+no partial unique index, no `ON DELETE` behaviour, no column default and no
+timezone coercion.** It accepts every value in the right shape and returns
+whatever the test told it to.
+
+Four times, in this order:
+
+| | The mock was green, and the database said | Where |
+|---|---|---|
+| 1 | `is_active` on two runs of one file — the boolean cannot enforce "exactly one" | R8 |
+| 2 | The enum stored `'READY'` while every other layer said `'ready'`, so R19's CHECK could never be true | R25 |
+| 3 | `PATCH /files/{id}` accepted a cross-course move; the passing test asserted the broken behaviour | 6 Sep, before R32 |
+| 4 | Deleting a folder took its files, runs and chunks; the router's guard is not the database's | R28 |
+
+Item 3 is the sharpest: **the test passed because it asserted what the code did.**
+A mock cannot disagree with the code under test, so a wrong expectation and a
+wrong implementation agree with each other and the suite is green.
+
+**Rule.** Anything that is enforced by the database is tested against a database:
+
+```
+constraint, index, FK, CHECK, cascade, default, enum value, timezone
+    -> a real session, seeded and rolled back
+call order, branching, error mapping, response shape
+    -> a mock is fine and faster
+```
+
+The probes behind R28, R30, R31 and R32 all run inside a transaction that is
+rolled back, so they leave nothing behind. That pattern is cheap enough that
+"it needed a real database" stopped being a reason to skip the test.
+
+**Raised 9 September 2026 by the Lead**, out of report 4 of the 8 September
+meeting — the fourth instance of "a green verify proves less than it looks".
+
+---
 
 ---
 
@@ -811,6 +1202,11 @@ SQLAlchemy's default, not anybody's mistake.
 | R5b | Cross-file `embedding_model` filter | **Deferred 1 Sep, with a trigger.** The `is_active` join is sufficient within a file (`ix_ingestion_run_one_active`) and sufficient everywhere while one model is in use. **Trigger: the day `settings.MODEL_TYPE` changes without every existing chunk being re-indexed.** From that day two files can each hold an active run under a different model, and cosine distance across two vector spaces returns a number rather than an answer. It raises nothing. Whoever changes `MODEL_TYPE` owns this entry from that moment |
 | R27 | Deleting a FILE row leaves its bytes on disk | **Deferred 1 Sep, with a trigger.** `FILE.storage_key` points at an object nothing owns; every FK into FILE cascades and the blob stays. Measured 1 Sep: 0 rows, 18 MB, six orphaned directories. `storage.delete()` exists with zero callers. **Not reachable in v1** — R16 declined soft delete and there is no delete-file endpoint. **Trigger: the day a delete endpoint lands**, from which it leaks on every use, silently, because a leak of disk is not an error. Goes with whoever writes that endpoint |
 | R28 | Deleting a FOLDER row cascades to its files, runs and chunks | **Recorded 6 Sep, not a defect today.** `FILE.folder_id` and `FOLDER.parent_folder_id` are both `ON DELETE CASCADE`. Measured 6 Sep on the test database: one `delete from folder` against a non-empty folder reported `DELETE 1` and removed the folder, its file and its ingestion run, without raising. `delete_folder` guards this with a 409 on child folders and on contained files, both tested — **but the guard is in the router, not in the database**. **Reopen the moment a second code path deletes a FOLDER row** |
+| R29 | Two citations can share a marker | **Closed 8 Sep — Decision 4, option A: render every entry carrying that marker.** One pill, several quoted lines; no contract change. Numbering the citations instead was rejected because it breaks `selected[marker - 1]`, the path both `_resolve_citations` and `check_grounding` use to reach provenance. F3 (r36) renders to this rule. Background: `marker` names a source, so two claims from one chunk both carry `[1]`, each with its own supporting line. Measured 6 Sep on a live call: one answer, two entries under `[1]`. `check_grounding` accepts it and rejects only marker-plus-quote repeats. **The open half is rendering** — a frontend resolving `[1]` by first match silently shows the first claim's evidence for the second claim, and both quotes are genuine, so it looks wrong from neither side. AI-3 owns `schemas/rag.py`, AI-1 owns the UI |
+| R30 | A corrected re-upload becomes a second FILE row | **Open, raised 8 Sep.** `POST /files` always creates a new row and no endpoint replaces the bytes of an existing one, so a revised file arrives as a second row sharing the filename, each with its own active run. Measured 8 Sep on the development database: two rows named `Week3.pdf`, different `sha256`, **both `is_active`** — retrieval returns superseded and current text under the same name. **Neither R5 nor R5b covers it**: R5 is runs of one file, R5b's trigger is a `MODEL_TYPE` change and both runs here use the same model. `ix_ingestion_run_one_active` is partial on `file_id`, and these are two `file_id` values. A UNIQUE on `(folder_id, filename)` does not help — retrieval scope is a course, not a folder. **Proposed: `PUT /files/{file_id}/content`**, reusing the existing deactivate-then-activate path — and updating `uploaded_at`, since the list is ordered by it and a replaced file would otherwise not move. R27 removes the fallback: there is no delete endpoint, so the old version cannot be removed either. AI-2 owns the file router |
+| R31 | Uploaded files live in the container's writable layer | **Fixed 9 Sep — a named volume on the `api` service.** Verified against the real stack: a file written in the container survived `docker compose rm -sf` and a rebuild, contents intact, so a redeploy on the r45 host now keeps the uploads. A healthcheck went in beside it — `api` had none while `db` did, so `ps` printed `Up` through the twenty-odd seconds `init_db()` spends reflecting under `echo=True`, and Docker binds the port at container start rather than when uvicorn listens. In that window a request is accepted and dropped: `curl` says `(52) Empty reply`, a browser's `fetch` rejects with a `TypeError` that serialises to `{}`, and the whole outage reads as a frontend defect — which is exactly how it presented on 9 Sep. Background: `docker-compose.yml` gives `db` a named volume and `api` none, while `STORAGE_DIR` resolves to `/app/storage` inside the image — so every uploaded blob sits in the writable layer Docker deletes with the container. The FILE rows are in the `db` volume and survive, so after a redeploy the browser lists every file and each resolves to a path that is gone. **Nothing raises at redeploy time**; it surfaces later, one read at a time. Measured 9 Sep on Docker 29.4.0-ce: same create/write/destroy/recreate cycle, `No such file or directory` without a volume and the file intact with one. **Opposite of R27** — R27 is bytes outliving their row, R31 is rows outliving their bytes; both are `storage_key` naming an object nothing owns. **Trigger: the first `docker compose down && up` on a host holding real uploads** (the r45 OCI instance). Fix is one volume on `api`. Goes with whoever does the deployment |
+| R32 | Moving a file between courses is not supported | **Closed 8 Sep — Decision 5, option A.** The `409` from `PATCH /files/{file_id}` is the final answer, not a placeholder. Measured 9 Sep on the development database: with one ingested chunk present, **both** a `course_id`-only move and a `folder_id`+`course_id` move raise `ForeignKeyViolationError` on `fk_chunk_file_course_agree` — the constraint declares `ON DELETE CASCADE` and nothing for `ON UPDATE`, whose default is `NO ACTION`. So the router's guard is not what prevents the move; it is what turns an unhandled violation into a readable answer. Supporting it would mean deciding whether chunks move or are re-ingested, which changes what retrieval scope means while retrieval is unfinished (r48). No user story asks for it. Reopen only if one does |
+| R33 | What a mocked session cannot test | **Recorded 9 Sep, not a defect.** `AsyncMock` has no foreign key, CHECK, partial unique index, `ON DELETE` behaviour, column default or timezone coercion — it accepts every correctly-shaped value. Four findings survived a green suite this way: R8, R25, the cross-course move (6 Sep) and R28. **The sharpest is the third: the passing test asserted the broken behaviour**, because a mock cannot disagree with the code under test. Rule: anything the database enforces is tested against a database, seeded inside a transaction that is rolled back; call order, branching and response shape stay on mocks |
 | R8 | `is_active` needs a partial unique index | **Done 22 Aug** (`efda7a3`) — `ix_ingestion_run_one_active` UNIQUE on `(file_id) WHERE is_active`. Verified from empty: a second active run raises `UniqueViolation`, further inactive runs are accepted |
 | R17 | `UNIQUE (user_id, code, year, sem)` | **Done 22 Aug** — declared on `Course.__table_args__` and created in the initial migration as `uq_course_user_code_year_sem`. Verified from an empty database: a duplicate raises `UniqueViolationError`, while a second semester, a second year and a second user all insert. |
 | R18 | `UNIQUE (ingestion_run_id, chunk_index)` | **Done 22 Aug** (`efda7a3`) — `uq_chunk_run_index`. Verified: a second chunk 0 in one run is rejected; chunk 0 in a re-index run is accepted |
