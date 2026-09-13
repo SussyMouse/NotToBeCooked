@@ -2,15 +2,17 @@ import React, { useState, useMemo, useEffect } from "react"
 import type { MockDocumentFile } from "../../types/course"
 import { FolderItem } from "./FolderItem"
 import { FileItem } from "./FileItem"
-import { Folder, Search } from "lucide-react"
+import { Folder, Search, X } from "lucide-react"
 import { RoadmapWidget } from "../roadmap/RoadmapWidget"
 import { UploadDock } from "../upload/UploadDock"
+import { ExplorerState } from "./ExplorerState"
 
+export type ExplorerStatus = "ready" | "loading" | "error"
 interface FileExplorerProps {
   categories: string[]
+  folderParents: Record<string, string | null>
   files: MockDocumentFile[]
   activeFileId: string | null
-  openedFileIds: string[]
   courseWeek: number
   courseWeeks: number
   roadmapProgressPct: number
@@ -19,22 +21,49 @@ interface FileExplorerProps {
   onOpenRoadmapModal: () => void
   onOpenBatchUpload: () => void
   onOpenDirectFolderUpload: (category: string) => void
+  onCreateSubfolder: (
+    parentFolder: string,
+    folderName: string
+  ) => Promise<void> | void
+  onRenameFolder: (
+    folderName: string,
+    newFolderName: string
+  ) => Promise<void> | void
+  onDeleteFolder: (folderName: string) => Promise<void> | void
   className?: string
+  onRenameFile: (fileId: string, newFileName: string) => Promise<void> | void
+  onMoveFile: (
+    fileId: string,
+    destinationFolder: string
+  ) => Promise<void> | void
+  onRetryIndexing: (fileId: string) => Promise<void> | void
+  onDeleteFile: (fileId: string) => Promise<void> | void
+  explorerStatus?: ExplorerStatus
+  onRetryLoad?: () => void
 }
 
 export function FileExplorer({
   categories,
+  folderParents,
   files,
+  explorerStatus = "ready",
+  onRetryLoad,
   activeFileId,
-  openedFileIds,
   courseWeek,
   courseWeeks,
   roadmapProgressPct,
   nextMilestoneText,
   onOpenFile,
+  onRenameFile,
+  onMoveFile,
+  onRetryIndexing,
+  onDeleteFile,
   onOpenRoadmapModal,
   onOpenBatchUpload,
   onOpenDirectFolderUpload,
+  onCreateSubfolder,
+  onRenameFolder,
+  onDeleteFolder,
   className = "",
 }: FileExplorerProps) {
   // Horizontal Resizing State (Matching Chat.tsx dynamic width behavior)
@@ -85,11 +114,86 @@ export function FileExplorer({
     )
   }, [files, searchQuery])
 
+  const visibleCategories = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+
+    if (!query) return categories
+
+    return categories.filter(
+      (category) =>
+        category.toLowerCase().includes(query) ||
+        filteredFiles.some((file) => file.category === category)
+    )
+  }, [categories, filteredFiles, searchQuery])
+
+  const rootCategories = useMemo(
+    () =>
+      visibleCategories.filter((category) => {
+        const parentFolder = folderParents[category]
+        return !parentFolder || !visibleCategories.includes(parentFolder)
+      }),
+    [folderParents, visibleCategories]
+  )
+
   const toggleCategory = (cat: string) => {
     setCollapsedCats((prev) => ({
       ...prev,
       [cat]: !prev[cat],
     }))
+  }
+
+  const renderFolder = (category: string): React.ReactNode => {
+    const totalFilesInFolder = files.filter(
+      (file) => file.category === category
+    )
+    const visibleFilesInFolder = filteredFiles.filter(
+      (file) => file.category === category
+    )
+    const childFolders = visibleCategories.filter(
+      (folderName) => folderParents[folderName] === category
+    )
+    const isCollapsed = collapsedCats[category] || false
+    const isEmpty = totalFilesInFolder.length === 0 && childFolders.length === 0
+
+    return (
+      <FolderItem
+        key={category}
+        category={category}
+        fileCount={totalFilesInFolder.length}
+        childFolderCount={childFolders.length}
+        isCollapsed={isCollapsed}
+        onToggle={() => toggleCategory(category)}
+        onDirectUpload={onOpenDirectFolderUpload}
+        onCreateSubfolder={onCreateSubfolder}
+        onRenameFolder={onRenameFolder}
+        onDeleteFolder={onDeleteFolder}
+      >
+        {isEmpty ? (
+          <ExplorerState
+            variant="empty"
+            folderName={category}
+            onUpload={() => onOpenDirectFolderUpload(category)}
+          />
+        ) : (
+          <>
+            {visibleFilesInFolder.map((file) => (
+              <FileItem
+                key={file.id}
+                file={file}
+                folders={categories}
+                isActive={activeFileId === file.id}
+                onOpenFile={onOpenFile}
+                onRenameFile={onRenameFile}
+                onMoveFile={onMoveFile}
+                onRetryIndexing={onRetryIndexing}
+                onDeleteFile={onDeleteFile}
+              />
+            ))}
+            {childFolders.map(renderFolder)}
+          </>
+        )}
+      </FolderItem>
+    )
   }
 
   return (
@@ -111,60 +215,60 @@ export function FileExplorer({
           </div>
 
           {/* Minimalist Search Box */}
-          <div className="flex items-center gap-2 rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833)/80 px-2.5 py-1.5 text-xs">
+          <div className="flex items-center gap-2 rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833)/80 px-2.5 py-1.5 text-xs focus-within:border-(--acc,#52A8EA) focus-within:ring-1 focus-within:ring-(--acc,#52A8EA)/40">
             <Search className="h-3.5 w-3.5 text-(--tx-faint,#5C6976)" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search documents..."
-              className="w-full bg-transparent text-xs text-(--tx,#DCE3EA) outline-none placeholder:text-(--tx-faint,#5C6976)"
+              disabled={explorerStatus !== "ready"}
+              aria-label="Search folders and files"
+              className="w-full bg-transparent text-xs text-(--tx,#DCE3EA) outline-none placeholder:text-(--tx-faint,#5C6976) disabled:cursor-not-allowed disabled:opacity-50"
             />
+            {searchQuery && explorerStatus === "ready" && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                aria-label="Clear search"
+                title="Clear search"
+                className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-sm text-(--tx-faint,#5C6976) hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA) focus-visible:ring-2 focus-visible:ring-(--acc,#52A8EA) focus-visible:outline-none"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
         {/* Tree View Container: Categories & Files */}
         <div className="flex min-h-0 flex-1 scrollbar-thin [scrollbar-color:var(--line,#25313E)_transparent] flex-col gap-2 overflow-y-auto p-2.5">
-          {/* Folders header */}
-          <div className="px-1 font-mono text-[11px] font-semibold tracking-wider text-(--tx-faint,#5C6976) uppercase">
-            <span>Folders</span>
-          </div>
+          {explorerStatus === "loading" ? (
+            <ExplorerState variant="loading" />
+          ) : explorerStatus === "error" ? (
+            <ExplorerState
+              variant="error"
+              onRetry={() => {
+                onRetryLoad?.()
+              }}
+            />
+          ) : searchQuery.trim() && visibleCategories.length === 0 ? (
+            <ExplorerState
+              variant="no-results"
+              query={searchQuery.trim()}
+              onClear={() => setSearchQuery("")}
+            />
+          ) : (
+            <>
+              <div className="px-1 font-mono text-[11px] font-semibold tracking-wider text-(--tx-faint,#5C6976) uppercase">
+                <span>Folders</span>
+              </div>
 
-          <div className="flex flex-col gap-1.5">
-            {categories.map((cat) => {
-              const filesInCat = filteredFiles.filter((f) => f.category === cat)
-              const isCollapsed = collapsedCats[cat] || false
-
-              return (
-                <FolderItem
-                  key={cat}
-                  category={cat}
-                  fileCount={filesInCat.length}
-                  isCollapsed={isCollapsed}
-                  onToggle={() => toggleCategory(cat)}
-                  onDirectUpload={onOpenDirectFolderUpload}
-                >
-                  {filesInCat.length === 0 ? (
-                    <span className="px-2 py-1 font-mono text-[11px] text-(--tx-faint,#5C6976) italic">
-                      No documents
-                    </span>
-                  ) : (
-                    filesInCat.map((file) => (
-                      <FileItem
-                        key={file.id}
-                        file={file}
-                        isActive={activeFileId === file.id}
-                        isOpenInTab={openedFileIds.includes(file.id)}
-                        onOpenFile={onOpenFile}
-                      />
-                    ))
-                  )}
-                </FolderItem>
-              )
-            })}
-          </div>
+              <div className="flex flex-col gap-1.5">
+                {rootCategories.map(renderFolder)}
+              </div>
+            </>
+          )}
         </div>
-
         {/* Bottom Explorer: Unified Minimalist Roadmap & Upload Dock */}
         <div className="flex flex-col gap-2.5 border-t border-(--line,#25313E) bg-(--bg-bar,#101821)/70 p-3">
           <RoadmapWidget
@@ -180,11 +284,26 @@ export function FileExplorer({
 
       {/* Horizontal Drag Resize Handle on Right Edge */}
       <div
+        role="separator"
+        tabIndex={0}
+        aria-label="Resize File Explorer"
+        aria-orientation="vertical"
+        aria-valuemin={220}
+        aria-valuemax={600}
+        aria-valuenow={width}
         onMouseDown={handleMouseDown}
-        className={`relative z-10 w-1.5 flex-none cursor-col-resize transition-colors hover:bg-(--acc,#52A8EA) ${
+        onKeyDown={(event) => {
+          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return
+          event.preventDefault()
+          const direction = event.key === "ArrowLeft" ? -20 : 20
+          setWidth((current) =>
+            Math.min(600, Math.max(220, current + direction))
+          )
+        }}
+        className={`relative z-10 w-1.5 flex-none cursor-col-resize transition-colors hover:bg-(--acc,#52A8EA) focus-visible:bg-(--acc,#52A8EA) focus-visible:outline-none ${
           isResizing ? "bg-(--acc,#52A8EA)" : "bg-(--line,#25313E)"
         }`}
-        title="Drag horizontally to resize File Explorer"
+        title="Drag or use arrow keys to resize File Explorer"
       />
     </div>
   )

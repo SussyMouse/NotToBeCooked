@@ -47,7 +47,7 @@ import {
   STORAGE_KEY,
   SCHEMA_VERSION,
 } from "../lib/workspace-storage.ts"
-import type { CourseWorkspace } from "../store/workspace.ts"
+import { useWorkspace, type CourseWorkspace } from "../store/workspace.ts"
 
 // ---------------------------------------------------------------------------
 // 1. Workspace LocalStorage Persistence Tests
@@ -263,5 +263,74 @@ describe("Per-Tab View State Isolation", () => {
 
     assert.equal(f2.page, 2)
     assert.equal(f2.zoomLevel, 80)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 4. File Rename Synchronization Tests
+// ---------------------------------------------------------------------------
+describe("Workspace File Rename Synchronization", () => {
+  beforeEach(() => {
+    useWorkspace.setState({
+      activeCourseId: "cs202",
+      byCourse: {
+        cs202: {
+          tabs: [
+            {
+              fileId: "file-1",
+              filename: "Lecture 1.pdf",
+              page: 3,
+              zoomLevel: 125,
+              scrollPos: 480,
+            },
+            {
+              fileId: "file-2",
+              filename: "Lecture 2.pdf",
+              page: 1,
+              zoomLevel: 100,
+              scrollPos: 0,
+            },
+          ],
+          activeFileId: "file-1",
+          activeConversationId: "conversation-1",
+        },
+        cs210: {
+          tabs: [
+            {
+              fileId: "file-1",
+              filename: "Lecture 1.pdf",
+              page: 7,
+              zoomLevel: 90,
+              scrollPos: 240,
+            },
+          ],
+          activeFileId: "file-1",
+          activeConversationId: null,
+        },
+      },
+    })
+  })
+
+  it("updates matching tab names while preserving their view state", () => {
+    useWorkspace.getState().renameFileReferences("file-1", "Architecture.pdf")
+
+    const state = useWorkspace.getState()
+    const cs202File = state.byCourse.cs202!.tabs[0]!
+    const unaffectedFile = state.byCourse.cs202!.tabs[1]!
+    const cs210File = state.byCourse.cs210!.tabs[0]!
+
+    assert.equal(cs202File.filename, "Architecture.pdf")
+    assert.equal(cs210File.filename, "Architecture.pdf")
+
+    assert.equal(cs202File.page, 3)
+    assert.equal(cs202File.zoomLevel, 125)
+    assert.equal(cs202File.scrollPos, 480)
+
+    assert.equal(cs210File.page, 7)
+    assert.equal(cs210File.zoomLevel, 90)
+    assert.equal(cs210File.scrollPos, 240)
+
+    assert.equal(unaffectedFile.filename, "Lecture 2.pdf")
+    assert.equal(state.byCourse.cs202!.activeConversationId, "conversation-1")
   })
 })

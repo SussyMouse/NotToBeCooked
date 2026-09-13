@@ -36,7 +36,7 @@ export function SharedMainApp({ platform }: { platform: "web" | "tauri" }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="midnight">
+      <ThemeProvider defaultTheme="system">
         <div className="min-h-screen bg-background font-sans text-foreground">
           <Router>
             <AuthProvider>

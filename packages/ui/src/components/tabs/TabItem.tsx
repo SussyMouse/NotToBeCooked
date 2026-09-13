@@ -28,12 +28,21 @@ export const TabItem: React.FC<TabItemProps> = React.memo(
       }
     }
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault()
+        onSelect(tab)
+      }
+    }
     return (
       <div
         role="tab"
+        aria-label={tab.filename}
         aria-selected={isActive}
+        tabIndex={isActive ? 0 : -1}
         title={tab.filename}
         onClick={() => onSelect(tab)}
+        onKeyDown={handleKeyDown}
         onAuxClick={handleAuxClick}
         onMouseDown={handleMouseDown}
         className={`group relative flex w-36 shrink-0 cursor-pointer items-center gap-1.5 rounded-none py-1.5 pr-1.5 pl-2.5 text-xs transition-colors select-none sm:w-44 ${
@@ -55,6 +64,7 @@ export const TabItem: React.FC<TabItemProps> = React.memo(
         >
           <button
             type="button"
+            aria-label={`Close ${tab.filename}`}
             title="Close tab (Middle click)"
             onClick={(e) => {
               e.stopPropagation()

@@ -14,7 +14,7 @@ import { UploadModal } from "../components/upload/UploadModal"
 import { TabBar } from "../components/tabs"
 import { DocumentViewer } from "../components/workspace/DocumentViewer"
 import { Maximize2, Minimize2, FileText } from "lucide-react"
-import type { MockCourse, MockDocumentFile } from "../types/course"
+import type { FileStatus, MockCourse, MockDocumentFile } from "../types/course"
 
 export interface DashboardPageProps {
   platform?: "web" | "tauri"
@@ -149,6 +149,7 @@ const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       totalPages: 32,
       uploadedAt: "2 days ago",
       size: "2.4 MB",
+      status: "ready",
       contentByPage: {
         1: "Lecture 4: Architectural Patterns & Decoupled Systems\n\nOverview:\nIn this session, we investigate event-driven systems, layered architectures, and microkernel plugins.",
         4: "Microkernel & Plugin Architecture:\n\nThe core system provides minimal functionality required for operations. Plugins extend the core with specific domain logic and custom adapters.",
@@ -162,6 +163,7 @@ const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       totalPages: 56,
       uploadedAt: "Yesterday",
       size: "6.8 MB",
+      status: "processing",
       contentByPage: {
         1: "Lecture 5: Distributed Consensus and Fault Tolerance\n\nKey Topics:\n- The CAP Theorem in modern cloud deployments\n- Leader election and log replication with Raft\n- Byzantine Fault Tolerance (BFT) fundamentals",
         12: "Raft Leader Election:\nFollowers increment their term and transition to candidate state if no heartbeat is received within the randomized election timeout window.",
@@ -176,6 +178,8 @@ const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       totalPages: 24,
       uploadedAt: "1 week ago",
       size: "1.8 MB",
+      status: "failed",
+      errorMessage: "No extractable content was found.",
       contentByPage: {
         1: "Lecture 1: SOLID Principles & Object-Oriented Design\n\nSingle Responsibility, Open-Closed, Liskov Substitution, Interface Segregation, Dependency Inversion.",
         5: "Single Responsibility Principle (SRP):\nA module or class should have one, and only one, reason to change.",
@@ -189,6 +193,7 @@ const MOCK_FILES_BY_COURSE: Record<string, MockDocumentFile[]> = {
       totalPages: 28,
       uploadedAt: "6 days ago",
       size: "2.1 MB",
+      status: "uploaded",
       contentByPage: {
         1: "Lecture 2: Domain Modeling & UML Design\n\nRepresenting entity relationships, aggregation vs composition, and state machine transitions.",
       },
@@ -341,6 +346,11 @@ const CATEGORIES = [
   "Tutorials & PYQs",
 ]
 
+interface MockFolder {
+  name: string
+  parentFolder: string | null
+}
+
 export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   const { user, logout } = useAuth()
 
@@ -353,15 +363,52 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   const activeFileId =
     activeCourseWorkspace?.activeFileId ?? (tabs[0]?.fileId || null)
   const openTab = useWorkspace((s) => s.openTab)
+  const renameFileReferences = useWorkspace((s) => s.renameFileReferences)
   const closeTab = useWorkspace((s) => s.closeTab)
   const setActiveFile = useWorkspace((s) => s.setActiveFile)
   const updateTabViewState = useWorkspace((s) => s.updateTabViewState)
   const openCitation = useWorkspace((s) => s.openCitation)
-
+  const [fileNameOverrides, setFileNameOverrides] = useState<
+    Record<string, string>
+  >({})
+  const [fileFolderOverrides, setFileFolderOverrides] = useState<
+    Record<string, string>
+  >({})
+  const [fileStatusOverrides, setFileStatusOverrides] = useState<
+    Record<string, FileStatus>
+  >({})
+  const [deletedFileIds, setDeletedFileIds] = useState<string[]>([])
+  const [uploadedFilesByCourse, setUploadedFilesByCourse] = useState<
+    Record<string, MockDocumentFile[]>
+  >({})
+  const [customFoldersByCourse, setCustomFoldersByCourse] = useState<
+    Record<string, MockFolder[]>
+  >({})
+  const [folderNameOverridesByCourse, setFolderNameOverridesByCourse] =
+    useState<Record<string, Record<string, string>>>({})
+  const [deletedBaseFoldersByCourse, setDeletedBaseFoldersByCourse] = useState<
+    Record<string, string[]>
+  >({})
   // Repository of all files across all courses
   const allFiles = useMemo(() => {
-    return Object.values(MOCK_FILES_BY_COURSE).flat()
-  }, [])
+    return [
+      ...Object.values(MOCK_FILES_BY_COURSE).flat(),
+      ...Object.values(uploadedFilesByCourse).flat(),
+    ]
+      .filter((file) => !deletedFileIds.includes(file.id))
+      .map((file) => ({
+        ...file,
+        name: fileNameOverrides[file.id] ?? file.name,
+        category: fileFolderOverrides[file.id] ?? file.category,
+        status: fileStatusOverrides[file.id] ?? file.status,
+      }))
+  }, [
+    deletedFileIds,
+    fileFolderOverrides,
+    fileNameOverrides,
+    fileStatusOverrides,
+    uploadedFilesByCourse,
+  ])
 
   // Chat Session Hook
   const {
@@ -415,14 +462,67 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     )
   }, [activeCourseId])
 
-  const courseFiles = useMemo(() => {
-    return (
-      MOCK_FILES_BY_COURSE[currentCourse.id] ||
-      MOCK_FILES_BY_COURSE[currentCourse.code] ||
-      []
-    )
-  }, [currentCourse])
+  const folderNameOverrides = useMemo(
+    () => folderNameOverridesByCourse[currentCourse.id] ?? {},
+    [currentCourse.id, folderNameOverridesByCourse]
+  )
 
+  const deletedBaseFolders = useMemo(
+    () => deletedBaseFoldersByCourse[currentCourse.id] ?? [],
+    [currentCourse.id, deletedBaseFoldersByCourse]
+  )
+
+  const customFolders = useMemo(
+    () => customFoldersByCourse[currentCourse.id] ?? [],
+    [currentCourse.id, customFoldersByCourse]
+  )
+
+  const baseFolderNames = useMemo(
+    () =>
+      CATEGORIES.filter(
+        (folderName) => !deletedBaseFolders.includes(folderName)
+      ).map((folderName) => folderNameOverrides[folderName] ?? folderName),
+    [deletedBaseFolders, folderNameOverrides]
+  )
+
+  const courseCategories = useMemo(
+    () => [...baseFolderNames, ...customFolders.map((folder) => folder.name)],
+    [baseFolderNames, customFolders]
+  )
+
+  const folderParents = useMemo(
+    () =>
+      Object.fromEntries([
+        ...baseFolderNames.map((folderName) => [folderName, null]),
+        ...customFolders.map((folder) => [folder.name, folder.parentFolder]),
+      ]) as Record<string, string | null>,
+    [baseFolderNames, customFolders]
+  )
+
+  const courseFiles = useMemo(() => {
+    const files = [
+      ...(MOCK_FILES_BY_COURSE[currentCourse.id] ??
+        MOCK_FILES_BY_COURSE[currentCourse.code] ??
+        []),
+      ...(uploadedFilesByCourse[currentCourse.id] ?? []),
+    ]
+
+    return files
+      .filter((file) => !deletedFileIds.includes(file.id))
+      .map((file) => ({
+        ...file,
+        name: fileNameOverrides[file.id] ?? file.name,
+        category: fileFolderOverrides[file.id] ?? file.category,
+        status: fileStatusOverrides[file.id] ?? file.status,
+      }))
+  }, [
+    deletedFileIds,
+    currentCourse,
+    fileFolderOverrides,
+    fileNameOverrides,
+    fileStatusOverrides,
+    uploadedFilesByCourse,
+  ])
 
   // Roadmap calculations (from workspace.html)
   const courseRoadmap = useMemo(() => {
@@ -469,6 +569,46 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
   const showToast = (msg: string) => {
     setToastMessage(msg)
     setTimeout(() => setToastMessage(null), 3000)
+  }
+
+  const handleRenameFile = (fileId: string, newFileName: string) => {
+    setFileNameOverrides((current) => ({
+      ...current,
+      [fileId]: newFileName,
+    }))
+
+    renameFileReferences(fileId, newFileName)
+    showToast(`Renamed to ${newFileName}`)
+  }
+
+  const handleMoveFile = (fileId: string, destinationFolder: string) => {
+    setFileFolderOverrides((current) => ({
+      ...current,
+      [fileId]: destinationFolder,
+    }))
+
+    showToast(`Moved file to ${destinationFolder}`)
+  }
+
+  const handleRetryIndexing = (fileId: string) => {
+    setFileStatusOverrides((current) => ({
+      ...current,
+      [fileId]: "processing",
+    }))
+
+    showToast("Indexing restarted in the background")
+  }
+
+  const handleDeleteFile = (fileId: string) => {
+    const file = courseFiles.find((candidate) => candidate.id === fileId)
+    if (!file) throw new Error("File not found")
+
+    setDeletedFileIds((current) =>
+      current.includes(fileId) ? current : [...current, fileId]
+    )
+    closeTab(activeCourseId, fileId)
+    setSelectedCitation((current) => (current?.f === fileId ? null : current))
+    showToast(`Deleted ${file.name}`)
   }
 
   // Handlers for document & chat interaction
@@ -533,15 +673,118 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
     setIsUploadModalOpen(true)
   }
 
-  const openedFileIds = useMemo(() => tabs.map((t) => t.fileId), [tabs])
+  const handleCreateSubfolder = (parentFolder: string, folderName: string) => {
+    const folderAlreadyExists = courseCategories.some(
+      (category) => category.toLowerCase() === folderName.toLowerCase()
+    )
+
+    if (folderAlreadyExists) {
+      throw new Error("Folder already exists")
+    }
+
+    setCustomFoldersByCourse((current) => ({
+      ...current,
+      [currentCourse.id]: [
+        ...(current[currentCourse.id] ?? []),
+        {
+          name: folderName,
+          parentFolder,
+        },
+      ],
+    }))
+
+    showToast(`Created ${folderName} inside ${parentFolder}`)
+  }
+
+  const handleRenameFolder = (folderName: string, newFolderName: string) => {
+    const duplicateExists = courseCategories.some(
+      (category) =>
+        category !== folderName &&
+        category.toLowerCase() === newFolderName.toLowerCase()
+    )
+
+    if (duplicateExists) throw new Error("Folder already exists")
+
+    const originalBaseFolder = CATEGORIES.find(
+      (originalName) =>
+        (folderNameOverrides[originalName] ?? originalName) === folderName
+    )
+
+    if (originalBaseFolder) {
+      setFolderNameOverridesByCourse((current) => ({
+        ...current,
+        [currentCourse.id]: {
+          ...(current[currentCourse.id] ?? {}),
+          [originalBaseFolder]: newFolderName,
+        },
+      }))
+    }
+
+    setCustomFoldersByCourse((current) => ({
+      ...current,
+      [currentCourse.id]: (current[currentCourse.id] ?? []).map((folder) => ({
+        ...folder,
+        name: folder.name === folderName ? newFolderName : folder.name,
+        parentFolder:
+          folder.parentFolder === folderName
+            ? newFolderName
+            : folder.parentFolder,
+      })),
+    }))
+
+    setFileFolderOverrides((current) => {
+      const next = { ...current }
+      courseFiles.forEach((file) => {
+        if (file.category === folderName) next[file.id] = newFolderName
+      })
+      return next
+    })
+
+    showToast(`Renamed ${folderName} to ${newFolderName}`)
+  }
+
+  const handleDeleteFolder = (folderName: string) => {
+    const hasFiles = courseFiles.some((file) => file.category === folderName)
+    const hasChildren = customFolders.some(
+      (folder) => folder.parentFolder === folderName
+    )
+
+    if (hasFiles || hasChildren) {
+      throw new Error("Folder is not empty")
+    }
+
+    const originalBaseFolder = CATEGORIES.find(
+      (originalName) =>
+        (folderNameOverrides[originalName] ?? originalName) === folderName
+    )
+
+    if (originalBaseFolder) {
+      setDeletedBaseFoldersByCourse((current) => ({
+        ...current,
+        [currentCourse.id]: [
+          ...(current[currentCourse.id] ?? []),
+          originalBaseFolder,
+        ],
+      }))
+    } else {
+      setCustomFoldersByCourse((current) => ({
+        ...current,
+        [currentCourse.id]: (current[currentCourse.id] ?? []).filter(
+          (folder) => folder.name !== folderName
+        ),
+      }))
+    }
+
+    showToast(`Deleted ${folderName}`)
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-(--bg-canvas,#161F29) font-sans text-(--tx,#DCE3EA) select-none">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 animate-in items-center gap-2 rounded-lg border border-(--acc,#52A8EA) bg-(--bg-raise,#1C2833) px-4 py-2 text-xs text-(--tx,#DCE3EA) shadow-lg duration-200 fade-in slide-in-from-bottom-2">
+        <div className="fixed bottom-4 left-1/2 z-50 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 animate-in items-center gap-2 rounded-lg border border-(--acc,#52A8EA) bg-(--bg-raise,#1C2833) px-4 py-2 text-xs text-(--tx,#DCE3EA) shadow-lg duration-200 fade-in slide-in-from-bottom-2">
           <span className="h-2 w-2 rounded-full bg-(--acc,#52A8EA)" />
-          <span>{toastMessage}</span>
+          <span className="min-w-0 break-words">{toastMessage}</span>
         </div>
       )}
 
@@ -562,18 +805,25 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
           {/* Left Pane: Structured File Explorer */}
           {!isWorkspaceFullscreen && (
             <FileExplorer
-              categories={CATEGORIES}
+              categories={courseCategories}
+              folderParents={folderParents}
               files={courseFiles}
               activeFileId={activeFileId}
-              openedFileIds={openedFileIds}
               courseWeek={currentCourse.week}
               courseWeeks={currentCourse.weeks}
               roadmapProgressPct={roadmapStats.pct}
               nextMilestoneText={roadmapStats.nextText}
               onOpenFile={handleOpenFile}
+              onRenameFile={handleRenameFile}
+              onMoveFile={handleMoveFile}
+              onRetryIndexing={handleRetryIndexing}
+              onDeleteFile={handleDeleteFile}
               onOpenRoadmapModal={() => setIsRoadmapOpen(true)}
               onOpenBatchUpload={handleOpenBatchUpload}
               onOpenDirectFolderUpload={handleOpenDirectFolderUpload}
+              onCreateSubfolder={handleCreateSubfolder}
+              onRenameFolder={handleRenameFolder}
+              onDeleteFolder={handleDeleteFolder}
             />
           )}
 
@@ -688,7 +938,7 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
               courseCode={currentCourse.code}
               filesCount={courseFiles.length}
               files={courseFiles}
-              categories={CATEGORIES}
+              categories={courseCategories}
               messages={messages}
               sessions={sessions}
               activeSessionId={activeConversationId}
@@ -720,12 +970,31 @@ export function DashboardPage({ platform = "web" }: DashboardPageProps = {}) {
       <UploadModal
         isOpen={isUploadModalOpen}
         courseCode={currentCourse.code}
-        categories={CATEGORIES}
+        categories={courseCategories}
         initialCategory={uploadCategory}
         isDirectFolderUpload={isDirectFolderUpload}
         onClose={() => setIsUploadModalOpen(false)}
-        onUploadSuccess={(category) => {
-          showToast(`Uploaded document to ${category}.`)
+        onUploadSuccess={(category, filename) => {
+          const uploadedFileName = filename ?? "Uploaded document.pdf"
+          setUploadedFilesByCourse((current) => ({
+            ...current,
+            [currentCourse.id]: [
+              ...(current[currentCourse.id] ?? []),
+              {
+                id: crypto.randomUUID(),
+                name: uploadedFileName,
+                category,
+                totalPages: 1,
+                uploadedAt: "Just now",
+                size: "Pending",
+                status: "uploaded",
+                contentByPage: {
+                  1: `${uploadedFileName} is waiting to be indexed.`,
+                },
+              },
+            ],
+          }))
+          showToast(`Uploaded ${uploadedFileName} to ${category}.`)
         }}
       />
     </div>

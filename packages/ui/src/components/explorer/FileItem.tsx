@@ -1,11 +1,39 @@
+import { useState } from "react"
+import {
+  AlertCircle,
+  FilePenLine,
+  FileText,
+  FolderInput,
+  MoreVertical,
+  Trash2,
+} from "lucide-react"
+
 import type { MockDocumentFile } from "../../types/course"
-import { FileText } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../dropdown-menu"
+import { FileStatusBadge } from "./FileStatusBadge"
+import { DeleteFileDialog } from "./DeleteFileDialog"
+import { IndexingFailureDialog } from "./IndexingFailureDialog"
+import { RenameFileDialog } from "./RenameFileDialog"
+import { MoveFileDialog } from "./MoveFileDialog"
 
 interface FileItemProps {
   file: MockDocumentFile
+  folders: string[]
   isActive: boolean
-  isOpenInTab: boolean
   onOpenFile: (file: MockDocumentFile) => void
+  onRenameFile: (fileId: string, newFileName: string) => Promise<void> | void
+  onMoveFile: (
+    fileId: string,
+    destinationFolder: string
+  ) => Promise<void> | void
+  onRetryIndexing: (fileId: string) => Promise<void> | void
+  onDeleteFile: (fileId: string) => Promise<void> | void
 }
 
 export function getFileExtension(filename: string): string {
@@ -200,33 +228,128 @@ export function FileIcon({
 
 export function FileItem({
   file,
+  folders,
   isActive,
-  isOpenInTab,
   onOpenFile,
+  onRenameFile,
+  onMoveFile,
+  onRetryIndexing,
+  onDeleteFile,
 }: FileItemProps) {
-  return (
-    <button
-      type="button"
-      onClick={() => onOpenFile(file)}
-      className="group flex w-full cursor-pointer items-center gap-1.5 py-0 text-left text-xs transition-colors"
-    >
-      <FileIcon filename={file.name} />
+  const [isRenameOpen, setIsRenameOpen] = useState(false)
+  const [isMoveOpen, setIsMoveOpen] = useState(false)
+  const [isFailureOpen, setIsFailureOpen] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
+  return (
+    <>
       <div
-        className={`flex min-w-0 flex-1 items-center justify-between gap-1.5 rounded px-1.5 py-0.5 transition-colors ${
+        className={`group relative flex h-10 w-full items-center rounded-sm border-l-[3px] transition-colors ${
           isActive
-            ? "bg-(--bg-raise,#1C2833) font-medium text-(--acc,#52A8EA)"
-            : "text-(--tx-dim,#8B98A7) group-hover:bg-(--bg-hover,#213040)/40 group-hover:text-(--tx,#DCE3EA)"
+            ? "border-l-(--acc,#52A8EA) bg-(--acc,#52A8EA)/10 text-(--acc,#52A8EA)"
+            : "border-l-transparent text-(--tx-dim,#8B98A7) hover:bg-(--bg-hover,#213040)/50 hover:text-(--tx,#DCE3EA)"
         }`}
       >
-        <span className="truncate text-xs">{file.name}</span>
-        {isOpenInTab && (
-          <span
-            className="h-1.5 w-1.5 shrink-0 rounded-full bg-(--acc,#52A8EA)"
-            title="Open in active tab"
-          />
-        )}
+        <button
+          type="button"
+          onClick={() => onOpenFile(file)}
+          aria-current={isActive ? "page" : undefined}
+          className="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-sm py-1 pr-1 pl-2 text-left focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-(--acc,#52A8EA) focus-visible:outline-none"
+        >
+          <FileIcon filename={file.name} />
+
+          <span className="min-w-0 flex-1 truncate text-xs">{file.name}</span>
+
+          <FileStatusBadge status={file.status ?? "ready"} />
+        </button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label={`Open actions for ${file.name}`}
+            title={`Actions for ${file.name}`}
+            className="mr-1 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-sm text-(--tx-faint,#5C6976) transition-colors hover:bg-(--bg-hover,#213040) hover:text-(--tx,#DCE3EA) focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-(--acc,#52A8EA) focus-visible:outline-none"
+          >
+            <MoreVertical className="h-4 w-4" />
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent
+            align="end"
+            sideOffset={4}
+            className="w-40 border-(--line,#25313E) bg-(--bg-panel,#121A23) text-(--tx,#DCE3EA)"
+          >
+            <DropdownMenuItem
+              onClick={() => setIsRenameOpen(true)}
+              className="cursor-pointer text-xs"
+            >
+              <FilePenLine className="h-4 w-4" />
+              Rename
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              onClick={() => setIsMoveOpen(true)}
+              className="cursor-pointer text-xs"
+            >
+              <FolderInput className="h-4 w-4" />
+              Move
+            </DropdownMenuItem>
+
+            {file.status === "failed" && (
+              <DropdownMenuItem
+                onClick={() => setIsFailureOpen(true)}
+                className="cursor-pointer text-xs text-(--danger-tx,#F0A19D)"
+              >
+                <AlertCircle className="h-4 w-4" />
+                View failure details
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => setIsDeleteOpen(true)}
+              className="cursor-pointer text-xs text-(--danger-tx,#F0A19D)"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete file
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-    </button>
+
+      {isRenameOpen && (
+        <RenameFileDialog
+          open
+          fileName={file.name}
+          onOpenChange={setIsRenameOpen}
+          onRename={(newFileName) => onRenameFile(file.id, newFileName)}
+        />
+      )}
+      {isMoveOpen && (
+        <MoveFileDialog
+          open
+          fileName={file.name}
+          currentFolder={file.category ?? "Uncategorized"}
+          folders={folders}
+          onOpenChange={setIsMoveOpen}
+          onMove={(destinationFolder) => onMoveFile(file.id, destinationFolder)}
+        />
+      )}
+      {isFailureOpen && (
+        <IndexingFailureDialog
+          open
+          fileName={file.name}
+          fileSize={file.size}
+          errorMessage={file.errorMessage}
+          onOpenChange={setIsFailureOpen}
+          onRetry={() => onRetryIndexing(file.id)}
+        />
+      )}
+      {isDeleteOpen && (
+        <DeleteFileDialog
+          open
+          fileName={file.name}
+          onOpenChange={setIsDeleteOpen}
+          onDelete={() => onDeleteFile(file.id)}
+        />
+      )}
+    </>
   )
 }

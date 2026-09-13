@@ -619,3 +619,100 @@ def test_get_file_content_returns_404_when_stored_file_is_missing(
 
     assert response.status_code == 404
     assert response.json() == {"detail": "File content not found"}
+
+
+def test_delete_file_returns_204_and_removes_database_and_storage(monkeypatch):
+    test_app = FastAPI()
+    test_app.include_router(files_router, prefix="/files")
+
+    user_id = uuid4()
+    course_id = uuid4()
+    folder_id = uuid4()
+    file_id = uuid4()
+
+    fake_file = FileRow(
+        id=file_id,
+        course_id=course_id,
+        folder_id=folder_id,
+        filename="lecture-1.pdf",
+        storage_key=f"{user_id}/{file_id}.pdf",
+        sha256="abc123",
+        mime_type="application/pdf",
+        size_bytes=1024,
+        page_count=1,
+        status=FileStatus.READY,
+        error_message=None,
+        uploaded_at=datetime.now(UTC),
+        indexed_at=datetime.now(UTC),
+    )
+
+    query_result = Mock()
+    query_result.first.return_value = fake_file
+
+    fake_session = AsyncMock()
+    fake_session.exec.return_value = query_result
+
+    fake_delete_stored_file = Mock()
+    monkeypatch.setattr(
+        "app.routers.files.delete_stored_file",
+        fake_delete_stored_file,
+    )
+
+    async def override_session():
+        return fake_session
+
+    async def override_current_user():
+        return {"sub": str(user_id)}
+
+    test_app.dependency_overrides[get_session] = override_session
+    test_app.dependency_overrides[get_current_user] = override_current_user
+
+    client = TestClient(test_app)
+    response = client.delete(f"/files/{file_id}")
+
+    assert response.status_code == 204
+    assert response.content == b""
+
+    fake_session.exec.assert_awaited_once()
+    fake_delete_stored_file.assert_called_once_with(fake_file.storage_key)
+    fake_session.delete.assert_awaited_once_with(fake_file)
+    fake_session.commit.assert_awaited_once()
+
+
+def test_delete_file_returns_404_when_file_not_found(monkeypatch):
+    test_app = FastAPI()
+    test_app.include_router(files_router, prefix="/files")
+
+    user_id = uuid4()
+    file_id = uuid4()
+
+    query_result = Mock()
+    query_result.first.return_value = None
+
+    fake_session = AsyncMock()
+    fake_session.exec.return_value = query_result
+
+    fake_delete_stored_file = Mock()
+    monkeypatch.setattr(
+        "app.routers.files.delete_stored_file",
+        fake_delete_stored_file,
+    )
+
+    async def override_session():
+        return fake_session
+
+    async def override_current_user():
+        return {"sub": str(user_id)}
+
+    test_app.dependency_overrides[get_session] = override_session
+    test_app.dependency_overrides[get_current_user] = override_current_user
+
+    client = TestClient(test_app)
+    response = client.delete(f"/files/{file_id}")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "File not found"}
+
+    fake_delete_stored_file.assert_not_called()
+    fake_session.delete.assert_not_awaited()
+    fake_session.commit.assert_not_awaited()

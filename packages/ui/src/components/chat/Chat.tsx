@@ -7,7 +7,7 @@ import {
 import { ChatInput, type ChatFile } from "./ChatInput"
 import { History, type ChatSessionItem } from "./History"
 import { CitationDrawer } from "./CitationDrawer"
-import { Plus, Clock, Trash2 } from "lucide-react"
+import { Plus, Clock, Trash2, GripVertical } from "lucide-react"
 
 export type { CitationItem, ChatMessage, ChatFile, ChatSessionItem }
 
@@ -124,6 +124,17 @@ export const Chat: React.FC<ChatProps> = ({
     setIsResizing(true)
   }
 
+  const handleResizeKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = e.shiftKey ? 40 : 16
+
+    if (e.key === "ArrowLeft") {
+      e.preventDefault()
+      setWidth((currentWidth) => Math.min(800, currentWidth + step))
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault()
+      setWidth((currentWidth) => Math.max(280, currentWidth - step))
+    }
+  }
   useEffect(() => {
     if (!isResizing) return
 
@@ -266,12 +277,24 @@ export const Chat: React.FC<ChatProps> = ({
     <div className="relative flex h-full min-h-0 flex-none">
       {/* Horizontal Drag Resize Handle */}
       <div
+        role="separator"
+        aria-label="Resize Chat panel"
+        aria-orientation="vertical"
+        aria-valuemin={280}
+        aria-valuemax={800}
+        aria-valuenow={width}
+        tabIndex={0}
         onMouseDown={handleMouseDown}
-        className={`relative z-10 w-1.5 flex-none cursor-col-resize transition-colors hover:bg-(--acc,#52A8EA) ${
-          isResizing ? "bg-(--acc,#52A8EA)" : "bg-(--line,#25313E)"
+        onKeyDown={handleResizeKeyDown}
+        className={`group relative z-10 w-2 flex-none cursor-col-resize transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-(--acc,#52A8EA) ${
+          isResizing ? "bg-(--acc,#52A8EA)/35" : "bg-(--line,#25313E)"
         }`}
-        title="Drag horizontally to resize Chat panel"
-      />
+        title="Drag horizontally or use Left and Right arrow keys to resize Chat panel"
+      >
+        <span className="pointer-events-none absolute top-1/2 left-1/2 flex h-10 w-3 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-(--line,#25313E) bg-(--bg-raise,#1C2833) text-(--tx-faint,#5C6976) opacity-45 shadow-sm transition-all group-hover:border-(--acc,#52A8EA) group-hover:text-(--acc,#52A8EA) group-hover:opacity-100 group-focus-visible:border-(--acc,#52A8EA) group-focus-visible:text-(--acc,#52A8EA) group-focus-visible:opacity-100">
+          <GripVertical aria-hidden="true" className="h-4 w-4" />
+        </span>
+      </div>
 
       {/* Main Chat Panel */}
       <aside
@@ -280,7 +303,7 @@ export const Chat: React.FC<ChatProps> = ({
       >
         {/* Top Header */}
         <div className="flex h-10 flex-none items-center justify-between gap-2 border-b border-(--line-soft,#1B2530) bg-(--bg-bar,#101821)/50 px-3">
-          <span className="min-w-0 flex-1 truncate font-medium text-xs text-(--tx,#DCE3EA)">
+          <span className="min-w-0 flex-1 truncate text-xs font-medium text-(--tx,#DCE3EA)">
             {headerTitle}
           </span>
 
@@ -371,7 +394,7 @@ export const Chat: React.FC<ChatProps> = ({
                       type="button"
                       disabled={isTyping}
                       onClick={() => handleSend(q)}
-                      className="group flex cursor-pointer items-center justify-between rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2.5 py-1.5 text-left text-xs text-(--tx-dim,#8B98A7) [outline:none] transition-colors outline-none hover:border-(--acc-deep,#1D5D8A) hover:text-(--tx,#DCE3EA) focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                      className="group flex cursor-pointer items-center justify-between rounded-lg border border-(--line,#25313E) bg-(--bg-raise,#1C2833) px-2.5 py-1.5 text-left text-xs text-(--tx-dim,#8B98A7) transition-colors hover:border-(--acc-deep,#1D5D8A) hover:text-(--tx,#DCE3EA) focus-visible:border-(--acc,#52A8EA) focus-visible:ring-2 focus-visible:ring-(--acc,#52A8EA)/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <span>{q}</span>
                       <span className="text-(--tx-faint,#5C6976) transition-colors group-hover:text-(--acc,#52A8EA)">
