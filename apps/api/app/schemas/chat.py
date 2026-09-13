@@ -67,6 +67,13 @@ class Message(SQLModel, table=True):
     citations: list[dict[str, Any]] | None = Field(
         default=None, sa_column=Column(JSONB, nullable=True)
     )
+    uncovered: str | None = Field(
+        default=None,
+        description="What the material did not cover on this turn, when it answered only "
+        "in part. A column for the same reason `grounded` is one: it cannot be parsed back "
+        "out of the reply text afterwards, and a conversation reopened next week has to "
+        "show the same caveat it showed when it was written -- r47.",
+    )
     mentioned_file_ids: list[UUID] | None = Field(
         default=None, sa_column=Column(JSONB, nullable=True)
     )
@@ -91,6 +98,7 @@ class MessageRead(SQLModel):
     role: ChatRole
     content: str
     grounded: bool
+    uncovered: str | None
     citations: list[dict[str, Any]] | None
     mentioned_file_ids: list[UUID] | None
     created_at: datetime

@@ -31,9 +31,7 @@ class RagQueryRequest(SQLModel):
     course_id: UUID | None = Field(
         default=None, description="The turn's home course. Ignored when file_ids is set."
     )
-    conversation_id: UUID | None = Field(
-        default=None, description="The turn's conversation"
-    )
+    conversation_id: UUID | None = Field(default=None, description="The turn's conversation")
     file_ids: list[UUID] | None = Field(
         default=None,
         description="Explicit @-mention scope. May cross courses. When set, overrides course_id.",
@@ -117,6 +115,13 @@ class RagAnswer(SQLModel):
     answer: str = Field(..., min_length=1)
     citations: list[Citation] = Field(default_factory=list)
     grounded: bool
+    uncovered: str | None = Field(
+        default=None,
+        description="What the sources did not cover, when they answered the question only "
+        "in part. None means the answer is complete against the material -- r47. It is a "
+        "field rather than a sentence inside `answer` so that `grounded=true` stops "
+        "carrying two different meanings: answered in full, and answered in part.",
+    )
     used_chunks: int = Field(
         ...,
         ge=0,

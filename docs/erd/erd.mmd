@@ -225,6 +225,7 @@ erDiagram
         enum role "user, assistant"
         text content
         bool grounded "every claim is backed by a cited source"
+        string uncovered "nullable — what the sources did not cover when the answer was only partial (r47). Null means complete, so `grounded` stops carrying two meanings"
         jsonb citations "file_id, course_id, page, quote — frozen at write time"
         jsonb mentioned_file_ids "the @-scope, may cross courses, beats scope_course_id"
         jsonb scope_snapshot "what retrieval was allowed to see, frozen at write time"

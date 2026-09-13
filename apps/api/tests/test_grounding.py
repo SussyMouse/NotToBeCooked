@@ -166,3 +166,56 @@ def test_a_refusal_is_not_a_grounding_failure():
         selected=SELECTED,
     )
     assert report.ok, report.problems
+
+
+# --- r47: the answer's own claim about what it did not cover -------------------
+#
+# None of these can be checked against the truth -- whether the material really
+# left something out needs the right answer, which is the one thing this system
+# does not have. What they check is whether the answer contradicts itself.
+
+
+def test_a_partial_answer_that_names_the_gap_passes():
+    report = check_grounding(
+        answer="Plants turn light into chemical energy [1].",
+        citations=[cite(1, C1, "Photosynthesis converts light energy")],
+        selected=SELECTED,
+        uncovered="The sources do not say how the light reactions are regulated.",
+    )
+    assert report.ok, report.problems
+
+
+def test_a_declared_gap_with_nothing_in_it_fails():
+    """"Part of this is missing" and then no word about which part."""
+    report = check_grounding(
+        answer="Plants turn light into chemical energy [1].",
+        citations=[cite(1, C1, "Photosynthesis converts light energy")],
+        selected=SELECTED,
+        uncovered="   ",
+    )
+    assert not report.ok
+    assert any("does not name it" in p for p in report.problems)
+
+
+def test_a_declared_gap_with_no_citations_fails():
+    """"The sources cover half of this" and "none of this came from the sources"
+    cannot both be true. The marker checks above pass here, because both lists
+    are empty and so they agree -- this is the one that catches it."""
+    report = check_grounding(
+        answer="Plants turn light into chemical energy.",
+        citations=[],
+        selected=SELECTED,
+        uncovered="The sources do not cover the Calvin cycle.",
+    )
+    assert not report.ok
+    assert any("cites none of them" in p for p in report.problems)
+
+
+def test_an_answer_with_no_claim_about_coverage_is_unchanged():
+    """The default keeps every pre-r47 caller meaning what it meant."""
+    report = check_grounding(
+        answer="The supplied material does not cover this question.",
+        citations=[],
+        selected=SELECTED,
+    )
+    assert report.ok, report.problems

@@ -38,6 +38,18 @@ class LlmAnswer(BaseModel):
     grounded: bool
     citations: list[LlmCitation] = Field(default_factory=list)
 
+    # r47. `prompt.py` has always instructed the model to "state which part the
+    # material does not cover", and until now there was nowhere to state it but
+    # the prose -- which means nothing could check that it had been said. A
+    # field can be checked; a sentence buried in a paragraph cannot.
+    #
+    # Optional, because a full answer has nothing to report here. Absent and
+    # empty mean different things and only one of them is legal: absent is "the
+    # sources covered the question", while a present-but-blank value is the
+    # model claiming a gap and then declining to name it. `check_grounding`
+    # rejects the second.
+    uncovered: str | None = None
+
 
 # Gemini's responseSchema is an OpenAPI subset with upper-case type names. It is
 # written out rather than derived from LlmAnswer because the two are not the
@@ -49,6 +61,10 @@ _RESPONSE_SCHEMA: dict[str, Any] = {
     "properties": {
         "answer": {"type": "STRING"},
         "grounded": {"type": "BOOLEAN"},
+        # Deliberately absent from `required` below: the model must be able to
+        # omit it, because most answers have no gap to declare. A required
+        # nullable string would invite the empty string instead of the omission.
+        "uncovered": {"type": "STRING", "nullable": True},
         "citations": {
             "type": "ARRAY",
             "items": {
@@ -142,13 +158,7 @@ async def generate_answer(
     # user-supplied text, where "ignore the above" is one sentence away.
     payload = {
         "system_instruction": {"parts": [{"text": SYSTEM_INSTRUCTION}]},
-        "contents": [
-            {
-                "parts": [
-                    {"text": f"SOURCES\n\n{context}\n\nQUESTION\n\n{question}"}
-                ]
-            }
-        ],
+        "contents": [{"parts": [{"text": f"SOURCES\n\n{context}\n\nQUESTION\n\n{question}"}]}],
         "generationConfig": {
             "responseMimeType": "application/json",
             "responseSchema": _RESPONSE_SCHEMA,

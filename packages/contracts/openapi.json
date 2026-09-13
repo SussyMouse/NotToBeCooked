@@ -2101,6 +2101,17 @@
             "type": "boolean",
             "title": "Grounded"
           },
+          "uncovered": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uncovered"
+          },
           "citations": {
             "anyOf": [
               {
@@ -2145,6 +2156,7 @@
           "role",
           "content",
           "grounded",
+          "uncovered",
           "citations",
           "mentioned_file_ids",
           "created_at"
@@ -2168,6 +2180,18 @@
           "grounded": {
             "type": "boolean",
             "title": "Grounded"
+          },
+          "uncovered": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uncovered",
+            "description": "What the sources did not cover, when they answered the question only in part. None means the answer is complete against the material -- r47. It is a field rather than a sentence inside `answer` so that `grounded=true` stops carrying two different meanings: answered in full, and answered in part."
           },
           "used_chunks": {
             "type": "integer",

@@ -4,7 +4,7 @@ Pure functions only: no network, no settings, no database. Everything here is
 decidable from three values the caller already holds, which is the point -- this
 is the one check in the generation layer that does not have to trust the model.
 
-Two independent failures are being caught, and they are not the same shape:
+Three independent failures are being caught, and they are not the same shape:
 
 - **The two lists disagree.** A model returns prose with `[1]`-style markers in
   it and, separately, a list of citations. Nothing makes those agree. A marker
@@ -18,10 +18,23 @@ Two independent failures are being caught, and they are not the same shape:
   in *some* source. A model that cites the right sentence under the wrong number
   passes the weaker test and still sends the reader to the wrong page.
 
+- **The answer contradicts itself about coverage.** `uncovered` says the sources
+  answered the question only in part. That claim can be checked against the
+  answer's own other fields, and against nothing else: whether the material
+  *really* left something out needs the right answer, which is the one thing
+  this system does not have. So the check is consistency, not truth -- the same
+  shape as the quote check above, which does not judge whether the answer is
+  correct either, only whether the sentence it quotes is really in the source it
+  points at.
+
 What is deliberately NOT a failure: an answer with no markers and no citations.
 That is a refusal, and `prompt.py` instructs the model to produce exactly that
 when the sources do not cover the question. Treating it as a defect would make
 every honest refusal look like a broken answer.
+
+A refusal must not carry `uncovered`, though, and that is not an extra rule --
+it falls out of the one below. A refusal covers nothing, so the "part that is
+not covered" is the whole question, which `REFUSAL` already says in words.
 """
 
 import re
@@ -75,14 +88,34 @@ def check_grounding(
     answer: str,
     citations: list[Citation],
     selected: list[RetrievedChunk],
+    uncovered: str | None = None,
 ) -> GroundingReport:
     """Verify an answer against the exact sources that were put in the prompt.
 
     `selected` must be the list `build_context` returned, not the list retrieval
     produced. Markers are numbered against the former; indexing into the latter
     silently resolves to the wrong source the moment selection drops anything.
+
+    `uncovered` is the model's own claim that the sources answered the question
+    only in part. Defaults to None so that every existing caller and every
+    existing test keeps meaning what it meant: no claim, nothing to check.
     """
     problems: list[str] = []
+
+    # r47. Two states are legal -- absent, or a sentence naming what is missing.
+    # Everything between them is the model claiming a gap it will not describe,
+    # which reaches the reader as a `grounded=true` answer that quietly answered
+    # less than was asked.
+    if uncovered is not None:
+        if not uncovered.strip():
+            problems.append("the answer declares an uncovered part and then does not name it")
+        elif not citations:
+            # Not redundant with the marker checks above: those compare two lists
+            # that are both empty here, and agree. "Half of it is in the sources"
+            # and "none of it came from the sources" cannot both be true.
+            problems.append(
+                "the answer declares the sources cover part of the question but cites none of them"
+            )
 
     in_answer = extract_markers(answer)
     listed = [c.marker for c in citations]

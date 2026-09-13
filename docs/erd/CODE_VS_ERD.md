@@ -1,6 +1,6 @@
 # Code vs ERD
 
-**Generated 10 September 2026 from `1633138` by `apps/api/scripts/erd_diff.py`. Do not edit by hand.**
+**Generated 13 September 2026 from `cf59346` by `apps/api/scripts/erd_diff.py`. Do not edit by hand.**
 
 `docs/erd/erd.mmd` is the schema of record; the code side is introspected from
 live `SQLModel.metadata` and compiled against `postgresql.dialect()`, not read

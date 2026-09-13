@@ -759,6 +759,8 @@ export interface components {
             content: string;
             /** Grounded */
             grounded: boolean;
+            /** Uncovered */
+            uncovered: string | null;
             /** Citations */
             citations: {
                 [key: string]: unknown;
@@ -782,6 +784,11 @@ export interface components {
             citations?: components["schemas"]["Citation"][];
             /** Grounded */
             grounded: boolean;
+            /**
+             * Uncovered
+             * @description What the sources did not cover, when they answered the question only in part. None means the answer is complete against the material -- r47. It is a field rather than a sentence inside `answer` so that `grounded=true` stops carrying two different meanings: answered in full, and answered in part.
+             */
+            uncovered?: string | null;
             /**
              * Used Chunks
              * @description How many chunks were actually put into the prompt, after selection. 0 means there was no material and the layer should have refused to answer.

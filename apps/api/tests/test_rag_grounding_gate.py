@@ -18,7 +18,7 @@ from app.dependencies.auth import get_current_user
 from app.routers import rag as rag_module
 from app.schemas.chat import ChatRole, Conversation
 from app.schemas.rag import RetrievedChunk
-from app.services.llm import REFUSAL
+from app.services.llm import REFUSAL, LlmAnswer
 
 USER_ID = uuid4()
 COURSE_ID = uuid4()
@@ -53,7 +53,7 @@ def client(monkeypatch):
     async def fake_conversation(**_kwargs):
         return conversation
 
-    async def fake_retrieve(_request):
+    async def fake_retrieve(_request, _session, _user_id):
         return list(SOURCES)
 
     monkeypatch.setattr(rag_module, "get_or_create_conversation", fake_conversation)
@@ -156,3 +156,68 @@ def test_the_scope_snapshot_separates_what_was_retrieved_from_what_was_used(clie
     # Recorded because two vectors of equal dimension from different models are
     # not comparable, and a snapshot without this cannot be re-checked (R5).
     assert snapshot["embedding_model"]
+
+
+# --- r47: what happens to the model's claim about partial coverage -------------
+
+
+def test_a_named_gap_reaches_the_response_and_the_stored_turn(client, monkeypatch):
+    """`uncovered` is a column for the same reason `grounded` is one: a
+    conversation reopened next week has to show the caveat it showed when it
+    was written, and nothing can parse that back out of the prose."""
+    honest = rag_module.generate_answer
+    GAP = "The sources do not cover B-tree range scans."
+
+    async def partial(*, question, context, sources):
+        draft = await honest(question=question, context=context, sources=sources)
+        draft.uncovered = GAP
+        return draft
+
+    monkeypatch.setattr(rag_module, "generate_answer", partial)
+
+    body = client.post("/rag/query", json={"question": "Indexes?"}).json()
+
+    assert body["grounded"] is True
+    assert body["uncovered"] == GAP
+    assert _assistant_turn(client).uncovered == GAP
+
+
+def test_a_gap_declared_with_no_citations_costs_the_whole_answer(client, monkeypatch):
+    """The model says the sources cover part of the question and then cites
+    none of them. Both claims cannot be true, so neither is sent."""
+
+    async def inconsistent(*, question, context, sources):
+        return LlmAnswer(
+            answer="Partial indexes are covered by the material.",
+            grounded=True,
+            citations=[],
+            uncovered="The sources do not cover B-tree range scans.",
+        )
+
+    monkeypatch.setattr(rag_module, "generate_answer", inconsistent)
+
+    body = client.post("/rag/query", json={"question": "Indexes?"}).json()
+
+    assert body["answer"] == REFUSAL
+    assert body["grounded"] is False
+    assert body["uncovered"] is None
+    assert _assistant_turn(client).uncovered is None
+
+
+def test_an_ungrounded_answer_carries_no_gap(client, monkeypatch):
+    """A refusal covers nothing, so naming one missing part would read as a
+    narrower claim than the refusal sitting beside it."""
+    honest = rag_module.generate_answer
+
+    async def modest(*, question, context, sources):
+        draft = await honest(question=question, context=context, sources=sources)
+        draft.citations = []
+        draft.answer = "Indexes are complicated."
+        draft.uncovered = None
+        return draft
+
+    monkeypatch.setattr(rag_module, "generate_answer", modest)
+
+    body = client.post("/rag/query", json={"question": "Indexes?"}).json()
+    assert body["grounded"] is False
+    assert body["uncovered"] is None

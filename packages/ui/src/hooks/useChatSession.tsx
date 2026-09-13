@@ -84,6 +84,9 @@ function createOptimisticUserMessage(
     role: "user",
     content,
     grounded: false,
+    // A user's own turn has no coverage claim to make -- `uncovered` is what the
+    // assistant says the sources did not answer (r47).
+    uncovered: null,
     citations: null,
     mentioned_file_ids: mentionedFileIds,
     created_at: new Date().toISOString(),
