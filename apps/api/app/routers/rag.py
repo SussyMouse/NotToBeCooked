@@ -130,8 +130,14 @@ def _placeholder_sources(request: RagQueryRequest, course_id: UUID) -> list[Retr
     is 13 September 2026 and it is deliberately still here: F3 (Gantt r36, due
     16 Sep) is built mock-first against a database with no ingested chunks in
     it, and deleting this would turn every one of AI-1's screens into a refusal
-    overnight. It goes when F3 has real material to render, which is a call for
-    the team and not for this file.
+    overnight.
+
+    **Lead call, 13 September 2026: it stays.** Recorded with a trigger rather
+    than left as a judgement, because the reason it is defensible today is a
+    fact that will stop being true: there is no shared database with an
+    ingested file in it. **Delete this the day there is one.** From that day the
+    fallback stops standing in for an empty corpus and starts hiding one, and an
+    empty corpus is exactly what a demo needs to show rather than paper over.
     """
     file_ids = request.file_ids or [uuid4()]
     bodies = [
