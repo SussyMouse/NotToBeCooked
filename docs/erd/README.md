@@ -45,8 +45,21 @@ npx mmdc -i docs/erd/erd.mmd -o docs/erd/erd.png -c cfg.json -p pp.json -b white
 { "args": ["--no-sandbox", "--disable-setuid-sandbox"] }
 ```
 
-Current output is 2352 × 2466, ~350 KB. If a render comes out several megabytes,
-`-s 3` has been raised — three is enough to read every annotation at 100%.
+Current output is 2352 × 2058, ~305 KB, from `@mermaid-js/mermaid-cli` 11.17.0.
+If a render comes out several megabytes, `-s 3` has been raised — three is enough
+to read every annotation at 100%.
+
+**Height moves between mermaid versions and that is not a defect.** The 13 Sep
+render is 258px shorter than the 9 Sep one despite gaining a field, because the
+layout engine changed underneath it. Check the content, not the dimensions:
+
+```bash
+npx mmdc -i docs/erd/erd.mmd -o /tmp/erd.svg -c cfg.json -p pp.json -b white
+grep -c uncovered /tmp/erd.svg          # every field name should appear once
+```
+
+An entity or a field silently dropped from the diagram is the failure worth
+catching, and a PNG cannot be grepped.
 
 ## Three traps, all hit for real
 
