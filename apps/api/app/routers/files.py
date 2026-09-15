@@ -1,5 +1,6 @@
 import logging
 from datetime import UTC, datetime
+from pathlib import Path
 from uuid import UUID, uuid4
 
 from fastapi import (
@@ -30,6 +31,7 @@ from app.services.processing import NoExtractableContentError, run_ingestion
 from app.services.storage import (
     UploadTooLargeError,
     build_storage_key,
+    replace_upload,
     resolve,
     write_upload,
 )
@@ -88,7 +90,7 @@ async def upload_file(
     try:
         size_bytes, sha256 = await write_upload(upload, storage_key)
     except UploadTooLargeError as exc:
-        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, str(exc)) from exc
+        raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, str(exc)) from exc
 
     row = FileRow(
         id=file_id,
@@ -486,3 +488,72 @@ async def delete_file(
 
     # Commit the transaction
     await session.commit()
+
+
+@files_router.put(
+    "/{file_id}/content",
+    response_model=FileRead,
+    status_code=status.HTTP_200_OK,
+)
+async def replace_file(
+    file_id: UUID,
+    upload: UploadFile = File(...),
+    session: AsyncSession = Depends(get_session),
+    user: dict = Depends(get_current_user),
+) -> FileRead:
+    user_id = UUID(user["sub"])
+
+    statement = (
+        select(FileRow)
+        .join(
+            Folder,
+            col(FileRow.folder_id) == col(Folder.id),
+        )
+        .join(
+            Course,
+            col(Folder.course_id) == col(Course.id),
+        )
+        .where(
+            col(Course.user_id) == user_id,
+            col(FileRow.id) == file_id,
+        )
+    )
+
+    file_row = (await session.exec(statement)).first()
+    if file_row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found",
+        )
+
+    original_suffix = Path(file_row.filename).suffix.lower()
+    replacement_suffix = Path(upload.filename or "").suffix.lower()
+
+    if not replacement_suffix or (original_suffix != replacement_suffix):
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Replacement file type must match the original file type",
+        )
+    try:
+        size_bytes, sha256 = await replace_upload(
+            upload,
+            file_row.storage_key,
+        )
+    except UploadTooLargeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=str(exc),
+        ) from exc
+
+    file_row.size_bytes = size_bytes
+    file_row.sha256 = sha256
+    file_row.page_count = None
+    file_row.status = FileStatus.UPLOADED
+    file_row.error_message = None
+    file_row.indexed_at = None
+    file_row.uploaded_at = datetime.now(UTC)
+
+    session.add(file_row)
+    await session.commit()
+    await session.refresh(file_row)
+    return FileRead.model_validate(file_row)

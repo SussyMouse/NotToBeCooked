@@ -52,6 +52,7 @@ async def delete_chunks_by_file_id(file_id: UUID, session: AsyncSession) -> int:
 async def _vector_similarity_search(
     query_vector: list[float],
     session: AsyncSession,
+    course_id: UUID | None = None,
     file_ids: list[UUID] | None = None,
     top_k: int = 5,
 ) -> Sequence[tuple[Chunk, File, float]]:
@@ -75,6 +76,8 @@ async def _vector_similarity_search(
     )
     if file_ids:
         statement = statement.where(col(Chunk.file_id).in_(file_ids))
+    elif course_id is not None:
+        statement = statement.where(col(Chunk.course_id) == course_id)
     statement = statement.limit(top_k)
     result = await session.exec(statement)
 
@@ -82,7 +85,10 @@ async def _vector_similarity_search(
 
 
 async def _full_text_search(
-    term: str, session: AsyncSession, file_ids: list[UUID] | None = None, top_k: int = 5
+    term: str, session: AsyncSession,
+    course_id: UUID | None = None,
+    file_ids: list[UUID] | None = None, 
+    top_k: int = 5
 ) -> Sequence[tuple[Chunk, File, float]]:
     """Performs
     SELECT chunk.*, ts_rank(chunk.content_tsv, replace(plainto_tsquery('english', term)::text, ' & ', ' | ')::tsquery) AS rank
@@ -103,9 +109,12 @@ async def _full_text_search(
         .join(File, col(Chunk.file_id) == col(File.id))
         .join(IngestionRun, col(Chunk.ingestion_run_id) == col(IngestionRun.id))
         .where(col(IngestionRun.is_active).is_(True))
+        .limit(top_k)
     )
     if file_ids:
         statement = statement.where(col(Chunk.file_id).in_(file_ids))
+    elif course_id is not None:
+        statement = statement.where(col(Chunk.course_id) == course_id)
     statement = (
         statement.where(Chunk.content_tsv.op("@@")(ts_query)).order_by(rank_col.desc()).limit(top_k)
     )
@@ -115,14 +124,19 @@ async def _full_text_search(
 
 
 async def keyword_search(
-    keyword: str, session: AsyncSession, file_ids: list[UUID] | None = None, top_k: int = 5
+    keyword: str,
+    session: AsyncSession,
+    course_id: UUID | None = None,
+    file_ids: list[UUID] | None = None,
+    top_k: int = 5
 ) -> Sequence[tuple[Chunk, File, float]]:
-    return await _full_text_search(keyword, session, file_ids, top_k)
+    return await _full_text_search(keyword, session, course_id, file_ids, top_k)
 
 
 async def vector_search(
     query_vector: list[float],
     session: AsyncSession,
+    course_id: UUID | None = None,
     file_ids: list[UUID] | None = None,
     top_k: int = 5,
 ) -> list[RetrievedChunk]:
@@ -138,7 +152,7 @@ async def vector_search(
         A list of RetrievedChunk objects ordered by descending similarity.
     """
 
-    rows = await _vector_similarity_search(query_vector, session, file_ids, top_k)
+    rows = await _vector_similarity_search(query_vector, session, course_id, file_ids, top_k)
 
     retrieved_chunks: list[RetrievedChunk] = []
     for chunk, file, distance in rows:
@@ -171,6 +185,7 @@ accuracy eval improves when switched to Reranker.
 async def hybrid_search(
     query_text: str,
     query_vector: list[float],
+    course_id: UUID | None,
     session: AsyncSession,
     file_ids: list[UUID],
     config: SearchConfig | None,
@@ -186,9 +201,9 @@ async def hybrid_search(
 
     # 1: concurrent execution of vector and keyword searchs
     vector_task = _vector_similarity_search(
-        query_vector, session, file_ids, top_k=config.vector_limit
+        query_vector, session, course_id, file_ids, top_k=config.vector_limit
     )
-    keyword_task = _full_text_search(query_text, session, file_ids, top_k=config.keyword_limit)
+    keyword_task = _full_text_search(query_text, session, course_id, file_ids, top_k=config.keyword_limit)
     vector_row, keyword_row = await asyncio.gather(vector_task, keyword_task)
 
     # 2: perform RRF

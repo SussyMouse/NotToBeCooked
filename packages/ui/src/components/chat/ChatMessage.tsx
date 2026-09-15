@@ -2,13 +2,12 @@ import React from "react"
 import { MarkdownContent } from "./MarkdownContent"
 import { FileText, Folder, Check } from "lucide-react"
 
-export interface CitationItem {
-  f: string // file id
-  p: number // page
-  b?: string // block id / chunk id
-  l: string // display label e.g. "Lecture 4 · p.1"
-  quote?: string // verbatim quote
-}
+import {
+  type CitationItem,
+  groupCitations,
+} from "../../lib/citations.ts"
+
+export { type CitationItem, groupCitations }
 
 export interface ChatMessage {
   id?: string
@@ -106,18 +105,24 @@ export const ChatMessageItem: React.FC<ChatMessageProps> = ({
           />
         )}
 
-        {/* Citations List */}
+        {/* Citations List (One pill per source marker) */}
         {citations.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5 border-t border-(--line-soft,#1B2530)/60 pt-1">
             {citations.map((cite, cIdx) => (
               <button
-                key={cIdx}
+                key={cite.marker ?? cIdx}
                 type="button"
                 onClick={() => onCiteClick?.(cite)}
                 className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-(--cite-line,rgba(227,166,63,0.38)) bg-(--cite-bg,rgba(227,166,63,0.09)) px-2 py-0.5 font-mono text-[10.5px] text-(--cite,#E3A63F) [outline:none] transition-colors outline-none hover:bg-[rgba(227,166,63,0.19)] focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none"
               >
                 <Check className="h-2.5 w-2.5" />
-                <span>{cite.l}</span>
+                <span>
+                  {cite.marker ? `[${cite.marker}] ` : ""}
+                  {cite.l}
+                  {cite.quotes && cite.quotes.length > 1
+                    ? ` (${cite.quotes.length})`
+                    : ""}
+                </span>
               </button>
             ))}
           </div>

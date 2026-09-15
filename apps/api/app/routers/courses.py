@@ -7,8 +7,16 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.database import get_session
 from app.dependencies.auth import get_current_user
 from app.schemas.course import Course, CourseCreate, CourseRead, CourseStatus, CourseUpdate
+from app.schemas.folder import Folder
 
 courses_router = APIRouter(dependencies=[Depends(get_current_user)])
+DEFAULT_COURSE_FOLDERS = (
+    "Course Planner",
+    "Lecture Slides",
+    "Tutorials",
+    "Past Year Papers",
+    "Other",
+)
 
 
 @courses_router.post(
@@ -32,6 +40,20 @@ async def create_course(
     )
 
     session.add(course)
+    await session.flush()
+    if course.id is None:
+        raise RuntimeError("Course ID was not generated")
+    folders = [
+        Folder(
+            course_id=course.id,
+            parent_folder_id=None,
+            name=folder_name,
+            is_root=True,
+            sort_order=sort_order,
+        )
+        for sort_order, folder_name in enumerate(DEFAULT_COURSE_FOLDERS)
+    ]
+    session.add_all(folders)
     await session.commit()
     await session.refresh(course)
     return CourseRead.model_validate(course)

@@ -6,8 +6,9 @@ from fastapi.testclient import TestClient
 
 from app.db.database import get_session
 from app.dependencies.auth import get_current_user
-from app.routers.courses import courses_router
+from app.routers.courses import DEFAULT_COURSE_FOLDERS, courses_router
 from app.schemas.course import Course, CourseStatus
+from app.schemas.folder import Folder
 
 
 def test_create_course_returns_201():
@@ -18,6 +19,7 @@ def test_create_course_returns_201():
 
     fake_session = AsyncMock()
     fake_session.add = Mock()
+    fake_session.add_all = Mock()
 
     async def override_session():
         return fake_session
@@ -39,16 +41,37 @@ def test_create_course_returns_201():
             "sem": 1,
         },
     )
+
     assert response.status_code == 201
 
+    # 检查 Course
+    fake_session.add.assert_called_once()
     saved_course = fake_session.add.call_args.args[0]
+
     assert saved_course.user_id == user_id
     assert saved_course.code == "cse123"
     assert saved_course.name == "Software Engineering"
     assert saved_course.year == 2026
     assert saved_course.sem == 1
 
-    fake_session.add.assert_called_once()
+    # flush 必须发生在建立 Folder 前，让 Course 获得 id
+    fake_session.flush.assert_awaited_once()
+
+    # 检查五个默认 Folder
+    fake_session.add_all.assert_called_once()
+    created_folders = fake_session.add_all.call_args.args[0]
+
+    assert len(created_folders) == 5
+    assert all(isinstance(folder, Folder) for folder in created_folders)
+
+    assert [folder.name for folder in created_folders] == list(DEFAULT_COURSE_FOLDERS)
+    assert [folder.sort_order for folder in created_folders] == [0, 1, 2, 3, 4]
+
+    assert all(folder.course_id == saved_course.id for folder in created_folders)
+    assert all(folder.parent_folder_id is None for folder in created_folders)
+    assert all(folder.is_root is True for folder in created_folders)
+
+    # Course 和五个 Folder 只进行一次 transaction commit
     fake_session.commit.assert_awaited_once()
     fake_session.refresh.assert_awaited_once_with(saved_course)
 
