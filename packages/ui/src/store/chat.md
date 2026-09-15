@@ -17,7 +17,7 @@ A common mistake in React apps is duplicating server records into client stores 
 
 ### 2. The Scope Rules & `@` Mentions (Why it works the way it does)
 
-Look at how the backend schemas ([rag.py](file:///home/calvinkhoo/Documents/GitHub/NotToBeCooked/apps/api/app/schemas/rag.py)) and workspace store ([workspace.ts](file:///home/calvinkhoo/Documents/GitHub/NotToBeCooked/packages/ui/src/store/workspace.ts)) define scope:
+Look at how the backend schemas ([rag.py](../../../../apps/api/app/schemas/rag.py)) and workspace store ([workspace.ts](workspace.ts)) define scope:
 
 1. **Course Scoping (Default):**
    * If no specific files are mentioned, `course_id` is the boundary. The backend RAG retrieves chunks belonging only to that course.
