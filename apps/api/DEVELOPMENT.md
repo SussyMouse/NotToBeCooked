@@ -182,7 +182,9 @@ async def login(body: LoginRequest):
 
 ## 🧪 5. Testing Your Endpoints
 - **Swagger Docs**: Open `http://localhost:8000/docs` to test endpoints interactively.
-- **REST Client**: Use `test_auth.http` inside your IDE to execute requests directly.
+- **Test suite**: `pnpm --filter api test` — 87 tests against a real PostgreSQL.
+- **Smoke check**: `uv run --no-sync python scripts/smoke.py` — five checks that only
+  fail on real hardware. Run it after every `uv sync` (see section 6).
 
 ---
 

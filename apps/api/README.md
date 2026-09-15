@@ -2,7 +2,7 @@
 
 Powered by **FastAPI**, **Uvicorn**, **SQLModel**, **asyncpg**, and **`uv`**.
 
-> 📘 **New Developer Guide**: Read [DEVELOPMENT.md](file:///home/calvinkhoo/Documents/GitHub/NotToBeCooked/apps/api/DEVELOPMENT.md) for architectural guidelines, folder structure, API creation steps, auth protection, and error handling formats.
+> 📘 **New Developer Guide**: Read [DEVELOPMENT.md](DEVELOPMENT.md) for architectural guidelines, folder structure, API creation steps, auth protection, and error handling formats.
 
 ---
 
@@ -59,30 +59,42 @@ uv run uvicorn app.main:app --reload --port 8000
 
 1. **Interactive Swagger Docs (Zero Setup)**:
    - Navigate to `http://localhost:8000/docs` in your browser.
-2. **VS Code / IDE REST Client**:
-   - Open `test_auth.http` in your editor and click **Send Request** above any endpoint.
-3. **Automated CLI Test Script**:
+2. **The test suite**:
    ```bash
-   uv run python scripts/test_auth.py
+   pnpm --filter api test        # 87 tests, against a real PostgreSQL
    ```
+   `tests/conftest.py` appends `_test` to the database in `DATABASE_URL` and refuses to run
+   if the two ever resolve to the same place — these tests drop every table.
+3. **Smoke check on a new machine**:
+   ```bash
+   uv run --no-sync python scripts/smoke.py
+   ```
+   Five checks that can only fail on real hardware, including parsing a real PDF through
+   Docling. Run it after any `uv sync`.
 
 ---
 
-## 🌊 DigitalOcean VPS Deployment (Nginx & SSL Setup)
+## 🚢 Deployment
 
-When deploying to your DigitalOcean Droplet (Linux VPS):
+The backend runs on an **Oracle Cloud Always Free ARM instance** (Ampere A1, 2 OCPU /
+12 GB) as a systemd **user** unit with `loginctl enable-linger`, alongside a rootless
+podman container for PostgreSQL bound to `127.0.0.1`. Why a user unit rather than a system
+unit, why linger is not optional, and the three places Docker and podman differ are all in
+[DEVELOPMENT.md](DEVELOPMENT.md) section 9.
 
-### 1. Build and Run Containers
-```bash
-docker-compose up -d --build
-```
+### Not done yet
 
-### 2. Nginx Reverse Proxy Setup
-Create `/etc/nginx/sites-available/api.yourdomain.com`:
+**Public exposure, the firewall/security-list opening and TLS are not set up**, and no
+domain is pointed at the box — the instance is reachable over SSH only. That work is
+scheduled as Gantt rows r67 (staging hardening) and r69 (production).
+
+When it is done it will be an nginx reverse proxy in front of `127.0.0.1:8000` plus a
+Let's Encrypt certificate via certbot. Treat the recipe below as the plan, not as a
+description of a running system:
 
 ```nginx
 server {
-    server_name api.yourdomain.com;
+    server_name api.example.com;
 
     location / {
         proxy_pass http://127.0.0.1:8000;
@@ -94,14 +106,8 @@ server {
 }
 ```
 
-Enable site link:
 ```bash
-sudo ln -s /etc/nginx/sites-available/api.yourdomain.com /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/api.example.com /etc/nginx/sites-enabled/
 sudo systemctl reload nginx
-```
-
-### 3. Certbot Free SSL Certificate
-Obtain automatic HTTPS certificate for your domain:
-```bash
-sudo certbot --nginx -d api.yourdomain.com
+sudo certbot --nginx -d api.example.com
 ```

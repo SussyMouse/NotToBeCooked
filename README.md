@@ -1,10 +1,43 @@
-# Not To Be Cooked (NTCB)
+# NotToBeCooked (NTBC)
 
-A modern cross-platform application monorepo powered by **Turborepo**, **pnpm Workspaces**, **Vite**, **React 19**, **Tailwind CSS v4**, **Tauri v2**, and **Python FastAPI (with `uv`)**.
+A study assistant that answers questions about **your own course material** and shows you
+the passage it got each answer from. Upload lecture slides, notes and past papers; ask a
+question; get an answer with citations you can click back to the source.
 
-This repository is architected for **zero code duplication** across **Web**, **Desktop** (Linux, Windows, macOS), **Android Tablets**, and **Python API Backend**.
+Built by a three-person university project team, July 2026 – December 2026.
 
-## 🏗️ Architecture Overview
+> **Status: in development.** Auth, upload, ingestion, retrieval and answering work
+> end-to-end against the API. The file-browser UI is still rendering fixture data rather
+> than calling the file endpoints — that wiring is tracked as Gantt row r81. See
+> [Where the project actually is](#-where-the-project-actually-is).
+
+## 🧠 What it does, and the part that was hard
+
+Answering a question from a document is the easy half. The hard half is **not answering
+when the documents do not say.**
+
+```
+question ──▶ scope ──▶ embed ──▶ hybrid search ──▶ LLM ──▶ grounding gate ──▶ answer
+                 │                     │                         │
+      only files the caller     vector + full-text,      every citation checked
+      owns; never "all"         fused with weighted      against the chunks that
+                                RRF                      were actually retrieved
+```
+
+* **Scope is resolved before retrieval, never inside it.** `hybrid_search` filters on the
+  file ids it is handed and on nothing else — it has no idea who is asking. Handing it an
+  empty list means *no filter*, i.e. every chunk in the database. So the caller resolves
+  the scope from the requesting user's own courses in every branch and returns early
+  rather than passing an empty list down.
+* **The grounding gate can reject the model's answer.** An answer whose citations do not
+  support it, or which cites a chunk that was never retrieved, is replaced with a refusal.
+  The model may also declare which part of the question the sources did *not* cover, and
+  that declaration is itself checked.
+* **Ingestion runs are versioned.** Re-indexing a file produces a new `INGESTION_RUN` and
+  retires the previous one inside a single statement, guarded by a partial unique index —
+  so retrieval never sees two generations of the same file at once.
+
+## 🏗️ Architecture
 
 ```
                         ┌───────────────────────────────┐
@@ -30,120 +63,158 @@ This repository is architected for **zero code duplication** across **Web**, **D
          └───────────────────────┘           └───────────────────────┘
 ```
 
-* **`packages/ui` (`@workspace/ui`)**: Single source of truth for design system, shadcn components, Tailwind styles, and shared page views.
-* **`apps/web`**: Web application client (Vite + React).
-* **`apps/desktop`**: Tauri v2 application compiled into native Desktop executables or Android `.apk`/`.aab` tablet packages.
-* **`apps/api`**: Python FastAPI backend managed with **`uv`**.
+* **`packages/ui`** — design system, shadcn components, Tailwind styles and shared views.
+  One source of truth; the apps are thin shells around it.
+* **`packages/contracts`** — the OpenAPI document and the types generated from it, plus
+  the typed API client. **Checked, not trusted:** `pnpm verify` regenerates the document
+  from the running app and fails the build if the committed copy has drifted.
+* **`apps/web`** — Vite + React 19 web client.
+* **`apps/desktop`** — Tauri v2, compiled to native desktop binaries or an Android
+  `.apk`/`.aab`.
+* **`apps/api`** — FastAPI, SQLModel, asyncpg, Alembic, managed with `uv`.
 
-## 🚀 Quick Onboarding (New Team Members)
+**Data:** PostgreSQL 16 with `pgvector`. Nine entities — `USER`, `COURSE`, `FOLDER`,
+`MILESTONE`, `FILE`, `INGESTION_RUN`, `CHUNK`, `CONVERSATION`, `MESSAGE`. The diagram of
+record is [`docs/erd/erd.mmd`](docs/erd/erd.mmd), and it is checked against the models on
+every build (see `pnpm erd:check`).
 
-Follow these steps to get your full environment up and running in minutes:
+**Models:** `jinaai/jina-embeddings-v5-text-small` (1024-dim) for embeddings, run locally;
+Gemini for generation. Document parsing is Docling.
+
+## 🚀 Quick start
 
 ### 1. Prerequisites
 
-Ensure you have the following installed:
-* [Node.js](https://nodejs.org/) (>= 20)
-* [pnpm](https://pnpm.io/) (`pnpm@10.33+`)
-* [Python](https://www.python.org/) (>= 3.11)
-* [uv](https://docs.astral.sh/uv/) (Python package manager):
-  ```bash
-  pip install uv
-  # OR: curl -sSf https://astral.sh/uv/install.sh | sh
-  ```
-* [Rust toolchain](https://www.rust-lang.org/tools/install) (for Tauri Desktop/Android builds)
-* [Android Studio & SDK](https://developer.android.com/studio) (optional, for Android Tablet builds)
+* [Node.js](https://nodejs.org/) >= 20 and [pnpm](https://pnpm.io/) >= 10.33
+* [Python](https://www.python.org/) >= 3.11 and [uv](https://docs.astral.sh/uv/)
+* Docker (for the PostgreSQL + pgvector container)
+* [Rust toolchain](https://www.rust-lang.org/tools/install) — only for Tauri desktop or
+  Android builds
+* [Android Studio & SDK](https://developer.android.com/studio) — only for Android builds
 
----
+### 2. Setup
 
-### 2. Initial Setup
+```bash
+pnpm install                       # frontend monorepo
+cd apps/api && uv sync && cd ../..  # python environment
+docker compose -f apps/api/docker-compose.yml up -d db   # postgres + pgvector
+cd apps/api && uv run alembic upgrade head && cd ../..    # schema
+```
 
-1. **Install Frontend Monorepo Dependencies**:
-   ```bash
-   pnpm install
-   ```
+Copy `apps/api/.env.example` to `apps/api/.env` and fill it in. **`.env` is gitignored and
+must stay that way** — `alembic.ini`'s `sqlalchemy.url` is deliberately left empty for the
+same reason: that file is committed, and a real URL carries the database password.
 
-2. **Sync Python Virtual Environment**:
-   ```bash
-   cd apps/api
-   uv sync
-   cd ../..
-   ```
+**VS Code / Pyright:** select `./apps/api/.venv/bin/python` as your interpreter. The root
+`.vscode/settings.json` and `apps/api/pyrightconfig.json` are already configured for you.
 
-3. **Configure Python IDE Interpreter (VS Code / Pyright)**:
-   - Open Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P`).
-   - Select **"Python: Select Interpreter"**.
-   - Choose `./apps/api/.venv/bin/python`.
-   - *(Note: `.vscode/settings.json` and `pyrightconfig.json` are already configured for you!)*
+## 💻 Commands
 
-## 💻 Development Commands
-
-From the monorepo root:
+Run from the repository root.
 
 | Command | Description |
 | :--- | :--- |
-| `pnpm dev` | Run all applications (Web, Desktop, Python API) concurrently |
-| `pnpm dev:web` | Start Web application dev server (`localhost:5173`) |
-| `pnpm dev:desktop` | Launch Tauri Desktop app (`localhost:1420`) |
-| `pnpm dev:android` | Launch app on Android Tablet emulator or physical device |
-| `pnpm dev:api` | Start Python FastAPI backend server (`localhost:8000`) |
-| `pnpm typecheck` | Perform TypeScript typechecking across all workspace packages |
-| `pnpm build` | Build production assets for all apps & packages |
+| `pnpm dev` | Web, Desktop and API concurrently |
+| `pnpm dev:web` | Web client (`localhost:5173`) |
+| `pnpm dev:api` | FastAPI backend (`localhost:8000`, docs at `/docs`) |
+| `pnpm dev:desktop` | Tauri desktop app (`localhost:1420`) |
+| `pnpm dev:android` | Android tablet emulator or device |
+| `pnpm verify` | **The gate.** Typecheck, lint, build and test every package, then `contracts:check` and `erd:check` |
+| `pnpm schema:update` | Regenerate `openapi.json` and the generated client types |
 
-## ⚠️ Common Gotchas & Mistakes to Avoid
+`pnpm verify` is what CI runs, with nothing added — if it passes on your machine it passes
+there. Two of its steps are worth knowing about:
 
-### 1. `shadcn` Component Management
+* **`contracts:check`** regenerates the OpenAPI document from the app and compares it to
+  the committed `packages/contracts/openapi.json`. It exists because that file went stale
+  for several hours in September while the build stayed green, leaving the frontend typed
+  against a backend that no longer existed. Fix with `pnpm schema:update`.
+* **`erd:check`** compares `app/schemas/*.py` against `docs/erd/erd.mmd` and fails if the
+  committed comparison is out of date. Fix with
+  `cd apps/api && uv run python scripts/erd_diff.py --write`.
 
-* ❌ **DO NOT capitalized component names** (e.g. `pnpm dlx shadcn add Card`). This causes a 404 error from the registry!
-* ❌ **DO NOT run without target flag** from root.
-* ✅ **ALWAYS use lowercase names & target `--cwd packages/ui`**:
+## ⚠️ Gotchas
+
+### `shadcn` component management
+
+* ❌ Do not capitalise component names (`shadcn add Card`) — the registry returns 404.
+* ❌ Do not run it from the root without a target.
+* ✅ Lowercase, and target `packages/ui`:
   ```bash
-  # Add card
   pnpm dlx shadcn@latest add card --cwd packages/ui
-
-  # Add field / label
-  pnpm dlx shadcn@latest add field --cwd packages/ui
   ```
 
-### 2. Python Package Management with `uv`
+### Python packages with `uv`
 
-* ❌ **DO NOT run `uv install`** (`uv install` is not a valid subcommand).
-* ❌ **DO NOT use global `pip install`** inside `apps/api`.
-* ✅ **Use `uv` commands**:
-  - Install/sync dependencies: **`uv sync`**
-  - Add new dependency: **`uv add <package_name>`** (e.g., `uv add httpx`)
-  - Add dev dependency: **`uv add --dev <package_name>`** (e.g., `uv add --dev pytest`)
-  - Run arbitrary script: **`uv run python <script.py>`**
+* ❌ `uv install` is not a subcommand. ❌ No global `pip install` inside `apps/api`.
+* ✅ `uv sync` · `uv add <pkg>` · `uv add --dev <pkg>` · `uv run python <script.py>`
 
-### 3. Python IDE Import Warnings (`Cannot find module 'fastapi...'`)
+### `opencv-python` breaks Docling
 
-If your IDE shows red squigglies under `from fastapi import FastAPI`:
-* The Python code is 100% fine. The warning means your IDE is pointing to the global Python interpreter instead of `apps/api/.venv`.
-* Select `./apps/api/.venv/bin/python` as your interpreter.
+If `POST /files/{file_id}/ingest` returns 500 with `module 'cv2' has no attribute
+'setNumThreads'` or `libgthread-2.0.so.0: cannot open shared object file`, the GUI build of
+opencv has been pulled in behind you. The fix, the cause and a check for it are in
+[`apps/api/DEVELOPMENT.md`](apps/api/DEVELOPMENT.md) §6. **Redo it after every `uv sync`.**
 
-## 📱 Android Tablet Development
+### Red squigglies under `from fastapi import FastAPI`
 
-To run `apps/desktop` on an Android Tablet:
+Your IDE is pointing at the global interpreter. Select `apps/api/.venv/bin/python`.
 
-1. **Initialize Android target harness** (one-time setup):
-   ```bash
-   cd apps/desktop
-   pnpm tauri android init
-   ```
-2. **Launch dev server on Tablet**:
-   ```bash
-   pnpm dev:android
-   ```
+## 📦 Deployment
 
-## 🌊 DigitalOcean VPS Backend Deployment
+The backend runs on an **Oracle Cloud Always Free ARM instance** (Ampere A1, 2 OCPU /
+12 GB), not on a container platform, and the reasons are written down because they are not
+obvious:
 
-The Python backend in `apps/api` is containerized for zero-downtime deployment:
+* **The API is a systemd _user_ unit, not a system unit.** SELinux is Enforcing on Oracle
+  Linux and denies `init_t` so much as reading `.venv/bin/python` under `/home`. A system
+  unit fails with `203/EXEC` before it starts. Relabelling would work and would be undone
+  by the next `uv sync`.
+* **`loginctl enable-linger` is required**, or logging out tears down the user systemd
+  instance — API and database container together, with no error, because nothing failed.
+* **PostgreSQL binds `127.0.0.1`, never `0.0.0.0`.** The box has a public IP, and container
+  runtimes insert their own iptables rules that can bypass firewalld's zones, so a running
+  firewall is not the guarantee it looks like.
+* **Rootless podman on the box, Docker on developer machines.** The three differences that
+  actually cost someone time are in [`apps/api/DEVELOPMENT.md`](apps/api/DEVELOPMENT.md) §9.
 
-```bash
-# SSH into your DigitalOcean Droplet
-cd NotToBeCooked/apps/api
+Measured on that hardware, 10 September 2026: a 331-second ingest with 329 concurrent
+`/health` samples, worst latency **0.19 s**, zero non-200 responses, zero blocked polls —
+after moving the CPU-bound ingest and query embedding off the event loop.
 
-# Build and start container in background
-docker-compose up -d --build
-```
+## 📚 Documentation
 
-Nginx configuration & Certbot SSL setup instructions are available in [`apps/api/README.md`] or `apps/api/Dockerfile`.
+| Where | What |
+| :--- | :--- |
+| [`apps/api/DEVELOPMENT.md`](apps/api/DEVELOPMENT.md) | Backend architecture, how to add an endpoint, auth, error shapes, deployment differences |
+| [`docs/erd/erd.mmd`](docs/erd/erd.mmd) · [`erd.png`](docs/erd/erd.png) | The schema of record |
+| [`docs/erd/KNOWN_ISSUES.md`](docs/erd/KNOWN_ISSUES.md) | Every design defect found, with the measurement behind it, what was decided, and what would reopen it |
+| [`docs/erd/CODE_VS_ERD.md`](docs/erd/CODE_VS_ERD.md) | Generated comparison of the models against the diagram |
+
+`KNOWN_ISSUES.md` is the one worth reading if you only read one. It is published rather
+than kept privately so that the diagram and the team's understanding of it stay the same
+document — including the findings that were **declined**, with the condition that would
+reopen each.
+
+## 📍 Where the project actually is
+
+Being specific here rather than implying everything works:
+
+* **Works end-to-end:** register and log in, create courses and folders, upload a file,
+  ingest it, ask a question, get an answer with citations checked against the retrieved
+  chunks, refused when they do not support it.
+* **Not wired yet:** the file-browser and upload UI are built and mounted but render
+  fixture data — the API client covers auth and `/rag/query`, and the file, folder and
+  course endpoints have no client methods yet.
+* **Not started:** the roadmap/milestone feature, and public exposure of the deployment
+  (TLS, firewall) — both scheduled for later phases.
+
+## 🧑‍🤝‍🧑 Team
+
+Three members, one shared `dev` branch, feature branches into `dev`, and `dev` into `main`
+once per weekly meeting. Decisions are recorded rather than remembered — the meeting
+agenda states the options, the recommendation, and what happens if no decision is reached.
+
+## 📄 Licence
+
+Not yet chosen. Until one is added, no permission to reuse this code is granted.
