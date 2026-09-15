@@ -112,6 +112,14 @@ async def _retrieve(
     return await hybrid_search(
         query_text=request.question,
         query_vector=query_vector,
+        # Decision 1, 15 September: scope is decided here, in `_scope_file_ids`,
+        # and `hybrid_search` is handed the answer rather than the question.
+        # The parameter is required, so this is not a value being defaulted --
+        # it is the caller saying it has no course filter to apply. Inside
+        # `vector_ops.py:78` the order is `if file_ids:` then `elif course_id
+        # is not None:`, and `file_ids` is never empty by the return above, so
+        # the `elif` is unreachable from here either way.
+        course_id=None,
         session=session,
         file_ids=file_ids,
         config=SearchConfig(final_limit=request.top_k),
