@@ -6,7 +6,10 @@ import {
   type RagAnswer,
 } from "@workspace/contracts"
 import { useWorkspace, selectActiveCourse, ragScope } from "../store/workspace"
-import type { ChatMessage } from "../components/chat/ChatMessage"
+import {
+  type ChatMessage,
+  groupCitations,
+} from "../components/chat/ChatMessage"
 import {
   extractMentionsAndResolve,
   type FileItem,
@@ -252,24 +255,10 @@ export const useChatSession = (
       content: msgRead.content,
       isOptimistic: msgRead.id.startsWith("temp-"),
       status: msgRead.id.startsWith("temp-") ? "pending" : "sent",
-      citations: (msgRead.citations ?? []).map((rawCitation) => {
-        const citation = rawCitation as Record<string, unknown>
-        const pageNum = Number(citation.page ?? citation.page_start ?? 1)
-        const fileIdStr = String(citation.file_id ?? "")
-
-        const resolvedName =
-          typeof citation.filename === "string" && citation.filename.length > 0
-            ? citation.filename
-            : lookupName(fileIdStr) || "Document"
-
-        return {
-          f: fileIdStr,
-          p: pageNum,
-          l: `${resolvedName} · p.${pageNum}`,
-          quote:
-            typeof citation.quote === "string" ? citation.quote : undefined,
-        }
-      }),
+      citations: groupCitations(
+        msgRead.citations as Array<Record<string, unknown>> | null | undefined,
+        lookupName
+      ),
     })
   )
 

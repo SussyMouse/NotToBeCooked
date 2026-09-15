@@ -113,7 +113,10 @@ function parseInline(
     const citeMatch = token.match(/^\[(\d+)\]$/)
     if (citeMatch) {
       const markerNum = parseInt(citeMatch[1], 10)
-      const matchedCitation = citations[markerNum - 1]
+      const matchedCitation =
+        citations.find((c) => c.marker === markerNum) ?? citations[markerNum - 1]
+      const quotesCount =
+        matchedCitation?.quotes?.length ?? (matchedCitation?.quote ? 1 : 0)
       return (
         <button
           key={idx}
@@ -125,7 +128,7 @@ function parseInline(
           }}
           title={
             matchedCitation
-              ? `Jump to ${matchedCitation.l}`
+              ? `Jump to ${matchedCitation.l}${quotesCount > 1 ? ` (${quotesCount} quotes)` : ""}`
               : `Citation [${markerNum}]`
           }
           className="relative top-[-1.5px] mx-0.5 inline cursor-pointer p-0 font-mono text-[12px] font-semibold text-(--cite,#E3A63F) transition-colors hover:text-(--acc,#52A8EA) hover:underline underline-offset-2 select-none"
