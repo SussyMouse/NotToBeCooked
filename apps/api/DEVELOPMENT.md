@@ -304,3 +304,125 @@ The check is **outside** turbo, in the root `verify` script rather than in
 `packages/contracts/openapi.json` is not one of `apps/api`'s — so inside `lint`
 it was cached away and never ran. That is worth remembering for any future check
 that reads a file from another package.
+
+---
+
+## 🐳 9. Docker here, podman on the deployment box
+
+Decision 3 of the 15 September 2026 meeting, **option C: run both, and write
+down where they differ.** The OCI box runs Oracle Linux with SELinux Enforcing
+and rootless podman, which already works; your machine runs Docker, which
+already works. Making either side match the other costs more than this section.
+
+Three differences that actually cost someone time. They are not style
+differences — each one has a failure mode where nothing reports an error.
+
+### 9.1 `restart: always` does nothing on the deployment box
+
+Both services in `docker-compose.yml` carry `restart: always`, and the Docker
+daemon honours it across a reboot. **Rootless podman has no daemon**, and
+ignores `--restart` at `run` time. Three things bring a container back after a
+reboot, and all three are required:
+
+```bash
+podman update --restart=always nttbc_db
+systemctl --user enable --now podman-restart.service
+loginctl enable-linger "$USER"
+```
+
+`linger` is the one that gets missed. Without it your entire user systemd
+instance is torn down when you log out — container and API together, with no
+error anywhere, because nothing failed: it was stopped on purpose. The same
+setting is what lets the API's systemd **user** unit survive logout, so one
+`enable-linger` covers both.
+
+### 9.2 There is no compose file on the deployment box
+
+`apps/api/docker-compose.yml` describes **your machine only**. On the OCI box
+Postgres is a plain `podman run`, and the API is a systemd *user* unit rather
+than a system unit — a system unit cannot start it at all: SELinux is Enforcing
+and denies `init_t` so much as reading `.venv/bin/python` under `/home` (AVC
+`tcontext=...:user_home_t:s0 tclass=lnk_file`). Relabelling would work and would
+be undone by the next `uv sync`.
+
+**So editing `docker-compose.yml` changes nothing on the deployment box**, and
+changing the unit file changes nothing here. Two consequences worth knowing:
+
+- Reading the unit's logs is `journalctl --user -u nttbc-api`. A *system*
+  `journalctl -u nttbc-api` prints nothing and exits 0, because the unit is not
+  in that journal. `--user-unit=nttbc-api` filters by unit name in whatever
+  journal you are already reading, which is the flag you want when you are not
+  sure which one you are in.
+- `.env` is not the way to set an environment variable the process must see
+  before `import`. pydantic-settings reads it into the `Settings` object, not
+  into `os.environ` — `TORCHDYNAMO_DISABLE=1` has to be an `Environment=` line
+  in the unit.
+
+### 9.3 When a port is taken, you cannot see what is holding it
+
+Docker publishes ports through a `docker-proxy` process **running as root**, so
+your own `ss` cannot name it:
+
+```
+$ ss -ltnp | grep :5432
+LISTEN 0 4096 0.0.0.0:5432 0.0.0.0:*      <- no users: column at all
+LISTEN 0 4096    [::]:5432    [::]:*
+```
+
+An empty `users:` column does not mean nothing is listening. It means the
+listener belongs to another user, and you need `sudo ss -ltnp` to see it.
+`0.0.0.0` and `[::]` appearing together on the same port is the signature of a
+published container port. Rootless podman publishes through `rootlessport` in
+your own user namespace, so plain `ss -ltnp` names it.
+
+This is what a failing `pnpm run dev` looks like: turbo tears down all four dev
+tasks because one of them could not bind, and the only line that says why is
+`[Errno 98] Address already in use` several screens up.
+
+### Both sides share one trap: editing compose does not touch a running container
+
+`db87c57` (9 Sep) rebound Postgres from `0.0.0.0` to `127.0.0.1`. The container
+on the development laptop had been created three weeks earlier and kept
+publishing on `0.0.0.0` until **15 Sep**, because nothing recreates a container
+just because the file that described it changed. `docker compose up -d` alone is
+not enough when only the ports changed:
+
+```bash
+docker compose up -d --force-recreate db
+docker port not_to_be_cooked_db      # expect exactly: 5432/tcp -> 127.0.0.1:5432
+```
+
+Named volumes survive `--force-recreate`; the data lives in `api_pgvector_data`,
+not in the container.
+
+---
+
+## 🧬 10. `docs/erd/CODE_VS_ERD.md` is generated, and checked
+
+Decision 4 of the 15 September 2026 meeting, option A. `pnpm verify` ends with
+`pnpm erd:check`, which re-derives the comparison between `docs/erd/erd.mmd` and
+`app/schemas/*.py` and fails the build if the committed document no longer
+matches either side.
+
+When it fails, the fix is one command:
+
+```bash
+cd apps/api && uv run python scripts/erd_diff.py --write
+```
+
+**It exists because the document asked for it and nobody could hear.**
+`CODE_VS_ERD.md` says of itself that a stale diff is worse than none, because it
+will be trusted. It was last regenerated by hand on 20 August and was still
+being read on 10 September.
+
+Two things it deliberately does not compare, so that it stays worth reading:
+**nullability**, because `erd.mmd` has no syntax for it and silence in a diagram
+is not a claim; and **type spellings**, because `string` and `VARCHAR` are one
+decision written two ways. Types are compared as families, against
+`postgresql.dialect()` — without the dialect SQLAlchemy renders UUID as
+`CHAR(32)` and every timestamptz as `DATETIME`, which produced seventeen
+mismatches in August, all of them artefacts.
+
+Like `contracts:check`, this lives in the **root** `verify` script rather than
+in `api#lint`, for the reason in section 8: turbo caches a task on its own
+package's inputs, and `docs/erd/` is not one of `apps/api`'s.
