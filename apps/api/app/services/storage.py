@@ -20,7 +20,7 @@ renames a file is a key that stops resolving.
 
 import hashlib
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import UploadFile
 
@@ -61,9 +61,7 @@ async def write_upload(upload: UploadFile, storage_key: str) -> tuple[int, str]:
             while chunk := await upload.read(_CHUNK):
                 size += len(chunk)
                 if size > settings.MAX_UPLOAD_BYTES:
-                    raise UploadTooLargeError(
-                        f"Upload exceeds {settings.MAX_UPLOAD_BYTES} bytes"
-                    )
+                    raise UploadTooLargeError(f"Upload exceeds {settings.MAX_UPLOAD_BYTES} bytes")
                 digest.update(chunk)
                 out.write(chunk)
     except BaseException:
@@ -73,6 +71,23 @@ async def write_upload(upload: UploadFile, storage_key: str) -> tuple[int, str]:
         raise
 
     return size, digest.hexdigest()
+
+
+async def replace_upload(
+    upload: UploadFile,
+    storage_key: str,
+) -> tuple[int, str]:
+    temporary_id = uuid4()
+    temporary_key = f"{storage_key}.{temporary_id}.tmp"
+    try:
+        size_bytes, sha256 = await write_upload(upload, temporary_key)
+        temporary_path = resolve(temporary_key)
+        destination_path = resolve(storage_key)
+        temporary_path.replace(destination_path)
+    except BaseException:
+        delete(temporary_key)
+        raise
+    return size_bytes, sha256
 
 
 def delete(storage_key: str) -> None:

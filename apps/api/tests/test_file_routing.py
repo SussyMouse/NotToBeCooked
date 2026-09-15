@@ -1,3 +1,4 @@
+import hashlib
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
@@ -12,6 +13,7 @@ from app.schemas.course import Course
 from app.schemas.file import File as FileRow
 from app.schemas.file import FileStatus
 from app.schemas.folder import Folder
+from app.services.storage import UploadTooLargeError
 
 
 # Test Course with files
@@ -716,3 +718,284 @@ def test_delete_file_returns_404_when_file_not_found(monkeypatch):
     fake_delete_stored_file.assert_not_called()
     fake_session.delete.assert_not_awaited()
     fake_session.commit.assert_not_awaited()
+
+
+def test_replace_file_content_returns_200_and_updates_metadata(monkeypatch):
+    test_app = FastAPI()
+    test_app.include_router(files_router, prefix="/files")
+
+    user_id = uuid4()
+    course_id = uuid4()
+    folder_id = uuid4()
+    file_id = uuid4()
+
+    original_file = FileRow(
+        id=file_id,
+        course_id=course_id,
+        folder_id=folder_id,
+        filename="lecture.pdf",
+        storage_key=f"{user_id}/{file_id}.pdf",
+        sha256="old-sha256",
+        mime_type="application/pdf",
+        size_bytes=100,
+        page_count=10,
+        status=FileStatus.READY,
+        error_message="old error",
+        uploaded_at=datetime.now(UTC),
+        indexed_at=datetime.now(UTC),
+    )
+
+    query_result = Mock()
+    query_result.first.return_value = original_file
+
+    fake_session = AsyncMock()
+    fake_session.exec.return_value = query_result
+    fake_session.add = Mock()
+
+    async def override_session():
+        return fake_session
+
+    async def override_current_user():
+        return {"sub": str(user_id)}
+
+    test_app.dependency_overrides[get_session] = override_session
+    test_app.dependency_overrides[get_current_user] = override_current_user
+
+    new_content = b"%PDF-1.4\nreplacement content"
+    new_sha256 = hashlib.sha256(new_content).hexdigest()
+
+    fake_replace_upload = AsyncMock(
+        return_value=(len(new_content), new_sha256),
+    )
+    monkeypatch.setattr(
+        "app.routers.files.replace_upload",
+        fake_replace_upload,
+    )
+
+    client = TestClient(test_app)
+    response = client.put(
+        f"/files/{file_id}/content",
+        files={
+            "upload": (
+                "replacement.pdf",
+                new_content,
+                "application/pdf",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    assert original_file.id == file_id
+    assert original_file.filename == "lecture.pdf"
+    assert original_file.storage_key == f"{user_id}/{file_id}.pdf"
+
+    assert original_file.size_bytes == len(new_content)
+    assert original_file.sha256 == new_sha256
+    assert original_file.page_count is None
+    assert original_file.status == FileStatus.UPLOADED
+    assert original_file.error_message is None
+    assert original_file.indexed_at is None
+
+    fake_replace_upload.assert_awaited_once()
+
+    replace_call = fake_replace_upload.await_args
+    assert replace_call is not None
+    assert replace_call.args[1] == original_file.storage_key
+
+    fake_session.add.assert_called_once_with(original_file)
+    fake_session.commit.assert_awaited_once()
+    fake_session.refresh.assert_awaited_once_with(original_file)
+
+
+def test_replace_file_content_returns_415_when_file_type_does_not_match(
+    monkeypatch,
+):
+    test_app = FastAPI()
+    test_app.include_router(files_router, prefix="/files")
+
+    user_id = uuid4()
+    course_id = uuid4()
+    folder_id = uuid4()
+    file_id = uuid4()
+
+    original_file = FileRow(
+        id=file_id,
+        course_id=course_id,
+        folder_id=folder_id,
+        filename="lecture.pdf",
+        storage_key=f"{user_id}/{file_id}.pdf",
+        sha256="old-sha256",
+        mime_type="application/pdf",
+        size_bytes=100,
+        page_count=10,
+        status=FileStatus.READY,
+        error_message=None,
+        uploaded_at=datetime.now(UTC),
+        indexed_at=datetime.now(UTC),
+    )
+
+    query_result = Mock()
+    query_result.first.return_value = original_file
+
+    fake_session = AsyncMock()
+    fake_session.exec.return_value = query_result
+    fake_session.add = Mock()
+
+    fake_replace_upload = AsyncMock()
+    monkeypatch.setattr(
+        "app.routers.files.replace_upload",
+        fake_replace_upload,
+    )
+
+    async def override_session():
+        return fake_session
+
+    async def override_current_user():
+        return {"sub": str(user_id)}
+
+    test_app.dependency_overrides[get_session] = override_session
+    test_app.dependency_overrides[get_current_user] = override_current_user
+
+    client = TestClient(test_app)
+    response = client.put(
+        f"/files/{file_id}/content",
+        files={
+            "upload": (
+                "replacement.docx",
+                b"fake DOCX content",
+                ("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+            )
+        },
+    )
+
+    assert response.status_code == 415
+    assert response.json() == {"detail": "Replacement file type must match the original file type"}
+
+    fake_replace_upload.assert_not_awaited()
+    fake_session.add.assert_not_called()
+    fake_session.commit.assert_not_awaited()
+
+
+def test_replace_file_content_returns_404_when_file_not_found(monkeypatch):
+    test_app = FastAPI()
+    test_app.include_router(files_router, prefix="/files")
+
+    user_id = uuid4()
+    file_id = uuid4()
+
+    query_result = Mock()
+    query_result.first.return_value = None
+
+    fake_session = AsyncMock()
+    fake_session.exec.return_value = query_result
+    fake_session.add = Mock()
+
+    fake_replace_upload = AsyncMock()
+    monkeypatch.setattr(
+        "app.routers.files.replace_upload",
+        fake_replace_upload,
+    )
+
+    async def override_session():
+        return fake_session
+
+    async def override_current_user():
+        return {"sub": str(user_id)}
+
+    test_app.dependency_overrides[get_session] = override_session
+    test_app.dependency_overrides[get_current_user] = override_current_user
+
+    client = TestClient(test_app)
+    response = client.put(
+        f"/files/{file_id}/content",
+        files={
+            "upload": (
+                "replacement.pdf",
+                b"%PDF-1.4\nnew content",
+                "application/pdf",
+            )
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "File not found"}
+
+    fake_replace_upload.assert_not_awaited()
+    fake_session.add.assert_not_called()
+    fake_session.commit.assert_not_awaited()
+
+
+def test_replace_file_content_returns_413_when_upload_is_too_large(
+    monkeypatch,
+):
+    test_app = FastAPI()
+    test_app.include_router(files_router, prefix="/files")
+
+    user_id = uuid4()
+    course_id = uuid4()
+    folder_id = uuid4()
+    file_id = uuid4()
+
+    original_file = FileRow(
+        id=file_id,
+        course_id=course_id,
+        folder_id=folder_id,
+        filename="lecture.pdf",
+        storage_key=f"{user_id}/{file_id}.pdf",
+        sha256="old-sha256",
+        mime_type="application/pdf",
+        size_bytes=100,
+        page_count=10,
+        status=FileStatus.READY,
+        error_message=None,
+        uploaded_at=datetime.now(UTC),
+        indexed_at=datetime.now(UTC),
+    )
+
+    query_result = Mock()
+    query_result.first.return_value = original_file
+
+    fake_session = AsyncMock()
+    fake_session.exec.return_value = query_result
+    fake_session.add = Mock()
+
+    fake_replace_upload = AsyncMock(
+        side_effect=UploadTooLargeError("Upload exceeds maximum size"),
+    )
+    monkeypatch.setattr(
+        "app.routers.files.replace_upload",
+        fake_replace_upload,
+    )
+
+    async def override_session():
+        return fake_session
+
+    async def override_current_user():
+        return {"sub": str(user_id)}
+
+    test_app.dependency_overrides[get_session] = override_session
+    test_app.dependency_overrides[get_current_user] = override_current_user
+
+    client = TestClient(test_app)
+    response = client.put(
+        f"/files/{file_id}/content",
+        files={
+            "upload": (
+                "replacement.pdf",
+                b"x" * 4096,
+                "application/pdf",
+            )
+        },
+    )
+
+    assert response.status_code == 413
+    assert response.json() == {"detail": "Upload exceeds maximum size"}
+
+    fake_replace_upload.assert_awaited_once()
+    fake_session.add.assert_not_called()
+    fake_session.commit.assert_not_awaited()
+
+    assert original_file.sha256 == "old-sha256"
+    assert original_file.size_bytes == 100
+    assert original_file.status == FileStatus.READY
