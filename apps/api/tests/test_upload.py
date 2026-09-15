@@ -6,10 +6,12 @@ would test nothing.
 """
 
 import hashlib
+from io import BytesIO
 from uuid import uuid4
 
 import pytest
 import pytest_asyncio
+from fastapi import UploadFile
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel, select
@@ -25,7 +27,11 @@ from app.schemas.file import File as FileRow
 from app.schemas.file import FileStatus
 from app.schemas.folder import Folder
 from app.schemas.user import User
-from app.services.storage import resolve
+from app.services.storage import (
+    UploadTooLargeError,
+    replace_upload,
+    resolve,
+)
 
 PDF = b"%PDF-1.4\nnot a real pdf, but real bytes\n"
 
@@ -114,8 +120,8 @@ async def test_upload_writes_bytes_and_row_that_agree(ctx):
     #    which it would not if the two disagreed.
     async with maker() as session:
         row = (
-            await session.execute(select(FileRow).where(FileRow.id == body["id"]))
-        ).scalars().one()
+            (await session.execute(select(FileRow).where(FileRow.id == body["id"]))).scalars().one()
+        )
         assert row.course_id == course_id
 
 
@@ -148,3 +154,53 @@ async def test_oversized_upload_leaves_nothing_behind(ctx, monkeypatch):
         rows = (await session.execute(select(FileRow))).scalars().all()
     assert rows == []
     assert list(settings.STORAGE_DIR.rglob("*.pdf")) == []
+
+
+@pytest.mark.asyncio
+async def test_replace_upload_replaces_existing_bytes(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "STORAGE_DIR", tmp_path)
+
+    storage_key = "user-123/file-456.pdf"
+    destination = resolve(storage_key)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_bytes(b"old file content")
+
+    new_content = b"%PDF-1.4\nnew file content"
+    upload = UploadFile(
+        filename="replacement.pdf",
+        file=BytesIO(new_content),
+    )
+
+    size_bytes, sha256 = await replace_upload(upload, storage_key)
+
+    assert destination.read_bytes() == new_content
+    assert size_bytes == len(new_content)
+    assert sha256 == hashlib.sha256(new_content).hexdigest()
+    assert list(tmp_path.rglob("*.tmp")) == []
+
+
+@pytest.mark.asyncio
+async def test_replace_upload_failure_preserves_existing_bytes(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(settings, "STORAGE_DIR", tmp_path)
+    monkeypatch.setattr(settings, "MAX_UPLOAD_BYTES", 8)
+
+    storage_key = "user-123/file-456.pdf"
+    destination = resolve(storage_key)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+
+    old_content = b"old file content"
+    destination.write_bytes(old_content)
+
+    upload = UploadFile(
+        filename="replacement.pdf",
+        file=BytesIO(b"x" * 4096),
+    )
+
+    with pytest.raises(UploadTooLargeError):
+        await replace_upload(upload, storage_key)
+
+    assert destination.read_bytes() == old_content
+    assert list(tmp_path.rglob("*.tmp")) == []
