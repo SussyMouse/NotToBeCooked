@@ -43,3 +43,9 @@ venv
 
 # uploaded files (local object store stand-in)
 apps/api/storage/
+
+# personal type-checker / editor configs. pyrefly.toml is not a project
+# dependency -- it appears in no pyproject.toml, package.json or uv.lock -- and
+# the one it replaced hard-coded `apps/api/.venv/bin/python`, which does not
+# exist on Windows, so every Windows checkout of dev lit up red.
+pyrefly.toml
